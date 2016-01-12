@@ -1,0 +1,10 @@
+{
+  "name": "user-access-control",
+  "description": "An user access control",
+  "copyright": "Copyright © 2016, Szabo Bogdan",
+  "authors": ["Szabo Bogdan"],
+
+  "dependencies": {
+    "vibe-d": "~>0.7.26"
+  }
+}
