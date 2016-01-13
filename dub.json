@@ -1,6 +1,6 @@
 {
-  "name": "user-access-control",
-  "description": "An user access control",
+  "name": "vibe-auth",
+  "description": "OAuth2 server for vibe.d ",
   "copyright": "Copyright © 2016, Szabo Bogdan",
   "authors": ["Szabo Bogdan"],
 
