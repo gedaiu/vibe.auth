@@ -5,6 +5,9 @@
   "authors": ["Szabo Bogdan"],
 
   "dependencies": {
-    "vibe-d": "~>0.7.26"
+    "vibe-d": {
+      "version": ">=0.7.26",
+      "path": "../vibe.d"
+    },
   }
 }

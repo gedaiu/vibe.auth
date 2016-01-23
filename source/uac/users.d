@@ -22,7 +22,6 @@ class UserAccesNotFoundException : Exception {
   }
 }
 
-
 class User {
 	string id;
 
@@ -35,6 +34,8 @@ class User {
 
 	string[] rights;
 	string[] tokens;
+
+  this() { }
 
 	this(string name, string password) {
 		this.name = name;
@@ -69,13 +70,18 @@ class UserCollection {
 
 	private User[] userList;
 
-	this(immutable(string[]) accessList) {
+	this(immutable(string[]) accessList, User[] userList = []) {
 		this.accessList = accessList;
+    this.userList = userList;
 	}
 
 	void add(User user) {
 		userList ~= user;
 	}
+
+  auto length() {
+    return userList.length;
+  }
 
 	void empower(string name, string access) {
 		auto user = this[name];
@@ -150,7 +156,6 @@ unittest {
 	assert(user.can!"doStuff", "It should return true if the user can `doStuff`");
 	assert(!otherUser.can!"doStuff", "It should return false if the user can not `doStuff`");
 }
-
 
 unittest {
 	auto collection = new UserCollection([]);
