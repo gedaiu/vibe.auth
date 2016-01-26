@@ -42,7 +42,8 @@ class OAuth2: BaseAuthRouter {
         auto token = (*pauth)[7 .. $];
 
         try {
-          collection.byToken(token);
+          auto user = collection.byToken(token);
+          req.username = user.email;
         } catch(UserNotFoundException exception) {
           return false;
         }
@@ -57,6 +58,9 @@ class OAuth2: BaseAuthRouter {
       auto grantType = req.form["grant_type"];
       auto username = req.form["username"];
       auto password = req.form["password"];
+
+      writeln("==>", username, " ", password, " ", username in collection);
+
 
       if(grantType == "password") {
         if(username in collection && collection[username].isValidPassword(password)) {

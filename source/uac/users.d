@@ -23,9 +23,8 @@ class UserAccesNotFoundException : Exception {
 }
 
 class User {
-	string id;
-
-	string name;
+	size_t id;
+	string email;
 
 	string password;
 	string salt;
@@ -37,8 +36,8 @@ class User {
 
   this() { }
 
-	this(string name, string password) {
-		this.name = name;
+	this(string email, string password) {
+		this.email = email;
 		this.salt = randomUUID.to!string;
 		this.password = sha1UUID(salt ~ "." ~ password).to!string;
 	}
@@ -91,8 +90,16 @@ class UserCollection {
 		user.rights ~= access;
 	}
 
-	User opIndex(string name) {
-		auto list = userList.find!(a => a.name == name);
+  User opIndex(string email) {
+		auto list = userList.find!(a => a.email == email);
+
+		enforce!UserNotFoundException(list.count > 0, "User not found");
+
+		return list[0];
+	}
+
+  User opIndex(size_t index) {
+    auto list = userList.find!(a => a.id == index);
 
 		enforce!UserNotFoundException(list.count > 0, "User not found");
 
@@ -107,9 +114,9 @@ class UserCollection {
 		return list[0];
 	}
 
-	auto opBinaryRight(string op)(string name) {
+	auto opBinaryRight(string op)(string email) {
 		static if (op == "in") {
-			return !userList.filter!(a => a.name == name).empty;
+			return !userList.filter!(a => a.email == email).empty;
 		} else {
 			static assert(false, op ~ " not implemented for `UserCollection`");
 		}
@@ -147,14 +154,19 @@ unittest {
 unittest {
 	auto collection = new UserCollection(["doStuff"]);
 	auto user = new User("user", "password");
+  user.id = 1;
+
 	auto otherUser = new User("otherUser", "password");
+  otherUser.id = 2;
 
 	collection.add(user);
 	collection.add(otherUser);
 	collection.empower("user", "doStuff");
 
-	assert(user.can!"doStuff", "It should return true if the user can `doStuff`");
-	assert(!otherUser.can!"doStuff", "It should return false if the user can not `doStuff`");
+  assert(user.can!"doStuff", "It should return true if the user can `doStuff`");
+  assert(!otherUser.can!"doStuff", "It should return false if the user can not `doStuff`");
+
+  assert(collection[1] == user, "It should find user by id");
 }
 
 unittest {
