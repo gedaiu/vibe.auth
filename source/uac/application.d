@@ -1,5 +1,5 @@
-module uac.application;
+module vibeauth.application;
 
-public import uac.router.oauth;
-public import uac.router.basic;
-public import uac.users;
+public import vibeauth.router.oauth;
+public import vibeauth.router.basic;
+public import vibeauth.users;

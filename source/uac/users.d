@@ -1,4 +1,4 @@
-module uac.users;
+module vibeauth.users;
 
 import std.stdio;
 import std.algorithm.searching;

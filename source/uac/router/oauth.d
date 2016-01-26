@@ -1,10 +1,10 @@
-module uac.router.oauth;
+module vibeauth.router.oauth;
 
 import vibe.http.router;
 import vibe.data.json;
-import uac.users;
+import vibeauth.users;
 import std.algorithm.searching, std.base64, std.string, std.stdio;
-import uac.router.baseAuthRouter;
+import vibeauth.router.baseAuthRouter;
 
 class OAuth2: BaseAuthRouter {
 
