@@ -61,8 +61,9 @@ class OAuth2: BaseAuthRouter {
 
       writeln("==>", username, " ", password, " ", username in collection);
 
-
       if(grantType == "password") {
+        writeln("username in collection ", username in collection, "?", collection[username].isValidPassword(password));
+
         if(username in collection && collection[username].isValidPassword(password)) {
           Json response = Json.emptyObject;
 

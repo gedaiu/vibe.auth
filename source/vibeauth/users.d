@@ -23,13 +23,13 @@ class UserAccesNotFoundException : Exception {
 }
 
 class User {
-	size_t id;
+	ulong id;
 	string email;
 
-	string password;
-	string salt;
-
-	string token;
+	private {
+    string password;
+    string salt;
+  }
 
 	string[] rights;
 	string[] tokens;
@@ -121,6 +121,18 @@ class UserCollection {
 			static assert(false, op ~ " not implemented for `UserCollection`");
 		}
 	}
+
+  int opApply(int delegate(ref User) dg) {
+    int result = 0;
+
+    foreach(user; userList) {
+        result = dg(user);
+        if (result)
+          break;
+    }
+
+    return result;
+  }
 }
 
 unittest {
