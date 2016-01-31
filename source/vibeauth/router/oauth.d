@@ -59,11 +59,7 @@ class OAuth2: BaseAuthRouter {
       auto username = req.form["username"];
       auto password = req.form["password"];
 
-      writeln("==>", username, " ", password, " ", username in collection);
-
       if(grantType == "password") {
-        writeln("username in collection ", username in collection, "?", collection[username].isValidPassword(password));
-
         if(username in collection && collection[username].isValidPassword(password)) {
           Json response = Json.emptyObject;
 

@@ -1,5 +1,7 @@
 module vibeauth.users;
 
+import vibe.data.json;
+
 import std.stdio;
 import std.algorithm.searching;
 import std.algorithm.iteration;
@@ -26,25 +28,24 @@ class User {
 	ulong id;
 	string email;
 
-	private {
+  private {
     string password;
     string salt;
   }
 
-	string[] rights;
+	string[] scopes;
 	string[] tokens;
 
   this() { }
 
 	this(string email, string password) {
 		this.email = email;
-		this.salt = randomUUID.to!string;
-		this.password = sha1UUID(salt ~ "." ~ password).to!string;
+    setPassword(password);
 	}
 
 	const {
 		bool can(string access)() {
-			return rights.canFind(access);
+			return scopes.canFind(access);
 		}
 
 		bool isValidPassword(string password) {
@@ -56,12 +57,68 @@ class User {
 		}
 	}
 
+  void setPassword(string password) {
+    this.salt = randomUUID.to!string;
+		this.password = sha1UUID(salt ~ "." ~ password).to!string;
+  }
+
+  void setPassword(string password, string salt) {
+    this.salt = salt;
+		this.password = password;
+  }
+
 	string createToken() {
 		auto token = randomUUID.to!string;
 		tokens ~= token;
 
 		return token;
 	}
+
+  Json toJson() const {
+    Json data = toPublicJson;
+
+    data.password = password;
+    data.salt = salt;
+    data.tokens = Json.emptyArray;
+
+    foreach(token; tokens) {
+      data["tokens"] ~= token;
+    }
+
+    return data;
+  }
+
+  Json toPublicJson() const {
+    Json data = Json.emptyObject;
+
+    data.id = id;
+    data.email = email;
+    data["scope"] = Json.emptyArray;
+
+    foreach(s; scopes) {
+      data["scope"] ~= s;
+    }
+
+    return data;
+  }
+
+  static User fromJson(Json data) {
+    auto user = new User();
+
+    user.id = data.id.to!long;
+    user.email = data.email.to!string;
+    user.setPassword(data.password.to!string, data.salt.to!string);
+
+    foreach(s; data["scope"]) {
+      user.scopes ~= s.to!string;
+    }
+
+    foreach(token; data["tokens"]) {
+      user.tokens ~= token.to!string;
+    }
+
+    return user;
+  }
 }
 
 class UserCollection {
@@ -87,7 +144,7 @@ class UserCollection {
 
 		enforce!UserAccesNotFoundException(accessList.canFind(access), "`" ~ access ~ "` it's not in the list");
 
-		user.rights ~= access;
+		user.scopes ~= access;
 	}
 
   User opIndex(string email) {
@@ -114,9 +171,17 @@ class UserCollection {
 		return list[0];
 	}
 
-	auto opBinaryRight(string op)(string email) {
+  auto opBinaryRight(string op)(string email) {
 		static if (op == "in") {
 			return !userList.filter!(a => a.email == email).empty;
+		} else {
+			static assert(false, op ~ " not implemented for `UserCollection`");
+		}
+	}
+
+  auto opBinaryRight(string op)(long id) {
+		static if (op == "in") {
+			return !userList.filter!(a => a.id == id).empty;
 		} else {
 			static assert(false, op ~ " not implemented for `UserCollection`");
 		}
@@ -161,6 +226,51 @@ unittest {
 	assert(user.password == sha1UUID(user.salt ~ ".password").to!string, "It should salt the password");
 	assert(user.isValidPassword("password"), "It should return true for a valid password");
 	assert(!user.isValidPassword("other passowrd"), "It should return false for an invalid password");
+}
+
+unittest {
+  auto user = new User("user", "password");
+  auto json = user.toPublicJson;
+
+  assert("id" in json, "It should contain the id");
+  assert("email" in json, "It should contain the email");
+  assert("password" !in json, "It should not contain the password");
+  assert("salt" !in json, "It should not contain the salt");
+  assert("scope" in json, "It should contain the scope");
+  assert("tokens" !in json, "It should not contain the tokens");
+}
+
+unittest {
+  auto user = new User("user", "password");
+  auto json = user.toJson;
+
+  assert("id" in json, "It should contain the id");
+  assert("email" in json, "It should contain the email");
+  assert("password" in json, "It should contain the password");
+  assert("salt" in json, "It should contain the salt");
+  assert("scope" in json, "It should contain the scope");
+  assert("tokens" in json, "It should contain the tokens");
+}
+
+unittest {
+  auto json = `{
+    "id": 1,
+    "email": "test@asd.asd",
+    "password": "password",
+    "salt": "salt",
+    "scope": ["scope"],
+    "tokens": ["token"],
+  }`.parseJsonString;
+
+
+  auto user = User.fromJson(json);
+
+  assert(user.id == 1, "It should deserialize the id");
+  assert(user.email == "test@asd.asd", "It should deserialize the email");
+  assert(user.password == "password", "It should deserialize the password");
+  assert(user.salt == "salt", "It should deserialize the salt");
+  assert(user.scopes[0] == "scope", "It should deserialize the scope");
+  assert(user.tokens[0] == "token", "It should deserialize the tokens");
 }
 
 unittest {
