@@ -124,7 +124,7 @@ class User {
 class UserCollection {
 	immutable(string[]) accessList;
 
-	private User[] userList;
+	protected User[] userList;
 
 	this(immutable(string[]) accessList, User[] userList = []) {
 		this.accessList = accessList;
@@ -133,6 +133,7 @@ class UserCollection {
 
 	void add(User user) {
 		userList ~= user;
+    user.id = userList.length - 1;
 	}
 
   auto length() {
