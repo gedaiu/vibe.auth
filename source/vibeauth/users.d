@@ -122,6 +122,7 @@ class User {
 }
 
 class UserCollection {
+  long index = 0;
 	immutable(string[]) accessList;
 
 	protected User[] userList;
@@ -140,8 +141,8 @@ class UserCollection {
     return userList.length;
   }
 
-	void empower(string name, string access) {
-		auto user = this[name];
+	void empower(string email, string access) {
+		auto user = this[email];
 
 		enforce!UserAccesNotFoundException(accessList.canFind(access), "`" ~ access ~ "` it's not in the list");
 
@@ -198,6 +199,23 @@ class UserCollection {
     }
 
     return result;
+  }
+
+  @property User front() {
+    return userList[index];
+  }
+
+  User moveFront() {
+    index = 0;
+    return front();
+  }
+
+  void popFront() {
+    index++;
+  }
+
+  @property bool empty() {
+    return index >= userList.length;
   }
 }
 
