@@ -25,10 +25,13 @@ class UserAccesNotFoundException : Exception {
 }
 
 class User {
-	ulong id;
-	string email;
+  alias ChangedEvent = void delegate(User);
+
+  ChangedEvent onChange;
 
   private {
+  	ulong _id;
+    string _email;
     string password;
     string salt;
   }
@@ -42,6 +45,30 @@ class User {
 		this.email = email;
     setPassword(password);
 	}
+
+  @property {
+    auto id() const {
+      return _id;
+    }
+
+    void id(ulong value) {
+      _id = value;
+      if(onChange) {
+        onChange(this);
+      }
+    }
+
+    auto email() const {
+      return _email;
+    }
+
+    void email(string value) {
+      _email = value;
+      if(onChange) {
+        onChange(this);
+      }
+    }
+  }
 
 	const {
 		bool can(string access)() {
@@ -60,18 +87,30 @@ class User {
   void setPassword(string password) {
     this.salt = randomUUID.to!string;
 		this.password = sha1UUID(salt ~ "." ~ password).to!string;
+
+    if(onChange) {
+      onChange(this);
+    }
   }
 
   void setPassword(string password, string salt) {
     this.salt = salt;
 		this.password = password;
+
+    if(onChange) {
+      onChange(this);
+    }
   }
 
 	string createToken() {
 		auto token = randomUUID.to!string;
 		tokens ~= token;
 
-		return token;
+    if(onChange) {
+      onChange(this);
+    }
+
+    return token;
 	}
 
   Json toJson() const {
@@ -133,8 +172,8 @@ class UserCollection {
 	}
 
 	void add(User user) {
+    enforce(!userList.map!(a => a.id).canFind(user.id), "An user with the same id already exists");
 		userList ~= user;
-    user.id = userList.length - 1;
 	}
 
   auto length() {
@@ -293,6 +332,36 @@ unittest {
 }
 
 unittest {
+  auto user = new User();
+  auto changed = false;
+
+  void userChanged(User u) {
+    changed = true;
+  }
+
+  user.onChange = &userChanged;
+
+  user.id = 1;
+  assert(changed, "onChange should be called when the id is changed");
+
+  changed = false;
+  user.email = "email";
+  assert(changed, "onChange should be called when the email is changed");
+
+  changed = false;
+  user.setPassword("password");
+  assert(changed, "onChange should be called when the password is changed");
+
+  changed = false;
+  user.setPassword("password", "salt");
+  assert(changed, "onChange should be called when the password is changed");
+
+  changed = false;
+  user.createToken();
+  assert(changed, "onChange should be called when a token is created");
+}
+
+unittest {
 	auto collection = new UserCollection(["doStuff"]);
 	auto user = new User("user", "password");
   user.id = 1;
@@ -306,7 +375,6 @@ unittest {
 
   assert(user.can!"doStuff", "It should return true if the user can `doStuff`");
   assert(!otherUser.can!"doStuff", "It should return false if the user can not `doStuff`");
-
   assert(collection[1] == user, "It should find user by id");
 }
 
