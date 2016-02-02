@@ -10,6 +10,8 @@ import std.uuid;
 import std.conv;
 import std.datetime;
 
+import vibeauth.collection;
+
 class UserNotFoundException : Exception {
   this(string msg = null, Throwable next = null) { super(msg, next); }
   this(string msg, string file, size_t line, Throwable next = null) {
@@ -160,25 +162,16 @@ class User {
   }
 }
 
-class UserCollection {
+class UserCollection: Collection!User {
   long index = 0;
 	immutable(string[]) accessList;
 
-	protected User[] userList;
+  alias opIndex = Collection!User.opIndex;
 
-	this(immutable(string[]) accessList, User[] userList = []) {
+	this(immutable(string[]) accessList, User[] list = []) {
 		this.accessList = accessList;
-    this.userList = userList;
+    super(list);
 	}
-
-	void add(User user) {
-    enforce(!userList.map!(a => a.id).canFind(user.id), "An user with the same id already exists");
-		userList ~= user;
-	}
-
-  auto length() {
-    return userList.length;
-  }
 
 	void empower(string email, string access) {
 		auto user = this[email];
@@ -189,15 +182,7 @@ class UserCollection {
 	}
 
   User opIndex(string email) {
-		auto list = userList.find!(a => a.email == email);
-
-		enforce!UserNotFoundException(list.count > 0, "User not found");
-
-		return list[0];
-	}
-
-  User opIndex(size_t index) {
-    auto list = userList.find!(a => a.id == index);
+		auto list = list.find!(a => a.email == email);
 
 		enforce!UserNotFoundException(list.count > 0, "User not found");
 
@@ -205,7 +190,7 @@ class UserCollection {
 	}
 
 	User byToken(string token) {
-		auto list = userList.find!(a => a.isValidToken(token));
+		auto list = list.find!(a => a.isValidToken(token));
 
 		enforce!UserNotFoundException(list.count > 0, "User not found");
 
@@ -214,48 +199,11 @@ class UserCollection {
 
   auto opBinaryRight(string op)(string email) {
 		static if (op == "in") {
-			return !userList.filter!(a => a.email == email).empty;
+			return !list.filter!(a => a.email == email).empty;
 		} else {
 			static assert(false, op ~ " not implemented for `UserCollection`");
 		}
 	}
-
-  auto opBinaryRight(string op)(long id) {
-		static if (op == "in") {
-			return !userList.filter!(a => a.id == id).empty;
-		} else {
-			static assert(false, op ~ " not implemented for `UserCollection`");
-		}
-	}
-
-  int opApply(int delegate(ref User) dg) {
-    int result = 0;
-
-    foreach(user; userList) {
-        result = dg(user);
-        if (result)
-          break;
-    }
-
-    return result;
-  }
-
-  @property User front() {
-    return userList[index];
-  }
-
-  User moveFront() {
-    index = 0;
-    return front();
-  }
-
-  void popFront() {
-    index++;
-  }
-
-  @property bool empty() {
-    return index >= userList.length;
-  }
 }
 
 unittest {
