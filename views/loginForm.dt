@@ -1,0 +1,16 @@
+doctype html
+html
+head
+	title Login
+body
+	h1 Authorize <strong>#{appTitle}</strong> to use your account?
+	form(method="post", action="/auth/authenticate")
+		div.form-group
+			label User name
+			input.form-control(placeholder="Enter Login", type="text", name="email")
+		div.form-group
+			label Password
+			input.form-control(placeholder="Enter Password", type="password", name="password")
+
+		input(value="#{redirectUri}", type="hidden", name="redirect_uri")
+		button.btn.btn-success(type="submit") Login
