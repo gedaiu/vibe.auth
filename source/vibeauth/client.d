@@ -11,4 +11,7 @@ class Client {
 
 class ClientCollection : Collection!Client {
 
+  this(Client[] list) {
+    super(list);
+  }
 }

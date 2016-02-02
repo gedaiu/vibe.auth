@@ -11,6 +11,8 @@ struct OAuth2Configuration {
   string tokenPath = "/auth/token";
   string authorizePath = "/auth/authorize";
   string authenticatePath = "/auth/authenticate";
+
+  string style = "";
 }
 
 class OAuth2: BaseAuthRouter {
@@ -40,7 +42,7 @@ class OAuth2: BaseAuthRouter {
         authorize(req, res);
       } else if(req.path == configuration.authenticatePath) {
         authenticate(req, res);
-      } else if(!isValidBearer(req)) {
+      } else if(req.path != configuration.style && !isValidBearer(req)) {
         respondUnauthorized(res);
       }
     }
@@ -72,11 +74,24 @@ class OAuth2: BaseAuthRouter {
     }
 
     void authorize(scope HTTPServerRequest req, scope HTTPServerResponse res) {
-      writeln("\nform", req.form);
-      writeln("\nquery", req.query);
+      if("redirect_uri" !in req.query) {
+        showError(res, "Missing `redirect_uri` parameter");
+        return;
+      }
 
-      auto redirectUri = req.query["redirect_uri"];
-      auto clientId = req.query["client_id"];
+      if("client_id" !in req.query) {
+        showError(res, "Missing `client_id` parameter");
+        return;
+      }
+
+      auto const redirectUri = req.query["redirect_uri"];
+      auto const clientId = req.query["client_id"];
+      auto const style = configuration.style;
+
+      if(clientId !in clientCollection) {
+        showError(res, "Invalid `client_id` parameter");
+        return;
+      }
 
       /*
       ([Field("client_id", "consumerKey"),
@@ -86,9 +101,15 @@ class OAuth2: BaseAuthRouter {
       Field("state", "qQXwwzv9LErOnZHRCzkd")
       */
 
-      string appTitle = "unknown";
+      string appTitle = clientCollection[clientId].name;
 
-      res.render!("loginForm.dt", appTitle, redirectUri);
+      res.render!("loginForm.dt", appTitle, redirectUri, style);
+    }
+
+    void showError(scope HTTPServerResponse res, const string error) {
+      auto const style = configuration.style;
+      res.statusCode = 400;
+      res.render!("error.dt", error, style);
     }
 
     void authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) {
@@ -98,12 +119,12 @@ class OAuth2: BaseAuthRouter {
     }
 
     void createToken(scope HTTPServerRequest req, scope HTTPServerResponse res) {
-      auto grantType = req.form["grant_type"];
-      auto username = req.form["username"];
-      auto password = req.form["password"];
+      auto const grantType = req.form["grant_type"];
+      auto const username = req.form["username"];
+      auto const password = req.form["password"];
 
       if(grantType == "password") {
-        if(username in collection && collection[username].isValidPassword(password)) {
+        if(collection.contains(username) && collection[username].isValidPassword(password)) {
           Json response = Json.emptyObject;
 
           response.access_token = collection[username].createToken;

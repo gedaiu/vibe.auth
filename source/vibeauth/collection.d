@@ -47,7 +47,7 @@ class Collection(T) {
 
   auto opBinaryRight(string op)(idType id) {
 		static if (op == "in") {
-			return !userList.filter!(a => a.id == id).empty;
+			return !list.filter!(a => a.id == id).empty;
 		} else {
 			static assert(false, op ~ " not implemented for `ItemCollection`");
 		}

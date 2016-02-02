@@ -161,6 +161,7 @@ class UserCollection: Collection!User {
   long index = 0;
 	immutable(string[]) accessList;
 
+  alias opBinaryRight = Collection!User.opBinaryRight;
   alias opIndex = Collection!User.opIndex;
 
 	this(immutable(string[]) accessList, User[] list = []) {
@@ -192,13 +193,9 @@ class UserCollection: Collection!User {
 		return list[0];
 	}
 
-  auto opBinaryRight(string op)(string email) {
-		static if (op == "in") {
-			return !list.filter!(a => a.email == email).empty;
-		} else {
-			static assert(false, op ~ " not implemented for `UserCollection`");
-		}
-	}
+  bool contains(string email) {
+    return !list.filter!(a => a.email == email).empty;
+  }
 }
 
 unittest {
@@ -207,8 +204,8 @@ unittest {
 
 	collection.add(user);
 	assert(collection["user"] == user, "It should return user by name");
-	assert("user" in collection, "It should find user by name");
-	assert("other user" !in collection, "It should not find user by name");
+	assert(collection.contains("user"), "It should find user by name");
+	assert(!collection.contains("other user"), "It should not find user by name");
 
 	bool thwrown;
 
