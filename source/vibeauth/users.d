@@ -12,12 +12,7 @@ import std.datetime;
 
 import vibeauth.collection;
 
-class UserNotFoundException : Exception {
-  this(string msg = null, Throwable next = null) { super(msg, next); }
-  this(string msg, string file, size_t line, Throwable next = null) {
-    super(msg, file, line, next);
-  }
-}
+alias UserNotFoundException = ItemNotFoundException;
 
 class UserAccesNotFoundException : Exception {
   this(string msg = null, Throwable next = null) { super(msg, next); }
