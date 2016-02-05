@@ -19,4 +19,6 @@ body
             input.form-control(placeholder="Enter Password", type="password", name="password")
 
           input(value="#{redirectUri}", type="hidden", name="redirect_uri")
+          input(value="#{state}", type="hidden", name="state")
+
           button.btn.btn-success(type="submit") Login

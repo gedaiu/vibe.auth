@@ -3,6 +3,7 @@ module vibeauth.router.oauth;
 import vibe.http.router;
 import vibe.data.json;
 import vibeauth.users;
+import vibe.inet.url;
 import std.algorithm.searching, std.base64, std.string, std.stdio;
 import vibeauth.router.baseAuthRouter;
 import vibeauth.client;
@@ -84,8 +85,14 @@ class OAuth2: BaseAuthRouter {
         return;
       }
 
+      if("state" !in req.query) {
+        showError(res, "Missing `state` parameter");
+        return;
+      }
+
       auto const redirectUri = req.query["redirect_uri"];
       auto const clientId = req.query["client_id"];
+      auto const state = req.query["state"];
       auto const style = configuration.style;
 
       if(clientId !in clientCollection) {
@@ -93,17 +100,9 @@ class OAuth2: BaseAuthRouter {
         return;
       }
 
-      /*
-      ([Field("client_id", "consumerKey"),
-      Field("redirect_uri", "oauth-swift://oauth-callback/kangal"),
-      Field("response_type", "token"),
-      Field("scope", "user-library-modify"),
-      Field("state", "qQXwwzv9LErOnZHRCzkd")
-      */
-
       string appTitle = clientCollection[clientId].name;
 
-      res.render!("loginForm.dt", appTitle, redirectUri, style);
+      res.render!("loginForm.dt", appTitle, redirectUri, state, style);
     }
 
     void showError(scope HTTPServerResponse res, const string error) {
@@ -113,7 +112,16 @@ class OAuth2: BaseAuthRouter {
     }
 
     void authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) {
-      auto redirectUri = req.form["redirect_uri"];
+      auto email = req.form["email"];
+      auto password = req.form["password"];
+
+      if(!collection.contains(email) || !collection[email].isValidPassword(password)) {
+        showError(res, "Invalid email or password.");
+        return;
+      }
+
+      string token = collection[email].createToken;
+      auto redirectUri = req.form["redirect_uri"] ~ "#access_token=" ~ token ~ "&state=" ~ req.form["state"];
 
       res.render!("redirect.dt", redirectUri);
     }
