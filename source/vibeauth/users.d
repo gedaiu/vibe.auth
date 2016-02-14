@@ -177,13 +177,15 @@ class UserCollection: Collection!User {
 		user.scopes ~= access;
 	}
 
-  User opIndex(string email) {
-		auto list = list.find!(a => a.email == email);
+  override {
+    User opIndex(string email) {
+  		auto list = list.find!(a => a.email == email);
 
-		enforce!UserNotFoundException(list.count > 0, "User not found");
+  		enforce!UserNotFoundException(list.count > 0, "User not found");
 
-		return list[0];
-	}
+  		return list[0];
+  	}
+  }
 
 	User byToken(string token) {
 		auto list = list.find!(a => a.isValidToken(token));

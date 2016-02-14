@@ -12,6 +12,9 @@ import std.conv;
 import std.datetime;
 import std.array;
 
+import std.range.interfaces;
+import std.range.primitives;
+
 class ItemNotFoundException : Exception {
   this(string msg = null, Throwable next = null) { super(msg, next); }
   this(string msg, string file, size_t line, Throwable next = null) {
@@ -20,7 +23,6 @@ class ItemNotFoundException : Exception {
 }
 
 class Collection(T) {
-  long index = 0;
   alias idType = typeof(T.id);
 
 	protected T[] list;
@@ -38,17 +40,33 @@ class Collection(T) {
     list = list.filter!(a => a.id != id).array;
   }
 
-  auto length() {
+  size_t length() {
     return list.length;
   }
 
-  auto opIndex(idType index) {
-    auto list = list.find!(a => a.id == index);
+  T opIndex(string index) {
+    static if(is(string == idType)) {
+      auto list = list.find!(a => a.id == index);
 
-		enforce!ItemNotFoundException(list.count > 0, "Item not found");
+  		enforce!ItemNotFoundException(list.count > 0, "Item not found");
 
-		return list[0];
+  		return list[0];
+    } else {
+      throw new Exception("not implemented");
+    }
 	}
+
+  T opIndex(size_t index) {
+    static if(!is(size_t == idType)) {
+      return list[index];
+    } else {
+      auto list = list.find!(a => a.id == index);
+
+  		enforce!ItemNotFoundException(list.count > 0, "Item not found");
+
+  		return list[0];
+    }
+  }
 
   auto opBinaryRight(string op)(idType id) {
 		static if (op == "in") {
@@ -58,7 +76,7 @@ class Collection(T) {
 		}
 	}
 
-  int opApply(int delegate(ref T) dg) {
+  int opApply(int delegate(T) dg) {
     int result = 0;
 
     foreach(item; list) {
@@ -70,20 +88,33 @@ class Collection(T) {
     return result;
   }
 
-  @property auto front() {
-    return list[index];
-  }
+  int opApply(int delegate(ulong, T) dg) {
+    int result = 0;
+    ulong idx = 0;
 
-  auto moveFront() {
-    index = 0;
-    return front();
-  }
+    foreach(item; list) {
+      static if(is(size_t == idType)) {
+        idx = item.id;
+      }
 
-  void popFront() {
-    index++;
+      result = dg(idx, item);
+
+      static if(!is(size_t == idType)) {
+        idx++;
+      }
+
+      if (result)
+        break;
+    }
+
+    return result;
   }
 
   @property bool empty() {
-    return index >= list.length;
+    return list.empty;
+  }
+
+  Collection!T save() {
+    return new Collection!T(list.dup);
   }
 }
