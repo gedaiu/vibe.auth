@@ -10,6 +10,7 @@ import std.exception;
 import std.uuid;
 import std.conv;
 import std.datetime;
+import std.array;
 
 class ItemNotFoundException : Exception {
   this(string msg = null, Throwable next = null) { super(msg, next); }
@@ -29,9 +30,13 @@ class Collection(T) {
 	}
 
 	void add(T item) {
-    enforce(!list.map!(a => a.id).canFind(item.id), "An item with the same id already exists");
+    enforce(!list.map!(a => a.id).canFind(item.id), "An item with the same id `" ~ item.id.to!string ~ "` already exists");
 		list ~= item;
 	}
+
+  void remove(const idType id) {
+    list = list.filter!(a => a.id != id).array;
+  }
 
   auto length() {
     return list.length;

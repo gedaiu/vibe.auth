@@ -337,3 +337,14 @@ unittest {
 
 	assert(thwrown, "It should raise exception when an user it's not found by token");
 }
+
+unittest {
+	auto collection = new UserCollection([]);
+	auto user = new User("user", "password");
+  user.id = 1;
+
+	collection.add(user);
+  collection.remove(1);
+
+	assert(collection.length == 0, "It should remove user by id");
+}
