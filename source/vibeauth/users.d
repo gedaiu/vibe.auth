@@ -113,9 +113,9 @@ class User {
   Json toJson() const {
     Json data = toPublicJson;
 
-    data.password = password;
-    data.salt = salt;
-    data.tokens = Json.emptyArray;
+    data["password"] = password;
+    data["salt"] = salt;
+    data["tokens"] = Json.emptyArray;
 
     foreach(token; tokens) {
       data["tokens"] ~= token;
@@ -127,8 +127,8 @@ class User {
   Json toPublicJson() const {
     Json data = Json.emptyObject;
 
-    data.id = id;
-    data.email = email;
+    data["id"] = id;
+    data["email"] = email;
     data["scope"] = Json.emptyArray;
 
     foreach(s; scopes) {
@@ -141,9 +141,9 @@ class User {
   static User fromJson(Json data) {
     auto user = new User();
 
-    user.id = data.id.to!long;
-    user.email = data.email.to!string;
-    user.setPassword(data.password.to!string, data.salt.to!string);
+    user.id = data["id"].to!long;
+    user.email = data["email"].to!string;
+    user.setPassword(data["password"].to!string, data["salt"].to!string);
 
     foreach(s; data["scope"]) {
       user.scopes ~= s.to!string;

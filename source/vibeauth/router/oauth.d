@@ -135,10 +135,10 @@ class OAuth2: BaseAuthRouter {
         if(collection.contains(username) && collection[username].isValidPassword(password)) {
           Json response = Json.emptyObject;
 
-          response.access_token = collection[username].createToken;
-          response.token_type = "Bearer";
-          response.expires_in = 3600;
-          response.refresh_token = "";
+          response["access_token"] = collection[username].createToken;
+          response["token_type"] = "Bearer";
+          response["expires_in"] = 3600;
+          response["refresh_token"] = "";
 
           res.writeJsonBody(response);
         } else {
