@@ -4,7 +4,7 @@ import vibe.http.router;
 import vibe.data.json;
 import vibeauth.users;
 import vibe.inet.url;
-import std.algorithm.searching, std.base64, std.string, std.stdio;
+import std.algorithm.searching, std.base64, std.string, std.stdio, std.conv;
 import vibeauth.router.baseAuthRouter;
 import vibeauth.client;
 
@@ -112,8 +112,16 @@ class OAuth2: BaseAuthRouter {
     }
 
     void authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) {
-      auto email = req.form["email"];
-      auto password = req.form["password"];
+      string email;
+      string password;
+
+      try {
+        email = req.form["email"];
+        password = req.form["password"];
+      } catch (Exception e) {
+        debug showError(res, e.to!string);
+        return;
+      }
 
       if(!collection.contains(email) || !collection[email].isValidPassword(password)) {
         showError(res, "Invalid email or password.");

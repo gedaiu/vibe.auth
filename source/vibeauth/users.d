@@ -67,6 +67,11 @@ class User {
     }
   }
 
+  override
+  string toString() {
+    return toJson.toPrettyString;
+  }
+
 	const {
 		bool can(string access)() {
 			return scopes.canFind(access);
@@ -179,20 +184,20 @@ class UserCollection: Collection!User {
 
   override {
     User opIndex(string email) {
-  		auto list = list.find!(a => a.email == email);
+  		auto result = list.find!(a => a.email == email);
 
-  		enforce!UserNotFoundException(list.count > 0, "User not found");
+  		enforce!UserNotFoundException(result.count > 0, "User not found");
 
-  		return list[0];
+  		return result[0];
   	}
   }
 
 	User byToken(string token) {
-		auto list = list.find!(a => a.isValidToken(token));
+		auto result = list.find!(a => a.isValidToken(token));
 
-		enforce!UserNotFoundException(list.count > 0, "User not found");
+		enforce!UserNotFoundException(result.count > 0, "User not found");
 
-		return list[0];
+		return result[0];
 	}
 
   bool contains(string email) {
@@ -317,7 +322,6 @@ unittest {
 
   assert(user.can!"doStuff", "It should return true if the user can `doStuff`");
   assert(!otherUser.can!"doStuff", "It should return false if the user can not `doStuff`");
-  assert(collection[1] == user, "It should find user by id");
 }
 
 unittest {

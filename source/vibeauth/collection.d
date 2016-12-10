@@ -56,18 +56,6 @@ class Collection(T) {
     }
 	}
 
-  T opIndex(size_t index) {
-    static if(!is(size_t == idType)) {
-      return list[index];
-    } else {
-      auto list = list.find!(a => a.id == index);
-
-  		enforce!ItemNotFoundException(list.count > 0, "Item not found");
-
-  		return list[0];
-    }
-  }
-
   auto opBinaryRight(string op)(idType id) {
 		static if (op == "in") {
 			return !list.filter!(a => a.id == id).empty;
