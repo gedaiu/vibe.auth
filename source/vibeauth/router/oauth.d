@@ -7,6 +7,7 @@ import vibe.inet.url;
 import std.algorithm.searching, std.base64, std.string, std.stdio, std.conv;
 import vibeauth.router.baseAuthRouter;
 import vibeauth.client;
+import vibeauth.collection;
 
 struct OAuth2Configuration {
   string tokenPath = "/auth/token";

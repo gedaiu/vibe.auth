@@ -3,6 +3,7 @@ module vibeauth.router.baseAuthRouter;
 import vibe.http.router;
 import vibe.data.json;
 import vibeauth.users;
+
 import std.algorithm.searching, std.base64, std.string, std.stdio;
 
 

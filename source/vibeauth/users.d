@@ -152,7 +152,15 @@ class User {
   }
 }
 
-class UserCollection: Collection!User {
+abstract class UserCollection : Collection!User {
+  abstract {
+    void empower(string email, string access);
+    User byToken(string token);
+    bool contains(string email);
+  }
+}
+
+class UserMemmoryCollection : Collection!User {
   long index = 0;
 	immutable(string[]) accessList;
 
@@ -196,7 +204,7 @@ class UserCollection: Collection!User {
 }
 
 unittest {
-	auto collection = new UserCollection([]);
+	auto collection = new UserMemmoryCollection([]);
 	auto user = new User("user", "password");
 
 	collection.add(user);
@@ -251,7 +259,7 @@ unittest {
 
 unittest {
   auto json = `{
-    "id": 1,
+    "id": "1",
     "email": "test@asd.asd",
     "password": "password",
     "salt": "salt",
@@ -263,7 +271,7 @@ unittest {
   auto user = User.fromJson(json);
   auto juser = user.toJson;
 
-  assert(user.id == 1, "It should deserialize the id");
+  assert(user.id == "1", "It should deserialize the id");
   assert(user.email == "test@asd.asd", "It should deserialize the email");
   assert(juser["password"] == "password", "It should deserialize the password");
   assert(juser["salt"] == "salt", "It should deserialize the salt");
@@ -302,7 +310,7 @@ unittest {
 }
 
 unittest {
-	auto collection = new UserCollection(["doStuff"]);
+	auto collection = new UserMemmoryCollection(["doStuff"]);
 	auto user = new User("user", "password");
   user.id = 1;
 
@@ -318,7 +326,7 @@ unittest {
 }
 
 unittest {
-	auto collection = new UserCollection([]);
+	auto collection = new UserMemmoryCollection([]);
 	auto user = new User("user", "password");
 
 	collection.add(user);
@@ -338,12 +346,12 @@ unittest {
 }
 
 unittest {
-	auto collection = new UserCollection([]);
+	auto collection = new UserMemmoryCollection([]);
 	auto user = new User("user", "password");
   user.id = 1;
 
 	collection.add(user);
-  collection.remove(1);
+  collection.remove("1");
 
 	assert(collection.length == 0, "It should remove user by id");
 }
