@@ -153,6 +153,14 @@ class User {
 }
 
 abstract class UserCollection : Collection!User {
+
+  alias opBinaryRight = Collection!User.opBinaryRight;
+  alias opIndex = Collection!User.opIndex;
+
+  this(User[] list = []) {
+    super(list);
+	}
+
   abstract {
     void empower(string email, string access);
     User byToken(string token);
@@ -160,24 +168,14 @@ abstract class UserCollection : Collection!User {
   }
 }
 
-class UserMemmoryCollection : Collection!User {
+class UserMemmoryCollection : UserCollection {
   long index = 0;
 	immutable(string[]) accessList;
 
-  alias opBinaryRight = Collection!User.opBinaryRight;
-  alias opIndex = Collection!User.opIndex;
 
 	this(immutable(string[]) accessList, User[] list = []) {
 		this.accessList = accessList;
     super(list);
-	}
-
-	void empower(string email, string access) {
-		auto user = this[email];
-
-		enforce!UserAccesNotFoundException(accessList.canFind(access), "`" ~ access ~ "` it's not in the list");
-
-		user.addScope(access);
 	}
 
   override {
@@ -188,18 +186,27 @@ class UserMemmoryCollection : Collection!User {
 
   		return result[0];
   	}
-  }
 
-	User byToken(string token) {
-		auto result = list.find!(a => a.isValidToken(token));
 
-		enforce!UserNotFoundException(result.count > 0, "User not found");
+    void empower(string email, string access) {
+  		auto user = this[email];
 
-		return result[0];
-	}
+  		enforce!UserAccesNotFoundException(accessList.canFind(access), "`" ~ access ~ "` it's not in the list");
 
-  bool contains(string email) {
-    return !list.filter!(a => a.email == email).empty;
+  		user.addScope(access);
+  	}
+
+    User byToken(string token) {
+  		auto result = list.find!(a => a.isValidToken(token));
+
+  		enforce!UserNotFoundException(result.count > 0, "User not found");
+
+  		return result[0];
+  	}
+
+    bool contains(string email) {
+      return !list.filter!(a => a.email == email).empty;
+    }
   }
 }
 
