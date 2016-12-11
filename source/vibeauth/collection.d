@@ -116,7 +116,7 @@ class Collection(T) : ICollection!T {
     return list.empty;
   }
 
-  Collection!T save() {
+  ICollection!T save() {
     return new Collection!T(list.dup);
   }
 }
