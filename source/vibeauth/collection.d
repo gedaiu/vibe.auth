@@ -22,7 +22,21 @@ class ItemNotFoundException : Exception {
   }
 }
 
-class Collection(T) {
+interface ICollection(T) {
+  alias idType = typeof(T.id);
+
+  void add(T item);
+  void remove(const idType id);
+  size_t length();
+  T opIndex(string index);
+  auto opBinaryRight(string op)(idType id);
+  int opApply(int delegate(T) dg);
+  int opApply(int delegate(ulong, T) dg);
+  @property bool empty();
+  ICollection!T save();
+}
+
+class Collection(T) : ICollection!T {
   alias idType = typeof(T.id);
 
 	protected T[] list;
