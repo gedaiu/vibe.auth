@@ -22,7 +22,7 @@ class UserAccesNotFoundException : Exception {
 }
 
 struct UserData {
-  	string id;
+  	string _id;
     string email;
     string password;
     string salt;
@@ -53,11 +53,11 @@ class User {
 
   @property {
     auto id() const {
-      return userData.id;
+      return userData._id;
     }
 
     void id(ulong value) {
-      userData.id = value.to!string;
+      userData._id = value.to!string;
 
       if(onChange) {
         onChange(this);
