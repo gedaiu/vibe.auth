@@ -13,6 +13,7 @@ struct OAuth2Configuration {
   string tokenPath = "/auth/token";
   string authorizePath = "/auth/authorize";
   string authenticatePath = "/auth/authenticate";
+  string revokePath = "/auth/revoke";
 
   string style = "";
 }
@@ -32,27 +33,51 @@ class OAuth2: BaseAuthRouter {
 
   override {
     void checkLogin(scope HTTPServerRequest req, scope HTTPServerResponse res) {
-      setAccessControl(res);
+      try {
+        setAccessControl(res);
 
-      if(req.method == HTTPMethod.OPTIONS) {
-        return;
-      }
+        if(req.method == HTTPMethod.OPTIONS) {
+          return;
+        }
 
-      if(req.path == configuration.tokenPath) {
-        createToken(req, res);
-      } else if (req.path == configuration.authorizePath) {
-        authorize(req, res);
-      } else if(req.path == configuration.authenticatePath) {
-        authenticate(req, res);
-      } else if(req.path != configuration.style && !isValidBearer(req)) {
-        respondUnauthorized(res);
+        if(req.path == configuration.tokenPath) {
+          createToken(req, res);
+        }
+
+        if (req.path == configuration.authorizePath) {
+          authorize(req, res);
+        }
+
+        if(req.path == configuration.authenticatePath) {
+          authenticate(req, res);
+        }
+
+        if(req.path == configuration.revokePath) {
+          revoke(req, res);
+        }
+
+        if(req.path != configuration.style && !isValidBearer(req)) {
+          respondUnauthorized(res);
+        }
+      } catch(Exception e) {
+        version(unittest) {} else debug stderr.writeln(e);
+        res.writeJsonBody([ "error": e.msg ], 500);
       }
     }
   }
 
   void setAccessControl(ref HTTPServerResponse res) {
-    res.headers["Access-Control-Allow-Origin"] = "*";
-    res.headers["Access-Control-Allow-Headers"] = "Authorization, ";
+    if("Access-Control-Allow-Origin" !in res.headers) {
+      res.headers["Access-Control-Allow-Origin"] = "*";
+    } else {
+      res.headers["Access-Control-Allow-Origin"] = ", *";
+    }
+
+    if("Access-Control-Allow-Headers" !in res.headers) {
+      res.headers["Access-Control-Allow-Headers"] = "Authorization";
+    } else {
+      res.headers["Access-Control-Allow-Headers"] = ", Authorization";
+    }
   }
 
   private {
@@ -144,7 +169,7 @@ class OAuth2: BaseAuthRouter {
         if(collection.contains(username) && collection[username].isValidPassword(password)) {
           Json response = Json.emptyObject;
 
-          response["access_token"] = collection[username].createToken;
+          response["access_token"] = collection.createToken(username);
           response["token_type"] = "Bearer";
           response["expires_in"] = 3600;
           response["refresh_token"] = "";
@@ -158,10 +183,16 @@ class OAuth2: BaseAuthRouter {
       }
     }
 
+    void revoke(scope HTTPServerRequest req, scope HTTPServerResponse res) {
+      auto const tokenType = req.form["token_type_hint"];
+      auto const token = req.form["token"];
+
+      respondUnauthorized(res, "Not implemented!");
+    }
+
     void respondUnauthorized(scope HTTPServerResponse res, string message = "Authorization required") {
       res.statusCode = HTTPStatus.unauthorized;
-      res.contentType = "text/plain";
-      res.bodyWriter.write(message);
+      res.writeJsonBody([ "error": message ]);
     }
   }
 }

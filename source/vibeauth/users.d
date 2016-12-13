@@ -162,6 +162,7 @@ abstract class UserCollection : Collection!User {
 	}
 
   abstract {
+    string createToken(string email);
     void empower(string email, string access);
     User byToken(string token);
     bool contains(string email);
@@ -187,6 +188,9 @@ class UserMemmoryCollection : UserCollection {
   		return result[0];
   	}
 
+    string createToken(string email) {
+      return opIndex(email).createToken;
+    }
 
     void empower(string email, string access) {
   		auto user = this[email];
