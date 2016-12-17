@@ -11,6 +11,7 @@ import std.conv;
 import std.datetime;
 
 import vibeauth.collection;
+import vibeauth.token;
 
 alias UserNotFoundException = ItemNotFoundException;
 
@@ -91,7 +92,7 @@ class User {
 			return sha1UUID(userData.salt ~ "." ~ password).to!string == userData.password;
 		}
 
-		bool isValidToken(string token) {
+		bool isValidToken(string token, string requireScope = null) {
 			return userData.tokens.canFind(token);
 		}
 	}
@@ -118,7 +119,7 @@ class User {
     userData.scopes ~= access;
   }
 
-	string createToken() {
+	Token createToken() {
 		auto token = randomUUID.to!string;
 		userData.tokens ~= token;
 
@@ -126,7 +127,7 @@ class User {
       onChange(this);
     }
 
-    return token;
+    return Token(token, Clock.currTime + 3601.seconds);
 	}
 
   Json toJson() const {
@@ -162,7 +163,7 @@ abstract class UserCollection : Collection!User {
 	}
 
   abstract {
-    string createToken(string email);
+    Token createToken(string email);
     void empower(string email, string access);
     User byToken(string token);
     bool contains(string email);
@@ -188,7 +189,7 @@ class UserMemmoryCollection : UserCollection {
   		return result[0];
   	}
 
-    string createToken(string email) {
+    Token createToken(string email) {
       return opIndex(email).createToken;
     }
 
@@ -260,7 +261,7 @@ unittest {
   auto user = new User("user", "password");
   auto json = user.toJson;
 
-  assert("id" in json, "It should contain the id");
+  assert("_id" in json, "It should contain the id");
   assert("email" in json, "It should contain the email");
   assert("password" in json, "It should contain the password");
   assert("salt" in json, "It should contain the salt");
@@ -270,7 +271,7 @@ unittest {
 
 unittest {
   auto json = `{
-    "id": "1",
+    "_id": "1",
     "email": "test@asd.asd",
     "password": "password",
     "salt": "salt",
@@ -343,7 +344,7 @@ unittest {
 	collection.add(user);
 	auto token = user.createToken;
 
-	assert(collection.byToken(token) == user, "It should find user by token");
+	assert(collection.byToken(token.name) == user, "It should find user by token");
 
 	bool thwrown;
 

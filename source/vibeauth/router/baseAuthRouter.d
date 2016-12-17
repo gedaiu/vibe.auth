@@ -15,5 +15,5 @@ abstract class BaseAuthRouter {
     this.collection = collection;
   }
 
-  abstract void checkLogin(scope HTTPServerRequest req, scope HTTPServerResponse res);
+  abstract void checkLogin(HTTPServerRequest req, HTTPServerResponse res);
 }

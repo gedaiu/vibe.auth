@@ -18,7 +18,7 @@ class BasicAuth(string realm): BaseAuthRouter {
   }
 
   override {
-    void checkLogin(scope HTTPServerRequest req, scope HTTPServerResponse res) {
+    void checkLogin(HTTPServerRequest req, HTTPServerResponse res) {
       auto pauth = "Authorization" in req.headers;
 
       setAccessControl(res);
@@ -47,7 +47,7 @@ class BasicAuth(string realm): BaseAuthRouter {
       return BasicAuthCredentials(decodedData[0 .. idx], decodedData[idx+1 .. $]);
     }
 
-    void respondUnauthorized(scope HTTPServerResponse res, string message = "Authorization required") {
+    void respondUnauthorized(HTTPServerResponse res, string message = "Authorization required") {
       res.statusCode = HTTPStatus.unauthorized;
       res.contentType = "text/plain";
       res.headers["WWW-Authenticate"] = "Basic realm=\""~realm~"\"";

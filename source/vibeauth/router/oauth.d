@@ -4,7 +4,10 @@ import vibe.http.router;
 import vibe.data.json;
 import vibeauth.users;
 import vibe.inet.url;
+
 import std.algorithm.searching, std.base64, std.string, std.stdio, std.conv;
+import std.datetime;
+
 import vibeauth.router.baseAuthRouter;
 import vibeauth.client;
 import vibeauth.collection;
@@ -32,10 +35,9 @@ class OAuth2: BaseAuthRouter {
   }
 
   override {
-    void checkLogin(scope HTTPServerRequest req, scope HTTPServerResponse res) {
+    void checkLogin(HTTPServerRequest req, HTTPServerResponse res) {
       try {
         setAccessControl(res);
-
         if(req.method == HTTPMethod.OPTIONS) {
           return;
         }
@@ -56,12 +58,15 @@ class OAuth2: BaseAuthRouter {
           revoke(req, res);
         }
 
-        if(req.path != configuration.style && !isValidBearer(req)) {
+        if(!res.headerWritten && req.path != configuration.style && !isValidBearer(req)) {
           respondUnauthorized(res);
         }
       } catch(Exception e) {
         version(unittest) {} else debug stderr.writeln(e);
-        res.writeJsonBody([ "error": e.msg ], 500);
+
+        if(!res.headerWritten) {
+          res.writeJsonBody([ "error": e.msg ], 500);
+        }
       }
     }
   }
@@ -100,7 +105,7 @@ class OAuth2: BaseAuthRouter {
       return false;
     }
 
-    void authorize(scope HTTPServerRequest req, scope HTTPServerResponse res) {
+    void authorize(HTTPServerRequest req, HTTPServerResponse res) {
       if("redirect_uri" !in req.query) {
         showError(res, "Missing `redirect_uri` parameter");
         return;
@@ -131,13 +136,13 @@ class OAuth2: BaseAuthRouter {
       res.render!("loginForm.dt", appTitle, redirectUri, state, style);
     }
 
-    void showError(scope HTTPServerResponse res, const string error) {
+    void showError(HTTPServerResponse res, const string error) {
       auto const style = configuration.style;
       res.statusCode = 400;
       res.render!("error.dt", error, style);
     }
 
-    void authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) {
+    void authenticate(HTTPServerRequest req, HTTPServerResponse res) {
       string email;
       string password;
 
@@ -154,45 +159,140 @@ class OAuth2: BaseAuthRouter {
         return;
       }
 
-      string token = collection[email].createToken;
-      auto redirectUri = req.form["redirect_uri"] ~ "#access_token=" ~ token ~ "&state=" ~ req.form["state"];
+      auto token = collection[email].createToken;
+      auto redirectUri = req.form["redirect_uri"] ~ "#access_token=" ~ token.name ~ "&state=" ~ req.form["state"];
 
       res.render!("redirect.dt", redirectUri);
     }
 
-    void createToken(scope HTTPServerRequest req, scope HTTPServerResponse res) {
+    void createToken(HTTPServerRequest req, HTTPServerResponse res) {
       auto const grantType = req.form["grant_type"];
       auto const username = req.form["username"];
       auto const password = req.form["password"];
 
       if(grantType == "password") {
-        if(collection.contains(username) && collection[username].isValidPassword(password)) {
-          Json response = Json.emptyObject;
 
-          response["access_token"] = collection.createToken(username);
-          response["token_type"] = "Bearer";
-          response["expires_in"] = 3600;
-          response["refresh_token"] = "";
-
-          res.writeJsonBody(response);
-        } else {
+        if(!collection.contains(username)) {
           respondUnauthorized(res, "Invalid password or username");
+          return;
         }
+
+        if(!collection[username].isValidPassword(password)) {
+          respondUnauthorized(res, "Invalid password or username");
+          return;
+        }
+
+        Json response = Json.emptyObject;
+
+        auto accessToken = collection.createToken(username);
+        auto refreshToken = collection.createToken(username);
+
+        response["access_token"] = accessToken.name;
+        response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
+        response["token_type"] = accessToken.type;
+        response["refresh_token"] = refreshToken.name;
+
+        res.statusCode = 200;
+        res.writeJsonBody(response);
       } else {
         respondUnauthorized(res, "Invalid `grant_type` value");
       }
     }
 
-    void revoke(scope HTTPServerRequest req, scope HTTPServerResponse res) {
+    void revoke(HTTPServerRequest req, HTTPServerResponse res) {
       auto const tokenType = req.form["token_type_hint"];
       auto const token = req.form["token"];
 
       respondUnauthorized(res, "Not implemented!");
     }
 
-    void respondUnauthorized(scope HTTPServerResponse res, string message = "Authorization required") {
+    void respondUnauthorized(HTTPServerResponse res, string message = "Authorization required") {
       res.statusCode = HTTPStatus.unauthorized;
       res.writeJsonBody([ "error": message ]);
     }
   }
+}
+
+
+version(unittest) {
+  import http.request;
+  import http.json;
+  import bdd.base;
+
+  UserMemmoryCollection collection;
+  User user;
+  Client client;
+  ClientCollection clientCollection;
+  OAuth2 auth;
+
+  auto testRouter() {
+    auto router = new URLRouter();
+
+    collection = new UserMemmoryCollection(["doStuff"]);
+  	user = new User("user", "password");
+    user.id = 1;
+  	collection.add(user);
+
+    auto client = new Client();
+    client.id = "CLIENT_ID";
+
+    clientCollection = new ClientCollection([ client ]);
+
+    auth = new OAuth2(collection, clientCollection);
+    router.any("*", &auth.checkLogin);
+
+    return router;
+  }
+}
+
+@("it should return 401 on missing auth")
+unittest {
+  testRouter.request.get("/sites").expectStatusCode(401).end();
+}
+
+@("it should return 401 on invalid credentials")
+unittest {
+  testRouter
+    .request.post("/auth/token")
+    .send(["grant_type": "password", "username": "invalid", "password": "invalid"])
+    .expectStatusCode(401)
+    .end;
+}
+
+@("it should return tokens on valid credentials")
+unittest {
+  testRouter
+    .request
+    .post("/auth/token")
+    .send(["grant_type": "password", "username": "user", "password": "password"])
+    .expectStatusCode(200)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain(["access_token", "expires_in", "refresh_token", "token_type"]);
+
+      user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
+      user.isValidToken(response.bodyJson["refresh_token"].to!string).should.be.equal(true);
+
+      response.bodyJson["token_type"].to!string.should.equal("Bearer");
+      response.bodyJson["expires_in"].to!int.should.equal(3600);
+    });
+}
+
+
+@("it should set the scope tokens on valid credentials")
+unittest {
+  testRouter
+    .request
+    .post("/auth/token")
+    .send(["grant_type": "password", "username": "user", "password": "password", "scope": "access1 access2"])
+    .expectStatusCode(200)
+    .end((Response response) => {
+      response.bodyJson.writeln;
+
+      user.isValidToken(response.bodyJson["access_token"].to!string, "access1").should.equal(true);
+      user.isValidToken(response.bodyJson["access_token"].to!string, "access2").should.equal(true);
+      user.isValidToken(response.bodyJson["access_token"].to!string, "other").should.equal(false);
+
+      user.isValidToken(response.bodyJson["refresh_token"].to!string, "refresh").should.equal(true);
+      user.isValidToken(response.bodyJson["refresh_token"].to!string, "other").should.equal(false);
+    });
 }
