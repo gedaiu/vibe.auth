@@ -6,5 +6,5 @@ struct Token {
   string name;
   SysTime expire;
   string[] scopes;
-  string type = "Bearer";
+  string type;
 }

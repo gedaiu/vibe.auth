@@ -23,17 +23,139 @@ struct OAuth2Configuration {
 }
 
 struct AuthData {
-  string grantType;
   string username;
   string password;
+  string refreshToken;
   string[] scopes;
 }
 
-auto getAuthData(HTTPServerRequest req) {
+interface IGrantAccess {
+  void authData(AuthData authData);
+  void userCollection(UserCollection userCollection);
+
+  bool isValid();
+  Json get();
+}
+
+final class UnknownGrantAccess : IGrantAccess{
+  void authData(AuthData) {}
+  void userCollection(UserCollection) {};
+
+  bool isValid() {
+    return false;
+  }
+
+  Json get() {
+    auto response = Json.emptyObject;
+    response["error"] = "Invalid `grant_type` value";
+
+    return response;
+  }
+}
+
+final class PasswordGrantAccess : IGrantAccess {
+  private {
+    AuthData data;
+    UserCollection collection;
+  }
+
+  void authData(AuthData authData) {
+    this.data = authData;
+  }
+
+  void userCollection(UserCollection userCollection) {
+    this.collection = userCollection;
+  }
+
+  bool isValid() {
+    if(!collection.contains(data.username)) {
+      return false;
+    }
+
+    if(!collection[data.username].isValidPassword(data.password)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  Json get() {
+    auto response = Json.emptyObject;
+
+    if(!isValid) {
+      response["error"] = "Invalid password or username";
+      return response;
+    }
+
+    auto accessToken = collection.createToken(data.username, Clock.currTime + 3601.seconds, data.scopes, "Bearer");
+    auto refreshToken = collection.createToken(data.username, Clock.currTime + 30.weeks, data.scopes ~ [ "refresh" ], "Refresh");
+
+    response["access_token"] = accessToken.name;
+    response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
+    response["token_type"] = accessToken.type;
+    response["refresh_token"] = refreshToken.name;
+
+    return response;
+  }
+}
+
+final class RefreshTokenGrantAccess : IGrantAccess {
+  private {
+    AuthData data;
+    UserCollection collection;
+    User user;
+  }
+
+  void authData(AuthData authData) {
+    this.data = authData;
+    cacheData;
+  }
+
+  void userCollection(UserCollection userCollection) {
+    this.collection = userCollection;
+    cacheData;
+  }
+
+  private void cacheData() {
+    if(collection is null || data.refreshToken == "") {
+      return;
+    }
+
+    user = collection.byToken(data.refreshToken);
+  }
+
+  bool isValid() {
+    if(data.refreshToken == "") {
+      return false;
+    }
+
+    return user.isValidToken(data.refreshToken, "refresh");
+  }
+
+  Json get() {
+    auto response = Json.emptyObject;
+
+    if(!isValid) {
+      response["error"] = "Invalid `refresh_token`";
+    }
+
+    auto username = user.email();
+
+    auto accessToken = collection.createToken(username, Clock.currTime + 3601.seconds, data.scopes, "Bearer");
+
+    response["access_token"] = accessToken.name;
+    response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
+    response["token_type"] = accessToken.type;
+
+    return response;
+  }
+}
+
+IGrantAccess getAuthData(HTTPServerRequest req) {
   AuthData data;
 
-  if("grant_type" in req.form) {
-    data.grantType = req.form["grant_type"];
+  if("refresh_token" in req.form) {
+    data.refreshToken = req.form["refresh_token"];
   }
 
   if("username" in req.form) {
@@ -48,7 +170,24 @@ auto getAuthData(HTTPServerRequest req) {
     data.scopes = req.form["scope"].split(" ");
   }
 
-  return data;
+  if("grant_type" in req.form) {
+    if(req.form["grant_type"] == "password") {
+      auto grant = new PasswordGrantAccess;
+      grant.authData = data;
+
+      return grant;
+    }
+
+    if(req.form["grant_type"] == "refresh_token") {
+      auto grant = new RefreshTokenGrantAccess;
+      grant.authData = data;
+
+      return grant;
+    }
+  }
+
+
+  return new UnknownGrantAccess;
 }
 
 class OAuth2: BaseAuthRouter {
@@ -195,44 +334,12 @@ class OAuth2: BaseAuthRouter {
       res.render!("redirect.dt", redirectUri);
     }
 
-    private bool isValid(AuthData authData, HTTPServerResponse res) {
-      if(authData.grantType != "password") {
-        respondUnauthorized(res, "Invalid `grant_type` value");
-        return false;
-      }
-
-      if(!collection.contains(authData.username)) {
-        respondUnauthorized(res, "Invalid password or username");
-        return false;
-      }
-
-      if(!collection[authData.username].isValidPassword(authData.password)) {
-        respondUnauthorized(res, "Invalid password or username");
-        return false;
-      }
-
-      return true;
-    }
-
     void createToken(HTTPServerRequest req, HTTPServerResponse res) {
-      auto authData = req.getAuthData;
+      auto grant = req.getAuthData;
+      grant.userCollection = collection;
 
-      if(!isValid(authData, res)) {
-        return;
-      }
-
-      Json response = Json.emptyObject;
-
-      auto accessToken = collection.createToken(authData.username, Clock.currTime + 3601.seconds, authData.scopes);
-      auto refreshToken = collection.createToken(authData.username, Clock.currTime + 30.weeks, [ "refresh" ]);
-
-      response["access_token"] = accessToken.name;
-      response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
-      response["token_type"] = accessToken.type;
-      response["refresh_token"] = refreshToken.name;
-
-      res.statusCode = 200;
-      res.writeJsonBody(response);
+      res.statusCode = grant.isValid ? 200 : 401;
+      res.writeJsonBody(grant.get);
     }
 
     void revoke(HTTPServerRequest req, HTTPServerResponse res) {
@@ -254,22 +361,25 @@ version(unittest) {
   import http.request;
   import http.json;
   import bdd.base;
+  import vibeauth.token;
 
   UserMemmoryCollection collection;
   User user;
   Client client;
   ClientCollection clientCollection;
   OAuth2 auth;
+  Token refreshToken;
 
   auto testRouter() {
     auto router = new URLRouter();
 
     collection = new UserMemmoryCollection(["doStuff"]);
   	user = new User("user", "password");
-    user.createToken(Clock.currTime + 3600.seconds, ["doStuff", "refresh"]);
     user.id = 1;
 
   	collection.add(user);
+
+    refreshToken = collection.createToken("user", Clock.currTime + 3600.seconds, ["doStuff", "refresh"], "Refresh");
 
     auto client = new Client();
     client.id = "CLIENT_ID";
@@ -334,10 +444,12 @@ unittest {
 
 @("it should return a new access token on ")
 unittest {
-  testRouter
+  auto router = testRouter;
+
+  router
     .request
     .post("/auth/token")
-    .send(["grant_type": "refresh_token", "refresh_token": "b0be5a5f-86bd-435d-aa83-1bcd41d1135b"])
+    .send(["grant_type": "refresh_token", "refresh_token": refreshToken.name ])
     .expectStatusCode(200)
     .end((Response response) => {
       response.bodyJson.keys.should.contain(["access_token", "expires_in", "token_type"]);

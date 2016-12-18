@@ -23,13 +23,13 @@ class UserAccesNotFoundException : Exception {
 }
 
 struct UserData {
-  	string _id;
-    string email;
-    string password;
-    string salt;
+	string _id;
+  string email;
+  string password;
+  string salt;
 
-    string[] scopes;
-    Token[] tokens;
+  string[] scopes;
+  Token[] tokens;
 }
 
 class User {
@@ -37,9 +37,9 @@ class User {
 
   ChangedEvent onChange;
 
-  private {
+  //private {
     UserData userData;
-  }
+  //}
 
   this() { }
 
@@ -123,8 +123,8 @@ class User {
     userData.scopes ~= access;
   }
 
-	Token createToken(SysTime expire, string[] scopes = []) {
-		auto token = Token(randomUUID.to!string, expire, scopes);
+	Token createToken(SysTime expire, string[] scopes = [], string type = "Bearer") {
+		auto token = Token(randomUUID.to!string, expire, scopes, type);
 		userData.tokens ~= token;
 
     if(onChange) {
@@ -167,7 +167,7 @@ abstract class UserCollection : Collection!User {
 	}
 
   abstract {
-    Token createToken(string email, SysTime expire, string[] scopes = []);
+    Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer");
     void empower(string email, string access);
     User byToken(string token);
     bool contains(string email);
@@ -193,8 +193,8 @@ class UserMemmoryCollection : UserCollection {
   		return result[0];
   	}
 
-    Token createToken(string email, SysTime expire, string[] scopes = []) {
-      return opIndex(email).createToken(expire, scopes);
+    Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer") {
+      return opIndex(email).createToken(expire, scopes, type);
     }
 
     void empower(string email, string access) {
