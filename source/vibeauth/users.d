@@ -25,7 +25,11 @@ class UserAccesNotFoundException : Exception {
 
 struct UserData {
 	string _id;
+
+  string name;
+  string username;
   string email;
+
   string password;
   string salt;
 
@@ -72,6 +76,30 @@ class User {
 
     void email(string value) {
       userData.email = value;
+
+      if(onChange) {
+        onChange(this);
+      }
+    }
+
+    auto name() const {
+      return userData.name;
+    }
+
+    void name(string value) {
+      userData.name = value;
+
+      if(onChange) {
+        onChange(this);
+      }
+    }
+
+    auto username() const {
+      return userData.username;
+    }
+
+    void username(string value) {
+      userData.username = value;
 
       if(onChange) {
         onChange(this);
@@ -151,6 +179,8 @@ class User {
     Json data = Json.emptyObject;
 
     data["id"] = id;
+    data["name"] = name;
+    data["username"] = username;
     data["email"] = email;
     data["scopes"] = Json.emptyArray;
 
@@ -195,8 +225,8 @@ class UserMemmoryCollection : UserCollection {
 	}
 
   override {
-    User opIndex(string email) {
-  		auto result = list.find!(a => a.email == email);
+    User opIndex(string identification) {
+  		auto result = list.find!(a => a.email == identification || a.username == identification);
 
   		enforce!UserNotFoundException(result.count > 0, "User not found");
 
@@ -227,8 +257,8 @@ class UserMemmoryCollection : UserCollection {
   		return result[0];
   	}
 
-    bool contains(string email) {
-      return !list.filter!(a => a.email == email).empty;
+    bool contains(string identification) {
+      return !list.filter!(a => a.email == identification || a.username == identification).empty;
     }
   }
 }
@@ -268,6 +298,8 @@ unittest {
   auto json = user.toPublicJson;
 
   assert("id" in json, "It should contain the id");
+  assert("name" in json, "It should contain the name");
+  assert("username" in json, "It should contain the username");
   assert("email" in json, "It should contain the email");
   assert("password" !in json, "It should not contain the password");
   assert("salt" !in json, "It should not contain the salt");
@@ -290,6 +322,8 @@ unittest {
 unittest {
   auto json = `{
     "_id": "1",
+    "name": "name",
+    "username": "username",
     "email": "test@asd.asd",
     "password": "password",
     "salt": "salt",
@@ -302,6 +336,8 @@ unittest {
   auto juser = user.toJson;
 
   assert(user.id == "1", "It should deserialize the id");
+  assert(user.name == "name", "It should deserialize the name");
+  assert(user.username == "username", "It should deserialize the username");
   assert(user.email == "test@asd.asd", "It should deserialize the email");
   assert(juser["password"] == "password", "It should deserialize the password");
   assert(juser["salt"] == "salt", "It should deserialize the salt");

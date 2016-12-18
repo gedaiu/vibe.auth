@@ -356,7 +356,6 @@ class OAuth2: BaseAuthRouter {
   }
 }
 
-
 version(unittest) {
   import http.request;
   import http.json;
@@ -374,12 +373,14 @@ version(unittest) {
     auto router = new URLRouter();
 
     collection = new UserMemmoryCollection(["doStuff"]);
-  	user = new User("user", "password");
+  	user = new User("user@gmail.com", "password");
+    user.name = "John Doe";
+    user.username = "test";
     user.id = 1;
 
   	collection.add(user);
 
-    refreshToken = collection.createToken("user", Clock.currTime + 3600.seconds, ["doStuff", "refresh"], "Refresh");
+    refreshToken = collection.createToken("user@gmail.com", Clock.currTime + 3600.seconds, ["doStuff", "refresh"], "Refresh");
 
     auto client = new Client();
     client.id = "CLIENT_ID";
@@ -407,12 +408,31 @@ unittest {
     .end;
 }
 
-@("it should return tokens on valid credentials")
+@("it should return tokens on valid email and password")
 unittest {
   testRouter
     .request
     .post("/auth/token")
-    .send(["grant_type": "password", "username": "user", "password": "password"])
+    .send(["grant_type": "password", "username": "user@gmail.com", "password": "password"])
+    .expectStatusCode(200)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain(["access_token", "expires_in", "refresh_token", "token_type"]);
+
+      user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
+      user.isValidToken(response.bodyJson["refresh_token"].to!string).should.be.equal(true);
+
+      response.bodyJson["token_type"].to!string.should.equal("Bearer");
+      response.bodyJson["expires_in"].to!int.should.equal(3600);
+    });
+}
+
+
+@("it should return tokens on valid username and password")
+unittest {
+  testRouter
+    .request
+    .post("/auth/token")
+    .send(["grant_type": "password", "username": "test", "password": "password"])
     .expectStatusCode(200)
     .end((Response response) => {
       response.bodyJson.keys.should.contain(["access_token", "expires_in", "refresh_token", "token_type"]);
@@ -430,7 +450,7 @@ unittest {
   testRouter
     .request
     .post("/auth/token")
-    .send(["grant_type": "password", "username": "user", "password": "password", "scope": "access1 access2"])
+    .send(["grant_type": "password", "username": "user@gmail.com", "password": "password", "scope": "access1 access2"])
     .expectStatusCode(200)
     .end((Response response) => {
       user.isValidToken(response.bodyJson["refresh_token"].to!string, "refresh").should.equal(true);
