@@ -9,6 +9,7 @@ import std.exception;
 import std.uuid;
 import std.conv;
 import std.datetime;
+import std.array;
 
 import vibeauth.collection;
 import vibeauth.token;
@@ -81,6 +82,10 @@ class User {
   override
   string toString() {
     return toJson.toPrettyString;
+  }
+
+  void revoke(string token) {
+    userData.tokens = userData.tokens.filter!(a => a.name != token).array;
   }
 
 	const {
@@ -172,6 +177,7 @@ abstract class UserCollection : Collection!User {
 
   abstract {
     Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer");
+    void revoke(string token);
     void empower(string email, string access);
     User byToken(string token);
     bool contains(string email);
@@ -199,6 +205,10 @@ class UserMemmoryCollection : UserCollection {
 
     Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer") {
       return opIndex(email).createToken(expire, scopes, type);
+    }
+
+    void revoke(string token) {
+      byToken(token).revoke(token);
     }
 
     void empower(string email, string access) {
@@ -358,6 +368,29 @@ unittest {
 
 	try {
 		collection.byToken("token");
+	} catch (Exception e) {
+		thwrown = true;
+	}
+
+	assert(thwrown, "It should raise exception when an user it's not found by token");
+}
+
+@("Token revoke")
+unittest {
+	auto collection = new UserMemmoryCollection([]);
+	auto user = new User("user", "password");
+
+	collection.add(user);
+	auto token = user.createToken(Clock.currTime + 3600.seconds);
+
+	assert(collection.byToken(token.name) == user, "It should find user by token");
+
+  collection.revoke(token.name);
+
+	bool thwrown;
+
+	try {
+		collection.byToken(token.name);
 	} catch (Exception e) {
 		thwrown = true;
 	}

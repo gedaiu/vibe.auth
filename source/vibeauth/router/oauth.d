@@ -345,10 +345,8 @@ class OAuth2: BaseAuthRouter {
     }
 
     void revoke(HTTPServerRequest req, HTTPServerResponse res) {
-      auto const tokenType = req.form["token_type_hint"];
       auto const token = req.form["token"];
-
-      respondUnauthorized(res, "Not implemented!");
+      collection.revoke(token);
     }
 
     void respondUnauthorized(HTTPServerResponse res, string message = "Authorization required") {
