@@ -32,9 +32,17 @@ struct AuthData {
 auto getAuthData(HTTPServerRequest req) {
   AuthData data;
 
-  data.grantType = req.form["grant_type"];
-  data.username = req.form["username"];
-  data.password = req.form["password"];
+  if("grant_type" in req.form) {
+    data.grantType = req.form["grant_type"];
+  }
+
+  if("username" in req.form) {
+    data.username = req.form["username"];
+  }
+
+  if("password" in req.form) {
+    data.password = req.form["password"];
+  }
 
   if("scope" in req.form) {
     data.scopes = req.form["scope"].split(" ");
@@ -258,7 +266,9 @@ version(unittest) {
 
     collection = new UserMemmoryCollection(["doStuff"]);
   	user = new User("user", "password");
+    user.createToken(Clock.currTime + 3600.seconds, ["doStuff", "refresh"]);
     user.id = 1;
+
   	collection.add(user);
 
     auto client = new Client();
@@ -305,7 +315,6 @@ unittest {
     });
 }
 
-
 @("it should set the scope tokens on valid credentials")
 unittest {
   testRouter
@@ -320,5 +329,22 @@ unittest {
       user.isValidToken(response.bodyJson["access_token"].to!string, "access1").should.equal(true);
       user.isValidToken(response.bodyJson["access_token"].to!string, "access2").should.equal(true);
       user.isValidToken(response.bodyJson["access_token"].to!string, "other").should.equal(false);
+    });
+}
+
+@("it should return a new access token on ")
+unittest {
+  testRouter
+    .request
+    .post("/auth/token")
+    .send(["grant_type": "refresh_token", "refresh_token": "b0be5a5f-86bd-435d-aa83-1bcd41d1135b"])
+    .expectStatusCode(200)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain(["access_token", "expires_in", "token_type"]);
+
+      user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
+
+      response.bodyJson["token_type"].to!string.should.equal("Bearer");
+      response.bodyJson["expires_in"].to!int.should.equal(3600);
     });
 }
