@@ -29,7 +29,7 @@ struct UserData {
     string salt;
 
     string[] scopes;
-    string[] tokens;
+    Token[] tokens;
 }
 
 class User {
@@ -92,8 +92,12 @@ class User {
 			return sha1UUID(userData.salt ~ "." ~ password).to!string == userData.password;
 		}
 
-		bool isValidToken(string token, string requireScope = null) {
-			return userData.tokens.canFind(token);
+    bool isValidToken(string token) {
+			return userData.tokens.map!(a => a.name).canFind(token);
+		}
+
+    bool isValidToken(string token, string requiredScope) {
+			return userData.tokens.filter!(a => a.scopes.canFind(requiredScope)).map!(a => a.name).canFind(token);
 		}
 	}
 
@@ -119,15 +123,15 @@ class User {
     userData.scopes ~= access;
   }
 
-	Token createToken() {
-		auto token = randomUUID.to!string;
+	Token createToken(SysTime expire, string[] scopes = []) {
+		auto token = Token(randomUUID.to!string, expire, scopes);
 		userData.tokens ~= token;
 
     if(onChange) {
       onChange(this);
     }
 
-    return Token(token, Clock.currTime + 3601.seconds);
+    return token;
 	}
 
   Json toJson() const {
@@ -163,7 +167,7 @@ abstract class UserCollection : Collection!User {
 	}
 
   abstract {
-    Token createToken(string email);
+    Token createToken(string email, SysTime expire, string[] scopes = []);
     void empower(string email, string access);
     User byToken(string token);
     bool contains(string email);
@@ -189,8 +193,8 @@ class UserMemmoryCollection : UserCollection {
   		return result[0];
   	}
 
-    Token createToken(string email) {
-      return opIndex(email).createToken;
+    Token createToken(string email, SysTime expire, string[] scopes = []) {
+      return opIndex(email).createToken(expire, scopes);
     }
 
     void empower(string email, string access) {
@@ -276,7 +280,7 @@ unittest {
     "password": "password",
     "salt": "salt",
     "scopes": ["scopes"],
-    "tokens": ["token"],
+    "tokens": [ { "name": "token", "expire": "2100-01-01T00:00:00", "scopes": [], "type": "Bearer" }],
   }`.parseJsonString;
 
 
@@ -288,7 +292,7 @@ unittest {
   assert(juser["password"] == "password", "It should deserialize the password");
   assert(juser["salt"] == "salt", "It should deserialize the salt");
   assert(juser["scopes"][0] == "scopes", "It should deserialize the scope");
-  assert(juser["tokens"][0] == "token", "It should deserialize the tokens");
+  assert(juser["tokens"][0]["name"] == "token", "It should deserialize the tokens");
 }
 
 unittest {
@@ -317,7 +321,7 @@ unittest {
   assert(changed, "onChange should be called when the password is changed");
 
   changed = false;
-  user.createToken();
+  user.createToken(Clock.currTime + 3600.seconds);
   assert(changed, "onChange should be called when a token is created");
 }
 
@@ -342,7 +346,7 @@ unittest {
 	auto user = new User("user", "password");
 
 	collection.add(user);
-	auto token = user.createToken;
+	auto token = user.createToken(Clock.currTime + 3600.seconds);
 
 	assert(collection.byToken(token.name) == user, "It should find user by token");
 

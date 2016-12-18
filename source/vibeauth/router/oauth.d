@@ -12,6 +12,7 @@ import vibeauth.router.baseAuthRouter;
 import vibeauth.client;
 import vibeauth.collection;
 
+
 struct OAuth2Configuration {
   string tokenPath = "/auth/token";
   string authorizePath = "/auth/authorize";
@@ -19,6 +20,27 @@ struct OAuth2Configuration {
   string revokePath = "/auth/revoke";
 
   string style = "";
+}
+
+struct AuthData {
+  string grantType;
+  string username;
+  string password;
+  string[] scopes;
+}
+
+auto getAuthData(HTTPServerRequest req) {
+  AuthData data;
+
+  data.grantType = req.form["grant_type"];
+  data.username = req.form["username"];
+  data.password = req.form["password"];
+
+  if("scope" in req.form) {
+    data.scopes = req.form["scope"].split(" ");
+  }
+
+  return data;
 }
 
 class OAuth2: BaseAuthRouter {
@@ -159,44 +181,50 @@ class OAuth2: BaseAuthRouter {
         return;
       }
 
-      auto token = collection[email].createToken;
+      auto token = collection[email].createToken(Clock.currTime + 3601.seconds);
       auto redirectUri = req.form["redirect_uri"] ~ "#access_token=" ~ token.name ~ "&state=" ~ req.form["state"];
 
       res.render!("redirect.dt", redirectUri);
     }
 
-    void createToken(HTTPServerRequest req, HTTPServerResponse res) {
-      auto const grantType = req.form["grant_type"];
-      auto const username = req.form["username"];
-      auto const password = req.form["password"];
-
-      if(grantType == "password") {
-
-        if(!collection.contains(username)) {
-          respondUnauthorized(res, "Invalid password or username");
-          return;
-        }
-
-        if(!collection[username].isValidPassword(password)) {
-          respondUnauthorized(res, "Invalid password or username");
-          return;
-        }
-
-        Json response = Json.emptyObject;
-
-        auto accessToken = collection.createToken(username);
-        auto refreshToken = collection.createToken(username);
-
-        response["access_token"] = accessToken.name;
-        response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
-        response["token_type"] = accessToken.type;
-        response["refresh_token"] = refreshToken.name;
-
-        res.statusCode = 200;
-        res.writeJsonBody(response);
-      } else {
+    private bool isValid(AuthData authData, HTTPServerResponse res) {
+      if(authData.grantType != "password") {
         respondUnauthorized(res, "Invalid `grant_type` value");
+        return false;
       }
+
+      if(!collection.contains(authData.username)) {
+        respondUnauthorized(res, "Invalid password or username");
+        return false;
+      }
+
+      if(!collection[authData.username].isValidPassword(authData.password)) {
+        respondUnauthorized(res, "Invalid password or username");
+        return false;
+      }
+
+      return true;
+    }
+
+    void createToken(HTTPServerRequest req, HTTPServerResponse res) {
+      auto authData = req.getAuthData;
+
+      if(!isValid(authData, res)) {
+        return;
+      }
+
+      Json response = Json.emptyObject;
+
+      auto accessToken = collection.createToken(authData.username, Clock.currTime + 3601.seconds, authData.scopes);
+      auto refreshToken = collection.createToken(authData.username, Clock.currTime + 30.weeks, [ "refresh" ]);
+
+      response["access_token"] = accessToken.name;
+      response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
+      response["token_type"] = accessToken.type;
+      response["refresh_token"] = refreshToken.name;
+
+      res.statusCode = 200;
+      res.writeJsonBody(response);
     }
 
     void revoke(HTTPServerRequest req, HTTPServerResponse res) {
@@ -286,13 +314,11 @@ unittest {
     .send(["grant_type": "password", "username": "user", "password": "password", "scope": "access1 access2"])
     .expectStatusCode(200)
     .end((Response response) => {
-      response.bodyJson.writeln;
+      user.isValidToken(response.bodyJson["refresh_token"].to!string, "refresh").should.equal(true);
+      user.isValidToken(response.bodyJson["refresh_token"].to!string, "other").should.equal(false);
 
       user.isValidToken(response.bodyJson["access_token"].to!string, "access1").should.equal(true);
       user.isValidToken(response.bodyJson["access_token"].to!string, "access2").should.equal(true);
       user.isValidToken(response.bodyJson["access_token"].to!string, "other").should.equal(false);
-
-      user.isValidToken(response.bodyJson["refresh_token"].to!string, "refresh").should.equal(true);
-      user.isValidToken(response.bodyJson["refresh_token"].to!string, "other").should.equal(false);
     });
 }
