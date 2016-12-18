@@ -5,7 +5,7 @@ import vibe.data.json;
 import vibeauth.users;
 import vibe.inet.url;
 
-import std.algorithm.searching, std.base64, std.string, std.stdio, std.conv;
+import std.algorithm, std.base64, std.string, std.stdio, std.conv, std.array;
 import std.datetime;
 
 import vibeauth.router.baseAuthRouter;
@@ -122,6 +122,7 @@ final class RefreshTokenGrantAccess : IGrantAccess {
     }
 
     user = collection.byToken(data.refreshToken);
+    data.scopes = user.getScopes(data.refreshToken).filter!(a => a != "refresh").array;
   }
 
   bool isValid() {
@@ -137,6 +138,7 @@ final class RefreshTokenGrantAccess : IGrantAccess {
 
     if(!isValid) {
       response["error"] = "Invalid `refresh_token`";
+      return response;
     }
 
     auto username = user.email();
@@ -455,6 +457,8 @@ unittest {
       response.bodyJson.keys.should.contain(["access_token", "expires_in", "token_type"]);
 
       user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
+      user.isValidToken(response.bodyJson["access_token"].to!string, "doStuff").should.be.equal(true);
+      user.isValidToken(response.bodyJson["access_token"].to!string, "refresh").should.be.equal(false);
 
       response.bodyJson["token_type"].to!string.should.equal("Bearer");
       response.bodyJson["expires_in"].to!int.should.equal(3600);

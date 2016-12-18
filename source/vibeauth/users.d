@@ -37,9 +37,9 @@ class User {
 
   ChangedEvent onChange;
 
-  //private {
+  private {
     UserData userData;
-  //}
+  }
 
   this() { }
 
@@ -84,6 +84,10 @@ class User {
   }
 
 	const {
+    string[] getScopes(string token) {
+      return userData.tokens.filter!(a => a.name == token).front.scopes.to!(string[]);
+    }
+
 		bool can(string access)() {
 			return userData.scopes.canFind(access);
 		}
