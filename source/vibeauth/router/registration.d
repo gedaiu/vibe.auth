@@ -7,15 +7,18 @@ import vibe.data.json;
 import vibe.inet.url;
 
 import vibeauth.users;
+import vibeauth.challenges.base;
 
 class RegistrationRoutes {
 
   private {
     UserCollection collection;
+    IChallenge challenge;
   }
 
-  this(UserCollection collection) {
+  this(UserCollection collection, IChallenge challenge) {
     this.collection = collection;
+    this.challenge = challenge;
   }
 
   void addUser(HTTPServerRequest req, HTTPServerResponse res) {
@@ -51,6 +54,12 @@ class RegistrationRoutes {
       return;
     }
 
+    if(!challenge.validate(req, res, req.json["response"].to!string)) {
+      res.statusCode = 400;
+      res.writeJsonBody(["error": ["message": "Invalid `response` challenge"]]);
+      return;
+    }
+
     data.name = req.json["name"].to!string;
     data.username = req.json["username"].to!string;
     data.email = req.json["email"].to!string;
@@ -74,6 +83,16 @@ version(unittest) {
   RegistrationRoutes registration;
   Token refreshToken;
 
+  class TestChallenge : IChallenge {
+    string generate(HTTPServerRequest, HTTPServerResponse) {
+      return "123";
+    }
+
+    bool validate(HTTPServerRequest, HTTPServerResponse, string response) {
+      return response == "123";
+    }
+  }
+
   auto testRouter() {
     auto router = new URLRouter();
 
@@ -85,7 +104,7 @@ version(unittest) {
 
   	collection.add(user);
 
-    registration = new RegistrationRoutes(collection);
+    registration = new RegistrationRoutes(collection, new TestChallenge);
     router.post("/register/user", &registration.addUser);
 
     return router;
@@ -119,7 +138,6 @@ unittest {
       collection["test@test.com"].isValidPassword("testPassword").should.equal(true);
     });
 }
-
 
 @("POST with missing data should return an error")
 unittest {
@@ -198,6 +216,29 @@ unittest {
     "username": "test_user",
     "email": "test@test.com",
     "password": "testPassword"
+  }`.parseJsonString;
+
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
+}
+
+@("POST with wrong response should return an error")
+unittest {
+  auto router = testRouter;
+
+  auto data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "testPassword",
+    "response": "abc"
   }`.parseJsonString;
 
   router
