@@ -21,6 +21,36 @@ class RegistrationRoutes {
   void addUser(HTTPServerRequest req, HTTPServerResponse res) {
     UserData data;
 
+    if("name" !in req.json) {
+      res.statusCode = 400;
+      res.writeJsonBody(["error": ["message": "`name` is missing"]]);
+      return;
+    }
+
+    if("username" !in req.json) {
+      res.statusCode = 400;
+      res.writeJsonBody(["error": ["message": "`username` is missing"]]);
+      return;
+    }
+
+    if("email" !in req.json) {
+      res.statusCode = 400;
+      res.writeJsonBody(["error": ["message": "`email` is missing"]]);
+      return;
+    }
+
+    if("password" !in req.json) {
+      res.statusCode = 400;
+      res.writeJsonBody(["error": ["message": "`password` is missing"]]);
+      return;
+    }
+
+    if("response" !in req.json) {
+      res.statusCode = 400;
+      res.writeJsonBody(["error": ["message": "`response` is missing"]]);
+      return;
+    }
+
     data.name = req.json["name"].to!string;
     data.username = req.json["username"].to!string;
     data.email = req.json["email"].to!string;
@@ -62,7 +92,7 @@ version(unittest) {
   }
 }
 
-@("POST valid credentials should create the user")
+@("POST valid data should create the user")
 unittest {
   auto router = testRouter;
 
@@ -87,5 +117,96 @@ unittest {
       collection["test@test.com"].email.should.equal("test@test.com");
       collection["test@test.com"].isActive.should.equal(false);
       collection["test@test.com"].isValidPassword("testPassword").should.equal(true);
+    });
+}
+
+
+@("POST with missing data should return an error")
+unittest {
+  auto router = testRouter;
+
+  auto data = `{
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "testPassword",
+    "response": "123"
+  }`.parseJsonString;
+
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
+
+  data = `{
+    "name": "test",
+    "email": "test@test.com",
+    "password": "testPassword",
+    "response": "123"
+  }`.parseJsonString;
+
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
+
+  data = `{
+    "name": "test",
+    "username": "test_user",
+    "password": "testPassword",
+    "response": "123"
+  }`.parseJsonString;
+
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
+
+  data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "response": "123"
+  }`.parseJsonString;
+
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
+
+  data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "testPassword"
+  }`.parseJsonString;
+
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
     });
 }
