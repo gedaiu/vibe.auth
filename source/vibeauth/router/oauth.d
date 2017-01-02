@@ -2,12 +2,12 @@ module vibeauth.router.oauth;
 
 import vibe.http.router;
 import vibe.data.json;
-import vibeauth.users;
 import vibe.inet.url;
 
 import std.algorithm, std.base64, std.string, std.stdio, std.conv, std.array;
 import std.datetime;
 
+import vibeauth.users;
 import vibeauth.router.baseAuthRouter;
 import vibeauth.client;
 import vibeauth.collection;

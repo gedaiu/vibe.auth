@@ -33,6 +33,8 @@ struct UserData {
   string password;
   string salt;
 
+  bool isActive;
+
   string[] scopes;
   Token[] tokens;
 }
@@ -57,6 +59,10 @@ class User {
     setPassword(password);
 	}
 
+  override string toString() {
+    return toJson.toPrettyString;
+  }
+
   @property {
     auto id() const {
       return userData._id;
@@ -68,6 +74,10 @@ class User {
       if(onChange) {
         onChange(this);
       }
+    }
+
+    auto isActive() const {
+      return userData.isActive;
     }
 
     auto email() const {
@@ -105,11 +115,6 @@ class User {
         onChange(this);
       }
     }
-  }
-
-  override
-  string toString() {
-    return toJson.toPrettyString;
   }
 
   void revoke(string token) {
@@ -206,6 +211,7 @@ abstract class UserCollection : Collection!User {
 	}
 
   abstract {
+    bool createUser(UserData data, string password);
     Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer");
     void revoke(string token);
     void empower(string email, string access);
@@ -225,6 +231,15 @@ class UserMemmoryCollection : UserCollection {
 	}
 
   override {
+    bool createUser(UserData data, string password) {
+      auto user = new User(data);
+      user.setPassword(password);
+
+      list ~= user;
+
+      return true;
+    }
+
     User opIndex(string identification) {
   		auto result = list.find!(a => a.email == identification || a.username == identification);
 
@@ -327,6 +342,7 @@ unittest {
     "email": "test@asd.asd",
     "password": "password",
     "salt": "salt",
+    "isActive": true,
     "scopes": ["scopes"],
     "tokens": [ { "name": "token", "expire": "2100-01-01T00:00:00", "scopes": [], "type": "Bearer" }],
   }`.parseJsonString;
@@ -341,6 +357,7 @@ unittest {
   assert(user.email == "test@asd.asd", "It should deserialize the email");
   assert(juser["password"] == "password", "It should deserialize the password");
   assert(juser["salt"] == "salt", "It should deserialize the salt");
+  assert(juser["isActive"] == true, "It should deserialize the isActive field");
   assert(juser["scopes"][0] == "scopes", "It should deserialize the scope");
   assert(juser["tokens"][0]["name"] == "token", "It should deserialize the tokens");
 }
