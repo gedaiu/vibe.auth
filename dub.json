@@ -6,6 +6,7 @@
 
   "dependencies": {
     "vibe-d": "*",
+    "vibemail": "~>2.0.0",
     "should": {"version": ">=0.1.0", "path": "../should"}
   }
 }

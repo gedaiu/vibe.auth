@@ -14,6 +14,8 @@ import std.array;
 import vibeauth.collection;
 import vibeauth.token;
 
+version(unittest) import bdd.base;
+
 alias UserNotFoundException = ItemNotFoundException;
 
 class UserAccesNotFoundException : Exception {
@@ -129,6 +131,10 @@ class User {
 		bool can(string access)() {
 			return userData.scopes.canFind(access);
 		}
+
+    auto getTokensByType(string type) {
+      return userData.tokens.filter!(a => a.type == type);
+    }
 
 		bool isValidPassword(string password) {
 			return sha1UUID(userData.salt ~ "." ~ password).to!string == userData.password;
@@ -440,17 +446,25 @@ unittest {
 
   collection.revoke(token.name);
 
-	bool thwrown;
-
-	try {
-		collection.byToken(token.name);
-	} catch (Exception e) {
-		thwrown = true;
-	}
-
-	assert(thwrown, "It should raise exception when an user it's not found by token");
+  should.throwAnyException({
+    collection.byToken(token.name);
+  });
 }
 
+@("Get tokens by type")
+unittest {
+  auto collection = new UserMemmoryCollection([]);
+	auto user = new User("user", "password");
+
+	collection.add(user);
+	auto token = user.createToken(Clock.currTime + 3600.seconds, [], "activation");
+  auto tokens = collection["user"].getTokensByType("activation").array;
+
+	tokens.length.should.equal(1);
+	tokens.should.contain(token);
+}
+
+@("Remove user by id")
 unittest {
 	auto collection = new UserMemmoryCollection([]);
 	auto user = new User("user", "password");

@@ -7,6 +7,7 @@
 		"memutils": "0.4.4",
 		"openssl": "1.1.4+1.0.1g",
 		"should": {"path":"../should"},
-		"vibe-d": "0.7.30"
+		"vibe-d": "0.7.30",
+		"vibemail": "2.0.0"
 	}
 }
