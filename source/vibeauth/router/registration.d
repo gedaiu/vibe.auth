@@ -1,6 +1,7 @@
 module vibeauth.router.registration;
 
 import std.stdio;
+import std.datetime;
 
 import vibe.http.router;
 import vibe.data.json;
@@ -66,6 +67,7 @@ class RegistrationRoutes {
     data.isActive = false;
 
     collection.createUser(data, req.json["password"].to!string);
+    collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
 
     res.statusCode = 200;
     res.writeVoidBody;
@@ -73,6 +75,7 @@ class RegistrationRoutes {
 }
 
 version(unittest) {
+  import std.array;
   import http.request;
   import http.json;
   import bdd.base;
@@ -136,7 +139,7 @@ unittest {
       collection["test@test.com"].email.should.equal("test@test.com");
       collection["test@test.com"].isActive.should.equal(false);
       collection["test@test.com"].isValidPassword("testPassword").should.equal(true);
-      collection["test@test.com"].getTokensByType("activation").length.should.equal(1);
+      collection["test@test.com"].getTokensByType("activation").array.length.should.equal(1);
     });
 }
 
