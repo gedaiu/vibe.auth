@@ -89,7 +89,7 @@ version(unittest) {
   User user;
   RegistrationRoutes registration;
   TestMailQueue mailQueue;
-  Token refreshToken;
+  Token activationToken;
 
   class TestMailQueue : IMailQueue
   {
@@ -135,6 +135,7 @@ version(unittest) {
     user.id = 1;
 
   	collection.add(user);
+    activationToken = collection.createToken(user.email, Clock.currTime + 3600.seconds, [], "activation");
 
     registration = new RegistrationRoutes(collection, new TestChallenge, mailQueue);
     router.post("/register/user", &registration.addUser);
@@ -168,10 +169,13 @@ unittest {
       collection["test@test.com"].email.should.equal("test@test.com");
       collection["test@test.com"].isActive.should.equal(false);
       collection["test@test.com"].isValidPassword("testPassword").should.equal(true);
-      collection["test@test.com"].getTokensByType("activation").array.length.should.equal(1);
+
+      auto tokens = collection["test@test.com"].getTokensByType("activation").array;
+
+      tokens.length.should.equal(1);
+      collection["test@test.com"].isValidToken(tokens[0].name).should.equal(true);
     });
 }
-
 
 @("POST valid data should send a validation email")
 unittest {
@@ -197,6 +201,22 @@ unittest {
       mailQueue.messages.length.should.equal(1);
       mailQueue.messages[0].textMessage.should.contain(activationLink);
       mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ activationLink ~ `">`);
+    });
+}
+
+@("GET with valid token should validate the user")
+unittest {
+  auto router = testRouter;
+
+  collection["user@gmail.com"].isActive.should.equal(false);
+
+  router
+    .request
+    .get("/register/activation?email=test@test.com&token=" ~ activationToken.name)
+    .expectStatusCode(200)
+    .end((Response response) => {
+      collection["user@gmail.com"].isValidToken(activationToken.name).should.equal(false);
+      collection["user@gmail.com"].isActive.should.equal(true);
     });
 }
 
