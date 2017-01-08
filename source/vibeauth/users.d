@@ -82,6 +82,10 @@ class User {
       return userData.isActive;
     }
 
+    void isActive(bool value) {
+      userData.isActive = value;
+    }
+
     auto email() const {
       return userData.email;
     }

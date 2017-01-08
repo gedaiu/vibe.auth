@@ -2,6 +2,7 @@ module vibeauth.router.registration;
 
 import std.stdio;
 import std.datetime;
+import std.algorithm;
 
 import vibe.http.router;
 import vibe.data.json;
@@ -23,6 +24,40 @@ class RegistrationRoutes {
     this.collection = collection;
     this.challenge = challenge;
     this.mailQueue = mailQueue;
+  }
+
+  void activation(HTTPServerRequest req, HTTPServerResponse res) {
+    if("token" !in req.query || "email" !in req.query) {
+      res.statusCode = 400;
+      res.writeJsonBody(["error": ["message": "invalid request"]]);
+
+      return;
+    }
+
+    auto token = req.query["token"];
+    auto email = req.query["email"];
+
+    if(!collection.contains(email)) {
+      res.statusCode = 400;
+      res.writeJsonBody(["error": ["message": "invalid request"]]);
+
+      return;
+    }
+
+    auto user = collection[email];
+
+    if(!user.isValidToken(token)) {
+      res.statusCode = 400;
+      res.writeJsonBody(["error": ["message": "invalid request"]]);
+
+      return;
+    }
+
+    user.isActive = true;
+    user.getTokensByType("activation").each!(a => user.revoke(a.name));
+
+    res.statusCode = 200;
+    res.writeVoidBody;
   }
 
   void addUser(HTTPServerRequest req, HTTPServerResponse res) {
@@ -139,6 +174,7 @@ version(unittest) {
 
     registration = new RegistrationRoutes(collection, new TestChallenge, mailQueue);
     router.post("/register/user", &registration.addUser);
+    router.get("/register/activation", &registration.activation);
 
     return router;
   }
@@ -212,11 +248,28 @@ unittest {
 
   router
     .request
-    .get("/register/activation?email=test@test.com&token=" ~ activationToken.name)
+    .get("/register/activation?email=user@gmail.com&token=" ~ activationToken.name)
     .expectStatusCode(200)
     .end((Response response) => {
       collection["user@gmail.com"].isValidToken(activationToken.name).should.equal(false);
       collection["user@gmail.com"].isActive.should.equal(true);
+    });
+}
+
+
+@("GET with invalid token should not validate the user")
+unittest {
+  auto router = testRouter;
+
+  collection["user@gmail.com"].isActive.should.equal(false);
+
+  router
+    .request
+    .get("/register/activation?email=user@gmail.com&token=other")
+    .expectStatusCode(400)
+    .end((Response response) => {
+      collection["user@gmail.com"].isValidToken(activationToken.name).should.equal(true);
+      collection["user@gmail.com"].isActive.should.equal(false);
     });
 }
 
