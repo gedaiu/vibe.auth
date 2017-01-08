@@ -136,6 +136,7 @@ unittest {
       collection["test@test.com"].email.should.equal("test@test.com");
       collection["test@test.com"].isActive.should.equal(false);
       collection["test@test.com"].isValidPassword("testPassword").should.equal(true);
+      collection["test@test.com"].getTokensByType("activation").length.should.equal(1);
     });
 }
 
