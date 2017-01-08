@@ -9,17 +9,20 @@ import vibe.inet.url;
 
 import vibeauth.users;
 import vibeauth.challenges.base;
+import vibeauth.mail.base;
 
 class RegistrationRoutes {
 
   private {
     UserCollection collection;
     IChallenge challenge;
+    IMailQueue mailQueue;
   }
 
-  this(UserCollection collection, IChallenge challenge) {
+  this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue) {
     this.collection = collection;
     this.challenge = challenge;
+    this.mailQueue = mailQueue;
   }
 
   void addUser(HTTPServerRequest req, HTTPServerResponse res) {
@@ -67,7 +70,8 @@ class RegistrationRoutes {
     data.isActive = false;
 
     collection.createUser(data, req.json["password"].to!string);
-    collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
+    auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
+    mailQueue.addActivationMessage(data, token);
 
     res.statusCode = 200;
     res.writeVoidBody;
@@ -84,7 +88,31 @@ version(unittest) {
   UserMemmoryCollection collection;
   User user;
   RegistrationRoutes registration;
+  TestMailQueue mailQueue;
   Token refreshToken;
+
+  class TestMailQueue : IMailQueue
+  {
+    Message[] messages;
+
+    void addMessage(Message message) {
+      messages ~= message;
+    }
+
+    void addActivationMessage(UserData data, Token token) {
+      Message message;
+
+      string link = "http://localhost/register/activation?email=" ~
+        data.email ~
+        "&token=" ~ token.name;
+
+      message.textMessage = link;
+      message.htmlMessage = `<a href="` ~ link ~ `">`;
+
+      addMessage(message);
+    }
+  }
+
 
   class TestChallenge : IChallenge {
     string generate(HTTPServerRequest, HTTPServerResponse) {
@@ -98,6 +126,7 @@ version(unittest) {
 
   auto testRouter() {
     auto router = new URLRouter();
+    mailQueue = new TestMailQueue;
 
     collection = new UserMemmoryCollection(["doStuff"]);
   	user = new User("user@gmail.com", "password");
@@ -107,7 +136,7 @@ version(unittest) {
 
   	collection.add(user);
 
-    registration = new RegistrationRoutes(collection, new TestChallenge);
+    registration = new RegistrationRoutes(collection, new TestChallenge, mailQueue);
     router.post("/register/user", &registration.addUser);
 
     return router;
@@ -140,6 +169,34 @@ unittest {
       collection["test@test.com"].isActive.should.equal(false);
       collection["test@test.com"].isValidPassword("testPassword").should.equal(true);
       collection["test@test.com"].getTokensByType("activation").array.length.should.equal(1);
+    });
+}
+
+
+@("POST valid data should send a validation email")
+unittest {
+  auto router = testRouter;
+
+  auto data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "testPassword",
+    "response": "123"
+  }`.parseJsonString;
+
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(200)
+    .end((Response response) => {
+      string activationLink = "http://localhost/register/activation?email=test@test.com&token="
+        ~ collection["test@test.com"].getTokensByType("activation").front.name;
+
+      mailQueue.messages.length.should.equal(1);
+      mailQueue.messages[0].textMessage.should.contain(activationLink);
+      mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ activationLink ~ `">`);
     });
 }
 
