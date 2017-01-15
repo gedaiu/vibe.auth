@@ -24,7 +24,10 @@ shared static this()
 
 	auto clientCollection = ClientCollection.FromFile("oauth.clients.json");
 
-	auto auth = new OAuth2(collection, clientCollection);
+	OAuth2Configuration configuration;
+	configuration.style = "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css";
+
+	auto auth = new OAuth2(collection, clientCollection, configuration);
 	router.any("*", &auth.checkLogin);
 	router.get("*", &handleRequest);
 

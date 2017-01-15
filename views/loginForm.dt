@@ -1,24 +1,24 @@
 doctype html
 html
 head
-  title Login
-  link(rel="stylesheet", href="#{style}", type="text/css")
+	title Login
+	link(rel="stylesheet", href="#{style}", type="text/css")
 body
-  div.container
-    div.row
-      div.col-sm-4
-        h1 Authorize
-          span.text-primary #{appTitle}
-          to use your account?
-        form(method="post", action="/auth/authenticate")
-          div.form-group
-            label User name
-            input.form-control(placeholder="Enter Login", type="text", name="email")
-          div.form-group
-            label Password
-            input.form-control(placeholder="Enter Password", type="password", name="password")
+	div.container
+		div.row
+			div.col-sm-4
+				h1 Authorize
+					span.text-primary #{appTitle}
+					to use your account?
+				form(method="post", action="/auth/authenticate")
+					div.form-group
+						label User name
+						input.form-control(placeholder="Enter Login", type="text", name="email")
+					div.form-group
+						label Password
+						input.form-control(placeholder="Enter Password", type="password", name="password")
 
-          input(value="#{redirectUri}", type="hidden", name="redirect_uri")
-          input(value="#{state}", type="hidden", name="state")
+					input(value="#{redirectUri}", type="hidden", name="redirect_uri")
+					input(value="#{state}", type="hidden", name="state")
 
-          button.btn.btn-success(type="submit") Login
+					button.btn.btn-success(type="submit") Login

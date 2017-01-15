@@ -12,473 +12,461 @@ import vibeauth.router.baseAuthRouter;
 import vibeauth.client;
 import vibeauth.collection;
 
+import vibeauth.router.accesscontrol;
+
 
 struct OAuth2Configuration {
-  string tokenPath = "/auth/token";
-  string authorizePath = "/auth/authorize";
-  string authenticatePath = "/auth/authenticate";
-  string revokePath = "/auth/revoke";
+	string tokenPath = "/auth/token";
+	string authorizePath = "/auth/authorize";
+	string authenticatePath = "/auth/authenticate";
+	string revokePath = "/auth/revoke";
 
-  string style = "";
+	string style = "";
 }
 
 struct AuthData {
-  string username;
-  string password;
-  string refreshToken;
-  string[] scopes;
+	string username;
+	string password;
+	string refreshToken;
+	string[] scopes;
 }
 
 interface IGrantAccess {
-  void authData(AuthData authData);
-  void userCollection(UserCollection userCollection);
+	void authData(AuthData authData);
+	void userCollection(UserCollection userCollection);
 
-  bool isValid();
-  Json get();
+	bool isValid();
+	Json get();
 }
 
 final class UnknownGrantAccess : IGrantAccess{
-  void authData(AuthData) {}
-  void userCollection(UserCollection) {};
+	void authData(AuthData) {}
+	void userCollection(UserCollection) {};
 
-  bool isValid() {
-    return false;
-  }
+	bool isValid() {
+		return false;
+	}
 
-  Json get() {
-    auto response = Json.emptyObject;
-    response["error"] = "Invalid `grant_type` value";
+	Json get() {
+		auto response = Json.emptyObject;
+		response["error"] = "Invalid `grant_type` value";
 
-    return response;
-  }
+		return response;
+	}
 }
 
 final class PasswordGrantAccess : IGrantAccess {
-  private {
-    AuthData data;
-    UserCollection collection;
-  }
+	private {
+		AuthData data;
+		UserCollection collection;
+	}
 
-  void authData(AuthData authData) {
-    this.data = authData;
-  }
+	void authData(AuthData authData) {
+		this.data = authData;
+	}
 
-  void userCollection(UserCollection userCollection) {
-    this.collection = userCollection;
-  }
+	void userCollection(UserCollection userCollection) {
+		this.collection = userCollection;
+	}
 
-  bool isValid() {
-    if(!collection.contains(data.username)) {
-      return false;
-    }
+	bool isValid() {
+		if(!collection.contains(data.username)) {
+			return false;
+		}
 
-    if(!collection[data.username].isValidPassword(data.password)) {
-      return false;
-    }
+		if(!collection[data.username].isValidPassword(data.password)) {
+			return false;
+		}
 
-    return true;
-  }
+		return true;
+	}
 
-  Json get() {
-    auto response = Json.emptyObject;
+	Json get() {
+		auto response = Json.emptyObject;
 
-    if(!isValid) {
-      response["error"] = "Invalid password or username";
-      return response;
-    }
+		if(!isValid) {
+			response["error"] = "Invalid password or username";
+			return response;
+		}
 
-    auto accessToken = collection.createToken(data.username, Clock.currTime + 3601.seconds, data.scopes, "Bearer");
-    auto refreshToken = collection.createToken(data.username, Clock.currTime + 30.weeks, data.scopes ~ [ "refresh" ], "Refresh");
+		auto accessToken = collection.createToken(data.username, Clock.currTime + 3601.seconds, data.scopes, "Bearer");
+		auto refreshToken = collection.createToken(data.username, Clock.currTime + 30.weeks, data.scopes ~ [ "refresh" ], "Refresh");
 
-    response["access_token"] = accessToken.name;
-    response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
-    response["token_type"] = accessToken.type;
-    response["refresh_token"] = refreshToken.name;
+		response["access_token"] = accessToken.name;
+		response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
+		response["token_type"] = accessToken.type;
+		response["refresh_token"] = refreshToken.name;
 
-    return response;
-  }
+		return response;
+	}
 }
 
 final class RefreshTokenGrantAccess : IGrantAccess {
-  private {
-    AuthData data;
-    UserCollection collection;
-    User user;
-  }
+	private {
+		AuthData data;
+		UserCollection collection;
+		User user;
+	}
 
-  void authData(AuthData authData) {
-    this.data = authData;
-    cacheData;
-  }
+	void authData(AuthData authData) {
+		this.data = authData;
+		cacheData;
+	}
 
-  void userCollection(UserCollection userCollection) {
-    this.collection = userCollection;
-    cacheData;
-  }
+	void userCollection(UserCollection userCollection) {
+		this.collection = userCollection;
+		cacheData;
+	}
 
-  private void cacheData() {
-    if(collection is null || data.refreshToken == "") {
-      return;
-    }
+	private void cacheData() {
+		if(collection is null || data.refreshToken == "") {
+			return;
+		}
 
-    user = collection.byToken(data.refreshToken);
-    data.scopes = user.getScopes(data.refreshToken).filter!(a => a != "refresh").array;
-  }
+		user = collection.byToken(data.refreshToken);
+		data.scopes = user.getScopes(data.refreshToken).filter!(a => a != "refresh").array;
+	}
 
-  bool isValid() {
-    if(data.refreshToken == "") {
-      return false;
-    }
+	bool isValid() {
+		if(data.refreshToken == "") {
+			return false;
+		}
 
-    return user.isValidToken(data.refreshToken, "refresh");
-  }
+		return user.isValidToken(data.refreshToken, "refresh");
+	}
 
-  Json get() {
-    auto response = Json.emptyObject;
+	Json get() {
+		auto response = Json.emptyObject;
 
-    if(!isValid) {
-      response["error"] = "Invalid `refresh_token`";
-      return response;
-    }
+		if(!isValid) {
+			response["error"] = "Invalid `refresh_token`";
+			return response;
+		}
 
-    auto username = user.email();
+		auto username = user.email();
 
-    auto accessToken = collection.createToken(username, Clock.currTime + 3601.seconds, data.scopes, "Bearer");
+		auto accessToken = collection.createToken(username, Clock.currTime + 3601.seconds, data.scopes, "Bearer");
 
-    response["access_token"] = accessToken.name;
-    response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
-    response["token_type"] = accessToken.type;
+		response["access_token"] = accessToken.name;
+		response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
+		response["token_type"] = accessToken.type;
 
-    return response;
-  }
+		return response;
+	}
 }
 
 IGrantAccess getAuthData(HTTPServerRequest req) {
-  AuthData data;
+	AuthData data;
 
-  if("refresh_token" in req.form) {
-    data.refreshToken = req.form["refresh_token"];
-  }
+	if("refresh_token" in req.form) {
+		data.refreshToken = req.form["refresh_token"];
+	}
 
-  if("username" in req.form) {
-    data.username = req.form["username"];
-  }
+	if("username" in req.form) {
+		data.username = req.form["username"];
+	}
 
-  if("password" in req.form) {
-    data.password = req.form["password"];
-  }
+	if("password" in req.form) {
+		data.password = req.form["password"];
+	}
 
-  if("scope" in req.form) {
-    data.scopes = req.form["scope"].split(" ");
-  }
+	if("scope" in req.form) {
+		data.scopes = req.form["scope"].split(" ");
+	}
 
-  if("grant_type" in req.form) {
-    if(req.form["grant_type"] == "password") {
-      auto grant = new PasswordGrantAccess;
-      grant.authData = data;
+	if("grant_type" in req.form) {
+		if(req.form["grant_type"] == "password") {
+			auto grant = new PasswordGrantAccess;
+			grant.authData = data;
 
-      return grant;
-    }
+			return grant;
+		}
 
-    if(req.form["grant_type"] == "refresh_token") {
-      auto grant = new RefreshTokenGrantAccess;
-      grant.authData = data;
+		if(req.form["grant_type"] == "refresh_token") {
+			auto grant = new RefreshTokenGrantAccess;
+			grant.authData = data;
 
-      return grant;
-    }
-  }
+			return grant;
+		}
+	}
 
 
-  return new UnknownGrantAccess;
+	return new UnknownGrantAccess;
 }
 
 class OAuth2: BaseAuthRouter {
-  protected {
-    const OAuth2Configuration configuration;
-    ClientCollection clientCollection;
-  }
+	protected {
+		const OAuth2Configuration configuration;
+		ClientCollection clientCollection;
+	}
 
-  this(UserCollection userCollection, ClientCollection clientCollection, const OAuth2Configuration configuration = OAuth2Configuration()) {
-    super(userCollection);
+	this(UserCollection userCollection, ClientCollection clientCollection, const OAuth2Configuration configuration = OAuth2Configuration()) {
+		super(userCollection);
 
-    this.configuration = configuration;
-    this.clientCollection = clientCollection;
-  }
+		this.configuration = configuration;
+		this.clientCollection = clientCollection;
+	}
 
-  override {
-    void checkLogin(HTTPServerRequest req, HTTPServerResponse res) {
-      try {
-        setAccessControl(res);
-        if(req.method == HTTPMethod.OPTIONS) {
-          return;
-        }
+	override {
+		void checkLogin(HTTPServerRequest req, HTTPServerResponse res) {
+			try {
+				setAccessControl(res);
+				if(req.method == HTTPMethod.OPTIONS) {
+					return;
+				}
 
-        if(req.path == configuration.tokenPath) {
-          createToken(req, res);
-        }
+				if(req.path == configuration.tokenPath) {
+					createToken(req, res);
+				}
 
-        if (req.path == configuration.authorizePath) {
-          authorize(req, res);
-        }
+				if (req.path == configuration.authorizePath) {
+					authorize(req, res);
+				}
 
-        if(req.path == configuration.authenticatePath) {
-          authenticate(req, res);
-        }
+				if(req.path == configuration.authenticatePath) {
+					authenticate(req, res);
+				}
 
-        if(req.path == configuration.revokePath) {
-          revoke(req, res);
-        }
+				if(req.path == configuration.revokePath) {
+					revoke(req, res);
+				}
 
-        if(!res.headerWritten && req.path != configuration.style && !isValidBearer(req)) {
-          respondUnauthorized(res);
-        }
-      } catch(Exception e) {
-        version(unittest) {} else debug stderr.writeln(e);
+				if(!res.headerWritten && req.path != configuration.style && !isValidBearer(req)) {
+					respondUnauthorized(res);
+				}
+			} catch(Exception e) {
+				version(unittest) {} else debug stderr.writeln(e);
 
-        if(!res.headerWritten) {
-          res.writeJsonBody([ "error": e.msg ], 500);
-        }
-      }
-    }
-  }
+				if(!res.headerWritten) {
+					res.writeJsonBody([ "error": e.msg ], 500);
+				}
+			}
+		}
+	}
 
-  void setAccessControl(ref HTTPServerResponse res) {
-    if("Access-Control-Allow-Origin" !in res.headers) {
-      res.headers["Access-Control-Allow-Origin"] = "*";
-    } else {
-      res.headers["Access-Control-Allow-Origin"] = ", *";
-    }
+	private {
+		bool isValidBearer(HTTPServerRequest req) {
+			auto pauth = "Authorization" in req.headers;
 
-    if("Access-Control-Allow-Headers" !in res.headers) {
-      res.headers["Access-Control-Allow-Headers"] = "Authorization";
-    } else {
-      res.headers["Access-Control-Allow-Headers"] = ", Authorization";
-    }
-  }
+			if(pauth && (*pauth).startsWith("Bearer ")) {
+				auto token = (*pauth)[7 .. $];
 
-  private {
-    bool isValidBearer(HTTPServerRequest req) {
-      auto pauth = "Authorization" in req.headers;
+				try {
+					auto const user = collection.byToken(token);
+					req.username = user.email;
+				} catch(UserNotFoundException exception) {
+					return false;
+				}
 
-      if(pauth && (*pauth).startsWith("Bearer ")) {
-        auto token = (*pauth)[7 .. $];
+				return true;
+			}
 
-        try {
-          auto const user = collection.byToken(token);
-          req.username = user.email;
-        } catch(UserNotFoundException exception) {
-          return false;
-        }
+			return false;
+		}
 
-        return true;
-      }
+		void authorize(HTTPServerRequest req, HTTPServerResponse res) {
+			if("redirect_uri" !in req.query) {
+				showError(res, "Missing `redirect_uri` parameter");
+				return;
+			}
 
-      return false;
-    }
+			if("client_id" !in req.query) {
+				showError(res, "Missing `client_id` parameter");
+				return;
+			}
 
-    void authorize(HTTPServerRequest req, HTTPServerResponse res) {
-      if("redirect_uri" !in req.query) {
-        showError(res, "Missing `redirect_uri` parameter");
-        return;
-      }
+			if("state" !in req.query) {
+				showError(res, "Missing `state` parameter");
+				return;
+			}
 
-      if("client_id" !in req.query) {
-        showError(res, "Missing `client_id` parameter");
-        return;
-      }
+			auto const redirectUri = req.query["redirect_uri"];
+			auto const clientId = req.query["client_id"];
+			auto const state = req.query["state"];
+			auto const style = configuration.style;
 
-      if("state" !in req.query) {
-        showError(res, "Missing `state` parameter");
-        return;
-      }
+			if(clientId !in clientCollection) {
+				showError(res, "Invalid `client_id` parameter");
+				return;
+			}
 
-      auto const redirectUri = req.query["redirect_uri"];
-      auto const clientId = req.query["client_id"];
-      auto const state = req.query["state"];
-      auto const style = configuration.style;
+			string appTitle = clientCollection[clientId].name;
 
-      if(clientId !in clientCollection) {
-        showError(res, "Invalid `client_id` parameter");
-        return;
-      }
+			res.render!("loginForm.dt", appTitle, redirectUri, state, style);
+		}
 
-      string appTitle = clientCollection[clientId].name;
+		void showError(HTTPServerResponse res, const string error) {
+			auto const style = configuration.style;
+			res.statusCode = 400;
+			res.render!("error.dt", error, style);
+		}
 
-      res.render!("loginForm.dt", appTitle, redirectUri, state, style);
-    }
+		void authenticate(HTTPServerRequest req, HTTPServerResponse res) {
+			string email;
+			string password;
 
-    void showError(HTTPServerResponse res, const string error) {
-      auto const style = configuration.style;
-      res.statusCode = 400;
-      res.render!("error.dt", error, style);
-    }
+			try {
+				email = req.form["email"];
+				password = req.form["password"];
+			} catch (Exception e) {
+				debug showError(res, e.to!string);
+				return;
+			}
 
-    void authenticate(HTTPServerRequest req, HTTPServerResponse res) {
-      string email;
-      string password;
+			if(!collection.contains(email) || !collection[email].isValidPassword(password)) {
+				showError(res, "Invalid email or password.");
+				return;
+			}
 
-      try {
-        email = req.form["email"];
-        password = req.form["password"];
-      } catch (Exception e) {
-        debug showError(res, e.to!string);
-        return;
-      }
+			auto token = collection[email].createToken(Clock.currTime + 3601.seconds);
+			auto redirectUri = req.form["redirect_uri"] ~ "#access_token=" ~ token.name ~ "&state=" ~ req.form["state"];
 
-      if(!collection.contains(email) || !collection[email].isValidPassword(password)) {
-        showError(res, "Invalid email or password.");
-        return;
-      }
+			res.render!("redirect.dt", redirectUri);
+		}
 
-      auto token = collection[email].createToken(Clock.currTime + 3601.seconds);
-      auto redirectUri = req.form["redirect_uri"] ~ "#access_token=" ~ token.name ~ "&state=" ~ req.form["state"];
+		void createToken(HTTPServerRequest req, HTTPServerResponse res) {
+			auto grant = req.getAuthData;
+			grant.userCollection = collection;
 
-      res.render!("redirect.dt", redirectUri);
-    }
+			res.statusCode = grant.isValid ? 200 : 401;
+			res.writeJsonBody(grant.get);
+		}
 
-    void createToken(HTTPServerRequest req, HTTPServerResponse res) {
-      auto grant = req.getAuthData;
-      grant.userCollection = collection;
+		void revoke(HTTPServerRequest req, HTTPServerResponse res) {
+			auto const token = req.form["token"];
+			collection.revoke(token);
+		}
 
-      res.statusCode = grant.isValid ? 200 : 401;
-      res.writeJsonBody(grant.get);
-    }
-
-    void revoke(HTTPServerRequest req, HTTPServerResponse res) {
-      auto const token = req.form["token"];
-      collection.revoke(token);
-    }
-
-    void respondUnauthorized(HTTPServerResponse res, string message = "Authorization required") {
-      res.statusCode = HTTPStatus.unauthorized;
-      res.writeJsonBody([ "error": message ]);
-    }
-  }
+		void respondUnauthorized(HTTPServerResponse res, string message = "Authorization required") {
+			res.statusCode = HTTPStatus.unauthorized;
+			res.writeJsonBody([ "error": message ]);
+		}
+	}
 }
 
 version(unittest) {
-  import http.request;
-  import http.json;
-  import bdd.base;
-  import vibeauth.token;
+	import http.request;
+	import http.json;
+	import bdd.base;
+	import vibeauth.token;
 
-  UserMemmoryCollection collection;
-  User user;
-  Client client;
-  ClientCollection clientCollection;
-  OAuth2 auth;
-  Token refreshToken;
+	UserMemmoryCollection collection;
+	User user;
+	Client client;
+	ClientCollection clientCollection;
+	OAuth2 auth;
+	Token refreshToken;
 
-  auto testRouter() {
-    auto router = new URLRouter();
+	auto testRouter() {
+		auto router = new URLRouter();
 
-    collection = new UserMemmoryCollection(["doStuff"]);
-  	user = new User("user@gmail.com", "password");
-    user.name = "John Doe";
-    user.username = "test";
-    user.id = 1;
+		collection = new UserMemmoryCollection(["doStuff"]);
+		user = new User("user@gmail.com", "password");
+		user.name = "John Doe";
+		user.username = "test";
+		user.id = 1;
 
-  	collection.add(user);
+		collection.add(user);
 
-    refreshToken = collection.createToken("user@gmail.com", Clock.currTime + 3600.seconds, ["doStuff", "refresh"], "Refresh");
+		refreshToken = collection.createToken("user@gmail.com", Clock.currTime + 3600.seconds, ["doStuff", "refresh"], "Refresh");
 
-    auto client = new Client();
-    client.id = "CLIENT_ID";
+		auto client = new Client();
+		client.id = "CLIENT_ID";
 
-    clientCollection = new ClientCollection([ client ]);
+		clientCollection = new ClientCollection([ client ]);
 
-    auth = new OAuth2(collection, clientCollection);
-    router.any("*", &auth.checkLogin);
+		auth = new OAuth2(collection, clientCollection);
+		router.any("*", &auth.checkLogin);
 
-    return router;
-  }
+		return router;
+	}
 }
 
 @("it should return 401 on missing auth")
 unittest {
-  testRouter.request.get("/sites").expectStatusCode(401).end();
+	testRouter.request.get("/sites").expectStatusCode(401).end();
 }
 
 @("it should return 401 on invalid credentials")
 unittest {
-  testRouter
-    .request.post("/auth/token")
-    .send(["grant_type": "password", "username": "invalid", "password": "invalid"])
-    .expectStatusCode(401)
-    .end;
+	testRouter
+		.request.post("/auth/token")
+		.send(["grant_type": "password", "username": "invalid", "password": "invalid"])
+		.expectStatusCode(401)
+		.end;
 }
 
 @("it should return tokens on valid email and password")
 unittest {
-  testRouter
-    .request
-    .post("/auth/token")
-    .send(["grant_type": "password", "username": "user@gmail.com", "password": "password"])
-    .expectStatusCode(200)
-    .end((Response response) => {
-      response.bodyJson.keys.should.contain(["access_token", "expires_in", "refresh_token", "token_type"]);
+	testRouter
+		.request
+		.post("/auth/token")
+		.send(["grant_type": "password", "username": "user@gmail.com", "password": "password"])
+		.expectStatusCode(200)
+		.end((Response response) => {
+			response.bodyJson.keys.should.contain(["access_token", "expires_in", "refresh_token", "token_type"]);
 
-      user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
-      user.isValidToken(response.bodyJson["refresh_token"].to!string).should.be.equal(true);
+			user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
+			user.isValidToken(response.bodyJson["refresh_token"].to!string).should.be.equal(true);
 
-      response.bodyJson["token_type"].to!string.should.equal("Bearer");
-      response.bodyJson["expires_in"].to!int.should.equal(3600);
-    });
+			response.bodyJson["token_type"].to!string.should.equal("Bearer");
+			response.bodyJson["expires_in"].to!int.should.equal(3600);
+		});
 }
 
 
 @("it should return tokens on valid username and password")
 unittest {
-  testRouter
-    .request
-    .post("/auth/token")
-    .send(["grant_type": "password", "username": "test", "password": "password"])
-    .expectStatusCode(200)
-    .end((Response response) => {
-      response.bodyJson.keys.should.contain(["access_token", "expires_in", "refresh_token", "token_type"]);
+	testRouter
+		.request
+		.post("/auth/token")
+		.send(["grant_type": "password", "username": "test", "password": "password"])
+		.expectStatusCode(200)
+		.end((Response response) => {
+			response.bodyJson.keys.should.contain(["access_token", "expires_in", "refresh_token", "token_type"]);
 
-      user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
-      user.isValidToken(response.bodyJson["refresh_token"].to!string).should.be.equal(true);
+			user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
+			user.isValidToken(response.bodyJson["refresh_token"].to!string).should.be.equal(true);
 
-      response.bodyJson["token_type"].to!string.should.equal("Bearer");
-      response.bodyJson["expires_in"].to!int.should.equal(3600);
-    });
+			response.bodyJson["token_type"].to!string.should.equal("Bearer");
+			response.bodyJson["expires_in"].to!int.should.equal(3600);
+		});
 }
 
 @("it should set the scope tokens on valid credentials")
 unittest {
-  testRouter
-    .request
-    .post("/auth/token")
-    .send(["grant_type": "password", "username": "user@gmail.com", "password": "password", "scope": "access1 access2"])
-    .expectStatusCode(200)
-    .end((Response response) => {
-      user.isValidToken(response.bodyJson["refresh_token"].to!string, "refresh").should.equal(true);
-      user.isValidToken(response.bodyJson["refresh_token"].to!string, "other").should.equal(false);
+	testRouter
+		.request
+		.post("/auth/token")
+		.send(["grant_type": "password", "username": "user@gmail.com", "password": "password", "scope": "access1 access2"])
+		.expectStatusCode(200)
+		.end((Response response) => {
+			user.isValidToken(response.bodyJson["refresh_token"].to!string, "refresh").should.equal(true);
+			user.isValidToken(response.bodyJson["refresh_token"].to!string, "other").should.equal(false);
 
-      user.isValidToken(response.bodyJson["access_token"].to!string, "access1").should.equal(true);
-      user.isValidToken(response.bodyJson["access_token"].to!string, "access2").should.equal(true);
-      user.isValidToken(response.bodyJson["access_token"].to!string, "other").should.equal(false);
-    });
+			user.isValidToken(response.bodyJson["access_token"].to!string, "access1").should.equal(true);
+			user.isValidToken(response.bodyJson["access_token"].to!string, "access2").should.equal(true);
+			user.isValidToken(response.bodyJson["access_token"].to!string, "other").should.equal(false);
+		});
 }
 
 @("it should return a new access token on ")
 unittest {
-  auto router = testRouter;
+	auto router = testRouter;
 
-  router
-    .request
-    .post("/auth/token")
-    .send(["grant_type": "refresh_token", "refresh_token": refreshToken.name ])
-    .expectStatusCode(200)
-    .end((Response response) => {
-      response.bodyJson.keys.should.contain(["access_token", "expires_in", "token_type"]);
+	router
+		.request
+		.post("/auth/token")
+		.send(["grant_type": "refresh_token", "refresh_token": refreshToken.name ])
+		.expectStatusCode(200)
+		.end((Response response) => {
+			response.bodyJson.keys.should.contain(["access_token", "expires_in", "token_type"]);
 
-      user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
-      user.isValidToken(response.bodyJson["access_token"].to!string, "doStuff").should.be.equal(true);
-      user.isValidToken(response.bodyJson["access_token"].to!string, "refresh").should.be.equal(false);
+			user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
+			user.isValidToken(response.bodyJson["access_token"].to!string, "doStuff").should.be.equal(true);
+			user.isValidToken(response.bodyJson["access_token"].to!string, "refresh").should.be.equal(false);
 
-      response.bodyJson["token_type"].to!string.should.equal("Bearer");
-      response.bodyJson["expires_in"].to!int.should.equal(3600);
-    });
+			response.bodyJson["token_type"].to!string.should.equal("Bearer");
+			response.bodyJson["expires_in"].to!int.should.equal(3600);
+		});
 }

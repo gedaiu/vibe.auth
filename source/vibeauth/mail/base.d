@@ -4,35 +4,35 @@ import vibeauth.users;
 import vibeauth.token;
 
 interface IMailSender {
-  bool send(Message);
+	bool send(Message);
 }
 
 interface IMailQueue {
-  void addMessage(Message);
-  void addActivationMessage(UserData data, Token token);
+	void addMessage(Message);
+	void addActivationMessage(UserData data, Token token);
 }
 
 
 struct Message {
-  string from;
-  string[] to;
-  string subject;
+	string from;
+	string[] to;
+	string subject;
 
-  string textMessage;
-  string htmlMessage;
+	string textMessage;
+	string htmlMessage;
 }
 
 class MailQueue {
 
-  private Message[] messages;
+	private Message[] messages;
 
-  void addMessage(Message message) {
-    messages ~= message;
-  }
+	void addMessage(Message message) {
+		messages ~= message;
+	}
 
-  void addActivationMessage(UserData data, Token token) {
-    Message message;
+	void addActivationMessage(UserData data, Token token) {
+		Message message;
 
-    addMessage(message);
-  }
+		addMessage(message);
+	}
 }

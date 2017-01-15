@@ -1,0 +1,31 @@
+doctype html
+html
+head
+	title Login
+	link(rel="stylesheet", href="#{style}", type="text/css")
+body
+	div.container
+		div.row
+			div.col-sm-4
+				h1 Register
+
+				form(method="post", action="/register/addUser")
+					div.form-group
+						label Name
+						input.form-control(placeholder="What's your name?", type="text", name="name")
+
+					div.form-group
+						label Username
+						input.form-control(placeholder="What's your public name?", type="text", name="username")
+
+					div.form-group
+						label Email
+						input.form-control(placeholder="Where do you want to be contacted?", type="email", name="email")
+
+					div.form-group
+						label Password
+						input.form-control(placeholder="Enter a new password", type="password", name="password")
+
+					div.form-group !{challenge}
+
+					button.btn.btn-success(type="submit") Create and account

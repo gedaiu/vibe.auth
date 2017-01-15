@@ -1,0 +1,3 @@
+label Math Captcha
+img(src="#{challangeLocation}")
+input.form-control(placeholder="Please enter the result", type="string", name="response")

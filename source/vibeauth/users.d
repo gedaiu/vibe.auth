@@ -19,273 +19,273 @@ version(unittest) import bdd.base;
 alias UserNotFoundException = ItemNotFoundException;
 
 class UserAccesNotFoundException : Exception {
-  this(string msg = null, Throwable next = null) { super(msg, next); }
-  this(string msg, string file, size_t line, Throwable next = null) {
-    super(msg, file, line, next);
-  }
+	this(string msg = null, Throwable next = null) { super(msg, next); }
+	this(string msg, string file, size_t line, Throwable next = null) {
+		super(msg, file, line, next);
+	}
 }
 
 struct UserData {
 	string _id;
 
-  string name;
-  string username;
-  string email;
+	string name;
+	string username;
+	string email;
 
-  string password;
-  string salt;
+	string password;
+	string salt;
 
-  bool isActive;
+	bool isActive;
 
-  string[] scopes;
-  Token[] tokens;
+	string[] scopes;
+	Token[] tokens;
 }
 
 class User {
-  alias ChangedEvent = void delegate(User);
+	alias ChangedEvent = void delegate(User);
 
-  ChangedEvent onChange;
+	ChangedEvent onChange;
 
-  private {
-    UserData userData;
-  }
+	private {
+		UserData userData;
+	}
 
-  this() { }
+	this() { }
 
-  this(UserData userData) {
-    this.userData = userData;
-  }
+	this(UserData userData) {
+		this.userData = userData;
+	}
 
 	this(string email, string password) {
 		this.userData.email = email;
-    setPassword(password);
+		setPassword(password);
 	}
 
-  override string toString() {
-    return toJson.toPrettyString;
-  }
+	override string toString() {
+		return toJson.toPrettyString;
+	}
 
-  @property {
-    auto id() const {
-      return userData._id;
-    }
+	@property {
+		auto id() const {
+			return userData._id;
+		}
 
-    void id(ulong value) {
-      userData._id = value.to!string;
+		void id(ulong value) {
+			userData._id = value.to!string;
 
-      if(onChange) {
-        onChange(this);
-      }
-    }
+			if(onChange) {
+				onChange(this);
+			}
+		}
 
-    auto isActive() const {
-      return userData.isActive;
-    }
+		auto isActive() const {
+			return userData.isActive;
+		}
 
-    void isActive(bool value) {
-      userData.isActive = value;
-    }
+		void isActive(bool value) {
+			userData.isActive = value;
+		}
 
-    auto email() const {
-      return userData.email;
-    }
+		auto email() const {
+			return userData.email;
+		}
 
-    void email(string value) {
-      userData.email = value;
+		void email(string value) {
+			userData.email = value;
 
-      if(onChange) {
-        onChange(this);
-      }
-    }
+			if(onChange) {
+				onChange(this);
+			}
+		}
 
-    auto name() const {
-      return userData.name;
-    }
+		auto name() const {
+			return userData.name;
+		}
 
-    void name(string value) {
-      userData.name = value;
+		void name(string value) {
+			userData.name = value;
 
-      if(onChange) {
-        onChange(this);
-      }
-    }
+			if(onChange) {
+				onChange(this);
+			}
+		}
 
-    auto username() const {
-      return userData.username;
-    }
+		auto username() const {
+			return userData.username;
+		}
 
-    void username(string value) {
-      userData.username = value;
+		void username(string value) {
+			userData.username = value;
 
-      if(onChange) {
-        onChange(this);
-      }
-    }
-  }
+			if(onChange) {
+				onChange(this);
+			}
+		}
+	}
 
-  void revoke(string token) {
-    userData.tokens = userData.tokens.filter!(a => a.name != token).array;
-  }
+	void revoke(string token) {
+		userData.tokens = userData.tokens.filter!(a => a.name != token).array;
+	}
 
 	const {
-    string[] getScopes(string token) {
-      return userData.tokens.filter!(a => a.name == token).front.scopes.to!(string[]);
-    }
+		string[] getScopes(string token) {
+			return userData.tokens.filter!(a => a.name == token).front.scopes.to!(string[]);
+		}
 
 		bool can(string access)() {
 			return userData.scopes.canFind(access);
 		}
 
-    auto getTokensByType(string type) {
-      return userData.tokens.filter!(a => a.type == type);
-    }
+		auto getTokensByType(string type) {
+			return userData.tokens.filter!(a => a.type == type);
+		}
 
 		bool isValidPassword(string password) {
 			return sha1UUID(userData.salt ~ "." ~ password).to!string == userData.password;
 		}
 
-    bool isValidToken(string token) {
+		bool isValidToken(string token) {
 			return userData.tokens.map!(a => a.name).canFind(token);
 		}
 
-    bool isValidToken(string token, string requiredScope) {
+		bool isValidToken(string token, string requiredScope) {
 			return userData.tokens.filter!(a => a.scopes.canFind(requiredScope)).map!(a => a.name).canFind(token);
 		}
 	}
 
-  void setPassword(string password) {
-    userData.salt = randomUUID.to!string;
+	void setPassword(string password) {
+		userData.salt = randomUUID.to!string;
 		userData.password = sha1UUID(userData.salt ~ "." ~ password).to!string;
 
-    if(onChange) {
-      onChange(this);
-    }
-  }
+		if(onChange) {
+			onChange(this);
+		}
+	}
 
-  void setPassword(string password, string salt) {
-    userData.salt = salt;
+	void setPassword(string password, string salt) {
+		userData.salt = salt;
 		userData.password = password;
 
-    if(onChange) {
-      onChange(this);
-    }
-  }
+		if(onChange) {
+			onChange(this);
+		}
+	}
 
-  void addScope(string access) {
-    userData.scopes ~= access;
-  }
+	void addScope(string access) {
+		userData.scopes ~= access;
+	}
 
 	Token createToken(SysTime expire, string[] scopes = [], string type = "Bearer") {
 		auto token = Token(randomUUID.to!string, expire, scopes, type);
 		userData.tokens ~= token;
 
-    if(onChange) {
-      onChange(this);
-    }
+		if(onChange) {
+			onChange(this);
+		}
 
-    return token;
+		return token;
 	}
 
-  Json toJson() const {
-    return userData.serializeToJson;
-  }
+	Json toJson() const {
+		return userData.serializeToJson;
+	}
 
-  Json toPublicJson() const {
-    Json data = Json.emptyObject;
+	Json toPublicJson() const {
+		Json data = Json.emptyObject;
 
-    data["id"] = id;
-    data["name"] = name;
-    data["username"] = username;
-    data["email"] = email;
-    data["scopes"] = Json.emptyArray;
+		data["id"] = id;
+		data["name"] = name;
+		data["username"] = username;
+		data["email"] = email;
+		data["scopes"] = Json.emptyArray;
 
-    foreach(s; userData.scopes) {
-      data["scopes"] ~= s;
-    }
+		foreach(s; userData.scopes) {
+			data["scopes"] ~= s;
+		}
 
-    return data;
-  }
+		return data;
+	}
 
-  static User fromJson(Json data) {
-    return new User(data.deserializeJson!UserData);
-  }
+	static User fromJson(Json data) {
+		return new User(data.deserializeJson!UserData);
+	}
 }
 
 abstract class UserCollection : Collection!User {
 
-  alias opBinaryRight = Collection!User.opBinaryRight;
-  alias opIndex = Collection!User.opIndex;
+	alias opBinaryRight = Collection!User.opBinaryRight;
+	alias opIndex = Collection!User.opIndex;
 
-  this(User[] list = []) {
-    super(list);
+	this(User[] list = []) {
+		super(list);
 	}
 
-  abstract {
-    bool createUser(UserData data, string password);
-    Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer");
-    void revoke(string token);
-    void empower(string email, string access);
-    User byToken(string token);
-    bool contains(string email);
-  }
+	abstract {
+		bool createUser(UserData data, string password);
+		Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer");
+		void revoke(string token);
+		void empower(string email, string access);
+		User byToken(string token);
+		bool contains(string email);
+	}
 }
 
 class UserMemmoryCollection : UserCollection {
-  long index = 0;
+	long index = 0;
 	immutable(string[]) accessList;
 
 
 	this(immutable(string[]) accessList, User[] list = []) {
 		this.accessList = accessList;
-    super(list);
+		super(list);
 	}
 
-  override {
-    bool createUser(UserData data, string password) {
-      auto user = new User(data);
-      user.setPassword(password);
+	override {
+		bool createUser(UserData data, string password) {
+			auto user = new User(data);
+			user.setPassword(password);
 
-      list ~= user;
+			list ~= user;
 
-      return true;
-    }
+			return true;
+		}
 
-    User opIndex(string identification) {
-  		auto result = list.find!(a => a.email == identification || a.username == identification);
+		User opIndex(string identification) {
+			auto result = list.find!(a => a.email == identification || a.username == identification);
 
-  		enforce!UserNotFoundException(result.count > 0, "User not found");
+			enforce!UserNotFoundException(result.count > 0, "User not found");
 
-  		return result[0];
-  	}
+			return result[0];
+		}
 
-    Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer") {
-      return opIndex(email).createToken(expire, scopes, type);
-    }
+		Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer") {
+			return opIndex(email).createToken(expire, scopes, type);
+		}
 
-    void revoke(string token) {
-      byToken(token).revoke(token);
-    }
+		void revoke(string token) {
+			byToken(token).revoke(token);
+		}
 
-    void empower(string email, string access) {
-  		auto user = this[email];
+		void empower(string email, string access) {
+			auto user = this[email];
 
-  		enforce!UserAccesNotFoundException(accessList.canFind(access), "`" ~ access ~ "` it's not in the list");
+			enforce!UserAccesNotFoundException(accessList.canFind(access), "`" ~ access ~ "` it's not in the list");
 
-  		user.addScope(access);
-  	}
+			user.addScope(access);
+		}
 
-    User byToken(string token) {
-  		auto result = list.find!(a => a.isValidToken(token));
+		User byToken(string token) {
+			auto result = list.find!(a => a.isValidToken(token));
 
-  		enforce!UserNotFoundException(result.count > 0, "User not found");
+			enforce!UserNotFoundException(result.count > 0, "User not found");
 
-  		return result[0];
-  	}
+			return result[0];
+		}
 
-    bool contains(string identification) {
-      return !list.filter!(a => a.email == identification || a.username == identification).empty;
-    }
-  }
+		bool contains(string identification) {
+			return !list.filter!(a => a.email == identification || a.username == identification).empty;
+		}
+	}
 }
 
 unittest {
@@ -310,8 +310,8 @@ unittest {
 
 unittest {
 	auto user = new User("user", "password");
-  auto password = user.toJson["password"].to!string;
-  auto salt = user.toJson["salt"].to!string;
+	auto password = user.toJson["password"].to!string;
+	auto salt = user.toJson["salt"].to!string;
 
 	assert(password == sha1UUID(salt ~ ".password").to!string, "It should salt the password");
 	assert(user.isValidPassword("password"), "It should return true for a valid password");
@@ -319,103 +319,103 @@ unittest {
 }
 
 unittest {
-  auto user = new User("user", "password");
-  auto json = user.toPublicJson;
+	auto user = new User("user", "password");
+	auto json = user.toPublicJson;
 
-  assert("id" in json, "It should contain the id");
-  assert("name" in json, "It should contain the name");
-  assert("username" in json, "It should contain the username");
-  assert("email" in json, "It should contain the email");
-  assert("password" !in json, "It should not contain the password");
-  assert("salt" !in json, "It should not contain the salt");
-  assert("scopes" in json, "It should contain the scope");
-  assert("tokens" !in json, "It should not contain the tokens");
+	assert("id" in json, "It should contain the id");
+	assert("name" in json, "It should contain the name");
+	assert("username" in json, "It should contain the username");
+	assert("email" in json, "It should contain the email");
+	assert("password" !in json, "It should not contain the password");
+	assert("salt" !in json, "It should not contain the salt");
+	assert("scopes" in json, "It should contain the scope");
+	assert("tokens" !in json, "It should not contain the tokens");
 }
 
 unittest {
-  auto user = new User("user", "password");
-  auto json = user.toJson;
+	auto user = new User("user", "password");
+	auto json = user.toJson;
 
-  assert("_id" in json, "It should contain the id");
-  assert("email" in json, "It should contain the email");
-  assert("password" in json, "It should contain the password");
-  assert("salt" in json, "It should contain the salt");
-  assert("scopes" in json, "It should contain the scope");
-  assert("tokens" in json, "It should contain the tokens");
+	assert("_id" in json, "It should contain the id");
+	assert("email" in json, "It should contain the email");
+	assert("password" in json, "It should contain the password");
+	assert("salt" in json, "It should contain the salt");
+	assert("scopes" in json, "It should contain the scope");
+	assert("tokens" in json, "It should contain the tokens");
 }
 
 unittest {
-  auto json = `{
-    "_id": "1",
-    "name": "name",
-    "username": "username",
-    "email": "test@asd.asd",
-    "password": "password",
-    "salt": "salt",
-    "isActive": true,
-    "scopes": ["scopes"],
-    "tokens": [ { "name": "token", "expire": "2100-01-01T00:00:00", "scopes": [], "type": "Bearer" }],
-  }`.parseJsonString;
+	auto json = `{
+		"_id": "1",
+		"name": "name",
+		"username": "username",
+		"email": "test@asd.asd",
+		"password": "password",
+		"salt": "salt",
+		"isActive": true,
+		"scopes": ["scopes"],
+		"tokens": [ { "name": "token", "expire": "2100-01-01T00:00:00", "scopes": [], "type": "Bearer" }],
+	}`.parseJsonString;
 
 
-  auto user = User.fromJson(json);
-  auto juser = user.toJson;
+	auto user = User.fromJson(json);
+	auto juser = user.toJson;
 
-  assert(user.id == "1", "It should deserialize the id");
-  assert(user.name == "name", "It should deserialize the name");
-  assert(user.username == "username", "It should deserialize the username");
-  assert(user.email == "test@asd.asd", "It should deserialize the email");
-  assert(juser["password"] == "password", "It should deserialize the password");
-  assert(juser["salt"] == "salt", "It should deserialize the salt");
-  assert(juser["isActive"] == true, "It should deserialize the isActive field");
-  assert(juser["scopes"][0] == "scopes", "It should deserialize the scope");
-  assert(juser["tokens"][0]["name"] == "token", "It should deserialize the tokens");
+	assert(user.id == "1", "It should deserialize the id");
+	assert(user.name == "name", "It should deserialize the name");
+	assert(user.username == "username", "It should deserialize the username");
+	assert(user.email == "test@asd.asd", "It should deserialize the email");
+	assert(juser["password"] == "password", "It should deserialize the password");
+	assert(juser["salt"] == "salt", "It should deserialize the salt");
+	assert(juser["isActive"] == true, "It should deserialize the isActive field");
+	assert(juser["scopes"][0] == "scopes", "It should deserialize the scope");
+	assert(juser["tokens"][0]["name"] == "token", "It should deserialize the tokens");
 }
 
 unittest {
-  auto user = new User();
-  auto changed = false;
+	auto user = new User();
+	auto changed = false;
 
-  void userChanged(User u) {
-    changed = true;
-  }
+	void userChanged(User u) {
+		changed = true;
+	}
 
-  user.onChange = &userChanged;
+	user.onChange = &userChanged;
 
-  user.id = 1;
-  assert(changed, "onChange should be called when the id is changed");
+	user.id = 1;
+	assert(changed, "onChange should be called when the id is changed");
 
-  changed = false;
-  user.email = "email";
-  assert(changed, "onChange should be called when the email is changed");
+	changed = false;
+	user.email = "email";
+	assert(changed, "onChange should be called when the email is changed");
 
-  changed = false;
-  user.setPassword("password");
-  assert(changed, "onChange should be called when the password is changed");
+	changed = false;
+	user.setPassword("password");
+	assert(changed, "onChange should be called when the password is changed");
 
-  changed = false;
-  user.setPassword("password", "salt");
-  assert(changed, "onChange should be called when the password is changed");
+	changed = false;
+	user.setPassword("password", "salt");
+	assert(changed, "onChange should be called when the password is changed");
 
-  changed = false;
-  user.createToken(Clock.currTime + 3600.seconds);
-  assert(changed, "onChange should be called when a token is created");
+	changed = false;
+	user.createToken(Clock.currTime + 3600.seconds);
+	assert(changed, "onChange should be called when a token is created");
 }
 
 unittest {
 	auto collection = new UserMemmoryCollection(["doStuff"]);
 	auto user = new User("user", "password");
-  user.id = 1;
+	user.id = 1;
 
 	auto otherUser = new User("otherUser", "password");
-  otherUser.id = 2;
+	otherUser.id = 2;
 
 	collection.add(user);
 	collection.add(otherUser);
 	collection.empower("user", "doStuff");
 
-  assert(user.can!"doStuff", "It should return true if the user can `doStuff`");
-  assert(!otherUser.can!"doStuff", "It should return false if the user can not `doStuff`");
+	assert(user.can!"doStuff", "It should return true if the user can `doStuff`");
+	assert(!otherUser.can!"doStuff", "It should return false if the user can not `doStuff`");
 }
 
 unittest {
@@ -448,21 +448,21 @@ unittest {
 
 	assert(collection.byToken(token.name) == user, "It should find user by token");
 
-  collection.revoke(token.name);
+	collection.revoke(token.name);
 
-  should.throwAnyException({
-    collection.byToken(token.name);
-  });
+	should.throwAnyException({
+		collection.byToken(token.name);
+	});
 }
 
 @("Get tokens by type")
 unittest {
-  auto collection = new UserMemmoryCollection([]);
+	auto collection = new UserMemmoryCollection([]);
 	auto user = new User("user", "password");
 
 	collection.add(user);
 	auto token = user.createToken(Clock.currTime + 3600.seconds, [], "activation");
-  auto tokens = collection["user"].getTokensByType("activation").array;
+	auto tokens = collection["user"].getTokensByType("activation").array;
 
 	tokens.length.should.equal(1);
 	tokens.should.contain(token);
@@ -472,10 +472,10 @@ unittest {
 unittest {
 	auto collection = new UserMemmoryCollection([]);
 	auto user = new User("user", "password");
-  user.id = 1;
+	user.id = 1;
 
 	collection.add(user);
-  collection.remove("1");
+	collection.remove("1");
 
 	assert(collection.length == 0, "It should remove user by id");
 }

@@ -1,12 +1,14 @@
 {
-  "name": "vibe-auth",
-  "description": "OAuth2 server for vibe.d ",
-  "copyright": "Copyright © 2016, Szabo Bogdan",
-  "authors": ["Szabo Bogdan"],
+	"name": "vibe-auth",
+	"description": "OAuth2 server for vibe.d ",
+	"copyright": "Copyright © 2016, Szabo Bogdan",
+	"authors": ["Szabo Bogdan"],
 
-  "dependencies": {
-    "vibe-d": "*",
-    "vibemail": "~>2.0.0",
-    "should": {"version": ">=0.1.0", "path": "../should"}
-  }
+	"dependencies": {
+		"vibe-d": "*",
+		"vibemail": "~>2.0.0",
+		"should": {"version": ">=0.1.0", "path": "../should"}
+	},
+
+	"libs": ["MagickWand"]
 }

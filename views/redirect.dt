@@ -1,7 +1,7 @@
 doctype html
 html
 head
-  title Login
-  meta(HTTP-EQUIV="REFRESH", content="0; url=#{redirectUri}")
+	title Login
+	meta(HTTP-EQUIV="REFRESH", content="0; url=#{redirectUri}")
 body
-  p Redirecting you back to the application. This may take a few moments.
+	p Redirecting you back to the application. This may take a few moments.
