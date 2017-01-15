@@ -7,3 +7,4 @@ user-access-control
 __test__library__
 libuser-access-control.a
 libvibe-auth.a
+oauth-example

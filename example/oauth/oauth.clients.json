@@ -1,0 +1,8 @@
+[
+  {
+    "id": "CLIENT_ID",
+    "name": "Demo client app",
+    "description": "A demo client that allows you to test the oauth implementation",
+    "website": "http://localhost/"
+  }
+]

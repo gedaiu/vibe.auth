@@ -148,7 +148,6 @@ version(unittest) {
     }
   }
 
-
   class TestChallenge : IChallenge {
     string generate(HTTPServerRequest, HTTPServerResponse) {
       return "123";
@@ -255,7 +254,6 @@ unittest {
       collection["user@gmail.com"].isActive.should.equal(true);
     });
 }
-
 
 @("GET with invalid token should not validate the user")
 unittest {
