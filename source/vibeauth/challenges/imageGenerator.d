@@ -3,8 +3,6 @@ module vibeauth.challenges.imagegenerator;
 import std.stdio;
 import std.conv;
 import std.string;
-import std.file;
-import std.path;
 
 import vibe.http.router;
 import vibe.stream.memory;
@@ -85,24 +83,31 @@ struct ImageGenerator {
     DrawingWand *d_wand;
   }
 
-  this(size_t width, size_t height) {
+  this(size_t width, size_t height, string bgColor = "white") {
 		MagickWandGenesis();
 
     mw = NewMagickWand;
     p_wand = NewPixelWand;
     d_wand = NewDrawingWand;
 
-    PixelSetColor(p_wand, "white");
+    PixelSetColor(p_wand, bgColor.toStringz);
 		MagickNewImage(mw, width, height, p_wand);
   }
 
-  void setText(string text) {
-		PixelSetColor(p_wand, "black");
-		DrawSetFillColor(d_wand,p_wand);
-		DrawSetFont(d_wand, buildNormalizedPath(getcwd, "fonts/warpstorm/WarpStorm.otf").toStringz) ;
-		DrawSetFontSize(d_wand, 15);
+	void setTextColor(string textColor) {
+		PixelSetColor(p_wand, textColor.toStringz);
+	}
 
-    writeln("??", buildNormalizedPath(getcwd, "fonts/warpstorm/WarpStorm.otf"));
+	void setFontSize(long fontSize) {
+		DrawSetFontSize(d_wand, fontSize);
+	}
+
+	void setFontName(string fontName) {
+		DrawSetFont(d_wand, fontName.toStringz);
+	}
+
+  void setText(string text) {
+		DrawSetFillColor(d_wand,p_wand);
 
 		// Turn antialias on - not sure this makes a difference
 		DrawSetTextAntialias(d_wand, MagickBooleanType.MagickTrue);

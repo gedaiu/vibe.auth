@@ -73,8 +73,9 @@ class RegistrationRoutes {
 	private void registerForm(HTTPServerRequest req, HTTPServerResponse res) {
 		auto const style = configuration.style;
 		auto const challenge = this.challenge.getTemplate(configuration.challangePath);
+		auto const addUserPath = configuration.addUserPath;
 
-		res.render!("registerForm.dt", style, challenge);
+		res.render!("registerForm.dt", style, challenge, addUserPath);
 	}
 
 	private void activation(HTTPServerRequest req, HTTPServerResponse res) {
@@ -111,51 +112,68 @@ class RegistrationRoutes {
 		res.writeVoidBody;
 	}
 
+	string[string] getAddUserData(HTTPServerRequest req) {
+		string[string] data;
+
+		if(req.json.type == Json.Type.object) {
+			foreach(string key, value; req.json) {
+				data[key] = value.to!string;
+			}
+		}
+
+		foreach(string key, value; req.form) {
+			data[key] = value;
+		}
+
+		return data;
+	}
+
 	private void addUser(HTTPServerRequest req, HTTPServerResponse res) {
 		UserData data;
+		auto values = getAddUserData(req);
 
-		if("name" !in req.json) {
+		if("name" !in values) {
 			res.statusCode = 400;
 			res.writeJsonBody(["error": ["message": "`name` is missing"]]);
 			return;
 		}
 
-		if("username" !in req.json) {
+		if("username" !in values) {
 			res.statusCode = 400;
 			res.writeJsonBody(["error": ["message": "`username` is missing"]]);
 			return;
 		}
 
-		if("email" !in req.json) {
+		if("email" !in values) {
 			res.statusCode = 400;
 			res.writeJsonBody(["error": ["message": "`email` is missing"]]);
 			return;
 		}
 
-		if("password" !in req.json) {
+		if("password" !in values) {
 			res.statusCode = 400;
 			res.writeJsonBody(["error": ["message": "`password` is missing"]]);
 			return;
 		}
 
-		if("response" !in req.json) {
+		if("response" !in values) {
 			res.statusCode = 400;
 			res.writeJsonBody(["error": ["message": "`response` is missing"]]);
 			return;
 		}
 
-		if(!challenge.validate(req, res, req.json["response"].to!string)) {
+		if(!challenge.validate(req, res, values["response"])) {
 			res.statusCode = 400;
-			res.writeJsonBody(["error": ["message": "Invalid `response` challenge"]]);
+			res.writeJsonBody(["error": ["message": "Invalid challenge `response`"]]);
 			return;
 		}
 
-		data.name = req.json["name"].to!string;
-		data.username = req.json["username"].to!string;
-		data.email = req.json["email"].to!string;
+		data.name = values["name"];
+		data.username = values["username"];
+		data.email = values["email"];
 		data.isActive = false;
 
-		collection.createUser(data, req.json["password"].to!string);
+		collection.createUser(data, values["password"]);
 		auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
 		mailQueue.addActivationMessage(data, token);
 

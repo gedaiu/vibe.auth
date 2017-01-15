@@ -9,7 +9,7 @@ body
 			div.col-sm-4
 				h1 Register
 
-				form(method="post", action="/register/addUser")
+				form(method="post", action="#{addUserPath}")
 					div.form-group
 						label Name
 						input.form-control(placeholder="What's your name?", type="text", name="name")
@@ -28,4 +28,4 @@ body
 
 					div.form-group !{challenge}
 
-					button.btn.btn-success(type="submit") Create and account
+					button.btn.btn-success(type="submit") Create an account
