@@ -3,6 +3,8 @@ module vibeauth.router.registration;
 import std.stdio;
 import std.datetime;
 import std.algorithm;
+import std.string;
+import std.uri;
 
 import vibe.http.router;
 import vibe.data.json;
@@ -50,7 +52,11 @@ class RegistrationRoutes {
 			}
 
 			if(req.method == HTTPMethod.POST && req.path == configuration.addUserPath) {
-				addUser(req, res);
+				if(req.contentType.toLower.indexOf("json") != -1) {
+					addJsonUser(req, res);
+				} else {
+					addHtmlUser(req, res);
+				}
 			}
 
 			if(req.method == HTTPMethod.GET && req.path == configuration.activationPath) {
@@ -74,8 +80,15 @@ class RegistrationRoutes {
 		auto const style = configuration.style;
 		auto const challenge = this.challenge.getTemplate(configuration.challangePath);
 		auto const addUserPath = configuration.addUserPath;
+		auto const values = getAddUserData(req);
 
-		res.render!("registerForm.dt", style, challenge, addUserPath);
+		auto const name = "name" in values ? values["name"] : "";
+		auto const username = "username" in values ? values["username"] : "";
+		auto const email = "email" in values ? values["email"] : "";
+
+
+		res.render!("registerForm.dt", style, challenge, addUserPath,
+			name, username, email);
 	}
 
 	private void activation(HTTPServerRequest req, HTTPServerResponse res) {
@@ -121,15 +134,90 @@ class RegistrationRoutes {
 			}
 		}
 
+		foreach(string key, value; req.query) {
+			value = value.strip;
+
+			if(value.length > 0) {
+				data[key] = value;
+			}
+		}
+
 		foreach(string key, value; req.form) {
-			data[key] = value;
+			value = value.strip;
+
+			if(value.length > 0) {
+				data[key] = value;
+			}
 		}
 
 		return data;
 	}
 
-	private void addUser(HTTPServerRequest req, HTTPServerResponse res) {
+	private string queryUserData(string[string] values, string error = "") {
+		string query = "?error=" ~ encodeComponent(error);
+
+		if("name" in values) {
+			query ~= "&name=" ~ encodeComponent(values["name"]);
+		}
+
+		if("username" in values) {
+			query ~= "&username=" ~ encodeComponent(values["username"]);
+		}
+
+		if("email" in values) {
+			query ~= "&email=" ~ encodeComponent(values["email"]);
+		}
+		return query;
+	}
+
+	private void addHtmlUser(HTTPServerRequest req, HTTPServerResponse res) {
+		auto values = getAddUserData(req);
+
+		if("name" !in values) {
+			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=`name` is missing"));
+			return;
+		}
+
+		if("username" !in values) {
+			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=`username` is missing"));
+			return;
+		}
+
+		if("email" !in values) {
+			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=`email` is missing"));
+			return;
+		}
+
+		if("password" !in values) {
+			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=`password` is missing"));
+			return;
+		}
+
+		if("response" !in values) {
+			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=`response` is missing"));
+			return;
+		}
+
+		if(!challenge.validate(req, res, values["response"])) {
+			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=Invalid challenge `response`"));
+			return;
+		}
+
 		UserData data;
+		data.name = values["name"];
+		data.username = values["username"];
+		data.email = values["email"];
+		data.isActive = false;
+
+		collection.createUser(data, values["password"]);
+		auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
+		mailQueue.addActivationMessage(data, token);
+
+		res.statusCode = 200;
+		res.writeVoidBody;
+	}
+
+	private void addJsonUser(HTTPServerRequest req, HTTPServerResponse res) {
 		auto values = getAddUserData(req);
 
 		if("name" !in values) {
@@ -168,6 +256,7 @@ class RegistrationRoutes {
 			return;
 		}
 
+		UserData data;
 		data.name = values["name"];
 		data.username = values["username"];
 		data.email = values["email"];
@@ -224,6 +313,10 @@ version(unittest) {
 
 		bool validate(HTTPServerRequest, HTTPServerResponse, string response) {
 			return response == "123";
+		}
+
+		string getTemplate(string challangeLocation) {
+			return "";
 		}
 	}
 
@@ -354,6 +447,7 @@ unittest {
 		.request
 		.post("/register/user")
 		.send(data)
+		.header("Content-Type", "application/json")
 		.expectStatusCode(400)
 		.end((Response response) => {
 			response.bodyJson.keys.should.contain("error");
@@ -371,6 +465,7 @@ unittest {
 		.request
 		.post("/register/user")
 		.send(data)
+		.header("Content-Type", "application/json")
 		.expectStatusCode(400)
 		.end((Response response) => {
 			response.bodyJson.keys.should.contain("error");
@@ -388,6 +483,7 @@ unittest {
 		.request
 		.post("/register/user")
 		.send(data)
+		.header("Content-Type", "application/json")
 		.expectStatusCode(400)
 		.end((Response response) => {
 			response.bodyJson.keys.should.contain("error");
@@ -405,6 +501,7 @@ unittest {
 		.request
 		.post("/register/user")
 		.send(data)
+		.header("Content-Type", "application/json")
 		.expectStatusCode(400)
 		.end((Response response) => {
 			response.bodyJson.keys.should.contain("error");
@@ -422,6 +519,7 @@ unittest {
 		.request
 		.post("/register/user")
 		.send(data)
+		.header("Content-Type", "application/json")
 		.expectStatusCode(400)
 		.end((Response response) => {
 			response.bodyJson.keys.should.contain("error");
@@ -445,6 +543,7 @@ unittest {
 		.request
 		.post("/register/user")
 		.send(data)
+		.header("Content-Type", "application/json")
 		.expectStatusCode(400)
 		.end((Response response) => {
 			response.bodyJson.keys.should.contain("error");

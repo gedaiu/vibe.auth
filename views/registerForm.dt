@@ -12,15 +12,15 @@ body
 				form(method="post", action="#{addUserPath}")
 					div.form-group
 						label Name
-						input.form-control(placeholder="What's your name?", type="text", name="name")
+						input.form-control(placeholder="What's your name?", value="#{name}", type="text", name="name")
 
 					div.form-group
 						label Username
-						input.form-control(placeholder="What's your public name?", type="text", name="username")
+						input.form-control(placeholder="What's your public name?", value="#{username}", type="text", name="username")
 
 					div.form-group
 						label Email
-						input.form-control(placeholder="Where do you want to be contacted?", type="email", name="email")
+						input.form-control(placeholder="Where do you want to be contacted?", value="#{email}", type="email", name="email")
 
 					div.form-group
 						label Password
