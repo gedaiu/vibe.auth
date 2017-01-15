@@ -8,3 +8,4 @@ __test__library__
 libuser-access-control.a
 libvibe-auth.a
 oauth-example
+registration-example

@@ -47,6 +47,8 @@ extern(C) {
 	void MagickWandGenesis();
 	MagickWand *NewMagickWand();
 	MagickWand *DestroyMagickWand(MagickWand *wand);
+  DrawingWand *DestroyDrawingWand(DrawingWand *);
+  PixelWand *DestroyPixelWand(PixelWand *);
 	void MagickWandTerminus();
 
 	PixelWand *NewPixelWand();
@@ -115,6 +117,9 @@ struct ImageGenerator {
 	void flush(HTTPServerResponse res) {
 		scope(exit) {
 			if(mw !is null) mw = DestroyMagickWand(mw);
+    	if(d_wand !is null) d_wand = DestroyDrawingWand(d_wand);
+    	if(p_wand !is null) p_wand = DestroyPixelWand(p_wand);
+
 			MagickWandTerminus();
 		}
 
@@ -132,8 +137,6 @@ struct ImageGenerator {
 		RandomAccessStream stream = new MemoryStream(data, false, length);
 
 		MagickRelinquishMemory(blob);
-
-		writeln("image size: ", length, " []", blob, "]");
 
 		res.contentType = "image/jpeg";
 		res.headers["Content-Length"] = length.to!string;
