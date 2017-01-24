@@ -20,6 +20,7 @@ struct RegistrationConfiguration {
 	string addUserPath = "/register/user";
 	string activationPath = "/register/activation";
 	string challangePath = "/register/challenge";
+	string confirmationPath = "/register/confirmation";
 
 	string style = "";
 }
@@ -85,10 +86,10 @@ class RegistrationRoutes {
 		auto const name = "name" in values ? values["name"] : "";
 		auto const username = "username" in values ? values["username"] : "";
 		auto const email = "email" in values ? values["email"] : "";
-
+		auto const error = "error" in req.query ? req.query["error"] : "";
 
 		res.render!("registerForm.dt", style, challenge, addUserPath,
-			name, username, email);
+			name, username, email, error);
 	}
 
 	private void activation(HTTPServerRequest req, HTTPServerResponse res) {
@@ -174,32 +175,32 @@ class RegistrationRoutes {
 		auto values = getAddUserData(req);
 
 		if("name" !in values) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=`name` is missing"));
+			res.redirect(configuration.registerPath ~ queryUserData(values, "`name` is missing"));
 			return;
 		}
 
 		if("username" !in values) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=`username` is missing"));
+			res.redirect(configuration.registerPath ~ queryUserData(values, "`username` is missing"));
 			return;
 		}
 
 		if("email" !in values) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=`email` is missing"));
+			res.redirect(configuration.registerPath ~ queryUserData(values, "`email` is missing"));
 			return;
 		}
 
 		if("password" !in values) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=`password` is missing"));
+			res.redirect(configuration.registerPath ~ queryUserData(values, "`password` is missing"));
 			return;
 		}
 
 		if("response" !in values) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=`response` is missing"));
+			res.redirect(configuration.registerPath ~ queryUserData(values, "`response` is missing"));
 			return;
 		}
 
 		if(!challenge.validate(req, res, values["response"])) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "?error=Invalid challenge `response`"));
+			res.redirect(configuration.registerPath ~ queryUserData(values, "Invalid challenge `response`"));
 			return;
 		}
 
@@ -214,7 +215,11 @@ class RegistrationRoutes {
 		mailQueue.addActivationMessage(data, token);
 
 		res.statusCode = 200;
-		res.writeVoidBody;
+
+		auto const style = configuration.style;
+		auto const confirmation = configuration.confirmationPath;
+
+		res.render!("registerSuccess.dt", style, confirmation);
 	}
 
 	private void addJsonUser(HTTPServerRequest req, HTTPServerResponse res) {
