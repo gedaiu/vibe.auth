@@ -1,0 +1,5 @@
+Thanks for signing up to [serviceName]!
+
+To get started, go to the link below to confirm your account.
+
+[confirmationLink]

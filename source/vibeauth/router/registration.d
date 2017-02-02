@@ -15,13 +15,20 @@ import vibeauth.challenges.base;
 import vibeauth.mail.base;
 import vibeauth.router.accesscontrol;
 
-struct RegistrationConfiguration {
-	string registerPath = "/register";
-	string addUserPath = "/register/user";
-	string activationPath = "/register/activation";
-	string challangePath = "/register/challenge";
-	string confirmationPath = "/register/confirmation";
+struct RegistrationConfigurationPaths {
+	string register = "/register";
+	string addUser = "/register/user";
+	string activation = "/register/activation";
+	string challange = "/register/challenge";
+	string confirmation = "/register/confirmation";
+}
 
+struct RegistrationConfiguration {
+	RegistrationConfigurationPaths paths;
+	RegistrationConfigurationEmail email;
+
+	string serviceName = "Unknown app";
+	string location = "http://localhost";
 	string style = "";
 }
 
@@ -48,11 +55,11 @@ class RegistrationRoutes {
 				return;
 			}
 
-			if(req.method == HTTPMethod.GET && req.path == configuration.registerPath) {
+			if(req.method == HTTPMethod.GET && req.path == configuration.paths.register) {
 				registerForm(req, res);
 			}
 
-			if(req.method == HTTPMethod.POST && req.path == configuration.addUserPath) {
+			if(req.method == HTTPMethod.POST && req.path == configuration.paths.addUser) {
 				if(req.contentType.toLower.indexOf("json") != -1) {
 					addJsonUser(req, res);
 				} else {
@@ -60,11 +67,11 @@ class RegistrationRoutes {
 				}
 			}
 
-			if(req.method == HTTPMethod.GET && req.path == configuration.activationPath) {
+			if(req.method == HTTPMethod.GET && req.path == configuration.paths.activation) {
 				activation(req, res);
 			}
 
-			if(req.method == HTTPMethod.GET && req.path == configuration.challangePath) {
+			if(req.method == HTTPMethod.GET && req.path == configuration.paths.challange) {
 				challenge.generate(req, res);
 			}
 
@@ -79,8 +86,8 @@ class RegistrationRoutes {
 
 	private void registerForm(HTTPServerRequest req, HTTPServerResponse res) {
 		auto const style = configuration.style;
-		auto const challenge = this.challenge.getTemplate(configuration.challangePath);
-		auto const addUserPath = configuration.addUserPath;
+		auto const challenge = this.challenge.getTemplate(configuration.paths.challange);
+		auto const addUserPath = configuration.paths.addUser;
 		auto const values = getAddUserData(req);
 
 		auto const name = "name" in values ? values["name"] : "";
@@ -175,32 +182,32 @@ class RegistrationRoutes {
 		auto values = getAddUserData(req);
 
 		if("name" !in values) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "`name` is missing"));
+			res.redirect(configuration.paths.register ~ queryUserData(values, "`name` is missing"));
 			return;
 		}
 
 		if("username" !in values) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "`username` is missing"));
+			res.redirect(configuration.paths.register ~ queryUserData(values, "`username` is missing"));
 			return;
 		}
 
 		if("email" !in values) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "`email` is missing"));
+			res.redirect(configuration.paths.register ~ queryUserData(values, "`email` is missing"));
 			return;
 		}
 
 		if("password" !in values) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "`password` is missing"));
+			res.redirect(configuration.paths.register ~ queryUserData(values, "`password` is missing"));
 			return;
 		}
 
 		if("response" !in values) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "`response` is missing"));
+			res.redirect(configuration.paths.register ~ queryUserData(values, "`response` is missing"));
 			return;
 		}
 
 		if(!challenge.validate(req, res, values["response"])) {
-			res.redirect(configuration.registerPath ~ queryUserData(values, "Invalid challenge `response`"));
+			res.redirect(configuration.paths.register ~ queryUserData(values, "Invalid challenge `response`"));
 			return;
 		}
 
@@ -217,7 +224,7 @@ class RegistrationRoutes {
 		res.statusCode = 200;
 
 		auto const style = configuration.style;
-		auto const confirmation = configuration.confirmationPath;
+		auto const confirmation = configuration.paths.confirmation;
 
 		res.render!("registerSuccess.dt", style, confirmation);
 	}
@@ -289,25 +296,17 @@ version(unittest) {
 	TestMailQueue mailQueue;
 	Token activationToken;
 
-	class TestMailQueue : IMailQueue
+	class TestMailQueue : MailQueue
 	{
 		Message[] messages;
 
-		void addMessage(Message message) {
-			messages ~= message;
+		this() {
+			super(RegistrationConfigurationEmail());
 		}
 
-		void addActivationMessage(UserData data, Token token) {
-			Message message;
-
-			string link = "http://localhost/register/activation?email=" ~
-				data.email ~
-				"&token=" ~ token.name;
-
-			message.textMessage = link;
-			message.htmlMessage = `<a href="` ~ link ~ `">`;
-
-			addMessage(message);
+		override
+		void addMessage(Message message) {
+			messages ~= message;
 		}
 	}
 
