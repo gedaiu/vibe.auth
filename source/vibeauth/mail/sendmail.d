@@ -6,6 +6,7 @@ import vibeauth.token;
 
 import std.process;
 import std.stdio;
+import std.string;
 
 class SendMailQueue : MailQueue {
 
@@ -25,8 +26,9 @@ class SendMailQueue : MailQueue {
 			pipes.stdin.write("To: " ~ to ~ "\r\n");
 			pipes.stdin.write("From: " ~ message.from ~ "\r\n");
 			pipes.stdin.write("Subject: " ~ message.subject ~ "\r\n");
+			pipes.stdin.write(message.headers.join("\r\n"));
 			pipes.stdin.write("\r\n");
-			pipes.stdin.write(message.textMessage ~ "\r\n");
+			pipes.stdin.write(message.mailBody ~ "\r\n");
 
 			// a single period tells sendmail we are finished
 			pipes.stdin.write(".\r\n");
