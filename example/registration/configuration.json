@@ -1,0 +1,18 @@
+{
+  "paths": {
+    "register": "/register",
+    "addUser": "/register/user",
+    "activation": "/register/activation",
+    "challange": "/register/challenge",
+    "confirmation": "/register/confirmation"
+  },
+
+  "email": {
+    "from": "noreply@demoapp.com",
+    "confirmationSubject": "Confirmation instructions"
+  },
+
+  "serviceName": "Demo App",
+  "location": "http://localhost:8888",
+  "style": "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+}

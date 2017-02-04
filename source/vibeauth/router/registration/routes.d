@@ -54,7 +54,7 @@ class RegistrationRoutes {
 		this.forms = new RegistrationForms(challenge, configuration);
 	}
 
-	void registration(HTTPServerRequest req, HTTPServerResponse res) {
+	void handler(HTTPServerRequest req, HTTPServerResponse res) {
 		try {
 			setAccessControl(res);
 			if(req.method == HTTPMethod.OPTIONS) {
@@ -290,7 +290,7 @@ version(unittest) {
 
 		registration = new RegistrationRoutes(collection, new TestChallenge, mailQueue);
 
-		router.any("*", &registration.registration);
+		router.any("*", &registration.handler);
 		return router;
 	}
 }

@@ -21,21 +21,21 @@ shared static this()
 
 	auto collection = new UserMemmoryCollection(["doStuff"]);
 
-	RegistrationConfiguration configuration;
-	configuration.serviceName = "Demo App";
-	configuration.location = "http://localhost:8888";
-	configuration.style = "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css";
+	auto configurationJson = readText("configuration.json").parseJsonString;
+	configurationJson["email"]["confirmationText"] = readText("emails/registration.txt");
+	configurationJson["email"]["confirmationHtml"] = readText("emails/registration.html");
 
-	configuration.email.confirmationText = readText("emails/registration.txt");
-	configuration.email.confirmationHtml = readText("emails/registration.html");
-
-	configuration.email.writeln;
+	auto configuration = configurationJson.deserializeJson!RegistrationConfiguration;
 
 	MathCaptchaSettings captchaSettings;
 	captchaSettings.fontName = buildNormalizedPath(getcwd, "fonts/warpstorm/WarpStorm.otf");
 
-	auto registration = new RegistrationRoutes(collection, new MathCaptcha(captchaSettings), new SendMailQueue(configuration.email), configuration);
-	router.any("*", &registration.registration);
+	auto registration = new RegistrationRoutes(collection,
+		new MathCaptcha(captchaSettings),
+		new SendMailQueue(configuration.email),
+		configuration);
+
+	router.any("*", &registration.handler);
 
 	listenHTTP(settings, router);
 }
