@@ -22,7 +22,7 @@ interface IMailSender {
 
 interface IMailQueue {
 	void addMessage(Message);
-	void addActivationMessage(UserData data, Token token, string[string] variables);
+	void addActivationMessage(string email, Token token, string[string] variables);
 }
 
 struct Message {
@@ -146,13 +146,13 @@ class MailQueue : IMailQueue {
 		messages ~= message;
 	}
 
-	void addActivationMessage(UserData data, Token token, string[string] variables) {
+	void addActivationMessage(string email, Token token, string[string] variables) {
 		Message message;
 
-		variables["email"] = data.email;
+		variables["email"] = email;
 		variables["token"] = token.name;
 
-		message.to ~= data.email;
+		message.to ~= email;
 		message.from = settings.from;
 		message.subject = settings.confirmationSubject;
 
@@ -197,10 +197,9 @@ unittest {
 	config.confirmationHtml = "html";
 
 	auto mailQueue = new MailQueueMock(config);
-	auto user = UserData();
-	user.email = "user@gmail.com";
+
 	string[string] variables;
-	mailQueue.addActivationMessage(user, Token(), variables);
+	mailQueue.addActivationMessage("user@gmail.com", Token(), variables);
 
 	mailQueue.lastMessage.to[0].should.be.equal("user@gmail.com");
 	mailQueue.lastMessage.from.should.be.equal("someone@service.com");

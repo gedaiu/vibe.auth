@@ -16,6 +16,7 @@ import vibeauth.mail.base;
 import vibeauth.challenges.base;
 import vibeauth.router.accesscontrol;
 import vibeauth.router.registration.request;
+import vibeauth.collection;
 
 struct RegistrationConfigurationPaths {
 	string register = "/register";
@@ -69,6 +70,10 @@ class RegistrationRoutes {
 
 			if(req.method == HTTPMethod.GET && req.path == configuration.paths.activation) {
 				activation(req, res);
+			}
+
+			if(req.method == HTTPMethod.POST && req.path == configuration.paths.activation) {
+				newActivation(req, res);
 			}
 
 			if(req.method == HTTPMethod.GET && req.path == configuration.paths.challange) {
@@ -149,6 +154,30 @@ class RegistrationRoutes {
 		return variables;
 	}
 
+	private void newActivation(HTTPServerRequest req, HTTPServerResponse res) {
+		auto requestData = const RequestUserData(req);
+
+		try {
+			auto user = collection[requestData.email];
+			auto tokens = user.getTokensByType("activation");
+			if(!tokens.empty) {
+				user.revoke(tokens.front.name);
+			}
+
+			auto token = collection.createToken(user.email, Clock.currTime + 3600.seconds, [], "activation");
+			mailQueue.addActivationMessage(user.email, token, activationVariables);
+		} catch (ItemNotFoundException e) {
+			version(unittest) {{}} else { debug e.writeln; }
+		}
+
+		auto const style = configuration.style;
+
+		auto const confirmation = configuration.paths.confirmation;
+
+		res.statusCode = 200;
+		res.render!("register/success.dt", style, confirmation);
+	}
+
 	private void addUser(HTTPServerRequest req, HTTPServerResponse res) {
 		immutable bool isJson = req.contentType.toLower.indexOf("json") > -1;
 		auto requestData = const RequestUserData(req);
@@ -178,7 +207,7 @@ class RegistrationRoutes {
 
 		collection.createUser(data, requestData.password);
 		auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
-		mailQueue.addActivationMessage(data, token, activationVariables);
+		mailQueue.addActivationMessage(requestData.email, token, activationVariables);
 
 		res.statusCode = isJson ? 201 : 200;
 
@@ -343,6 +372,40 @@ unittest {
 		.end((Response response) => {
 			collection["user@gmail.com"].isValidToken(activationToken.name).should.equal(true);
 			collection["user@gmail.com"].isActive.should.equal(false);
+		});
+}
+
+@("POST with valid email should send a new token")
+unittest {
+	auto router = testRouter;
+
+	collection["user@gmail.com"].isActive.should.equal(false);
+
+	router
+		.request
+		.post("/register/activation?email=user@gmail.com")
+		.expectStatusCode(200)
+		.end((Response response) => {
+			string activationLink = "http://localhost/register/activation?email=user@gmail.com&token="
+				~ collection["user@gmail.com"].getTokensByType("activation").front.name;
+
+			mailQueue.messages.length.should.equal(1);
+			mailQueue.messages[0].textMessage.should.contain(activationLink);
+			mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ activationLink ~ `">`);
+		});
+}
+
+
+@("POST with invalid email should respond with 200 page")
+unittest {
+	auto router = testRouter;
+
+	router
+		.request
+		.post("/register/activation?email=ola.com")
+		.expectStatusCode(200)
+		.end((Response response) => {
+			mailQueue.messages.length.should.equal(0);
 		});
 }
 
