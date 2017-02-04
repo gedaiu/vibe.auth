@@ -12,8 +12,8 @@ import vibeauth.token;
 struct RegistrationConfigurationEmail {
 	string from = "noreply@service.com";
 	string confirmationSubject = "Confirmation instructions";
-	string confirmationText = "[confirmationLink]";
-	string confirmationHtml = "<a href=\"[confirmationLink]\">click here</a>";
+	string confirmationText = "[location][activation]?email=[email]&token=[token]";
+	string confirmationHtml = "<a href=\"[location][activation]?email=[email]&token=[token]\">click here</a>";
 }
 
 interface IMailSender {
@@ -22,7 +22,7 @@ interface IMailSender {
 
 interface IMailQueue {
 	void addMessage(Message);
-	void addActivationMessage(UserData data, Token token);
+	void addActivationMessage(UserData data, Token token, string[string] variables);
 }
 
 struct Message {
@@ -146,18 +146,30 @@ class MailQueue : IMailQueue {
 		messages ~= message;
 	}
 
-	void addActivationMessage(UserData data, Token token) {
+	void addActivationMessage(UserData data, Token token, string[string] variables) {
 		Message message;
 
-		string link = "http://localhost/register/activation?email=" ~ data.email ~ "&token=" ~ token.name;
+		variables["email"] = data.email;
+		variables["token"] = token.name;
 
 		message.to ~= data.email;
 		message.from = settings.from;
 		message.subject = settings.confirmationSubject;
-		message.textMessage = settings.confirmationText.dup.replace("[confirmationLink]", link);
-		message.htmlMessage = settings.confirmationHtml.dup.replace("[confirmationLink]", link);
+
+		message.textMessage = replaceVariables(settings.confirmationText, variables);
+		message.htmlMessage = replaceVariables(settings.confirmationHtml, variables);
 
 		addMessage(message);
+	}
+
+	string replaceVariables(const(string) text, string[string] variables) {
+		string data = text.dup;
+
+		foreach(string key, value; variables) {
+			data = data.replace("[" ~ key ~ "]", value);
+		}
+
+		return data;
 	}
 }
 

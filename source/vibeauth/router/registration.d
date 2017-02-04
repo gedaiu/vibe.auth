@@ -178,6 +178,16 @@ class RegistrationRoutes {
 		return query;
 	}
 
+	private string[string] activationVariables() {
+		string[string] variables;
+
+		variables["activation"] = configuration.paths.activation;
+		variables["serviceName"] = configuration.serviceName;
+		variables["location"] = configuration.location;
+
+		return variables;
+	}
+
 	private void addHtmlUser(HTTPServerRequest req, HTTPServerResponse res) {
 		auto values = getAddUserData(req);
 
@@ -219,7 +229,7 @@ class RegistrationRoutes {
 
 		collection.createUser(data, values["password"]);
 		auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
-		mailQueue.addActivationMessage(data, token);
+		mailQueue.addActivationMessage(data, token, activationVariables);
 
 		res.statusCode = 200;
 
@@ -276,7 +286,7 @@ class RegistrationRoutes {
 
 		collection.createUser(data, values["password"]);
 		auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
-		mailQueue.addActivationMessage(data, token);
+		mailQueue.addActivationMessage(data, token, activationVariables);
 
 		res.statusCode = 200;
 		res.writeVoidBody;
