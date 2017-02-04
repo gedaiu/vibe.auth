@@ -192,6 +192,14 @@ class RegistrationRoutes {
 			if(!challenge.validate(req, res, requestData.response)) {
 				throw new Exception("Invalid challenge `response`");
 			}
+
+			if(collection.contains(requestData.email)) {
+				throw new Exception("Email has already been taken");
+			}
+
+			if(collection.contains(requestData.username)) {
+				throw new Exception("Username has already been taken");
+			}
 		} catch (Exception e) {
 			if(isJson) {
 				res.statusCode = 400;
@@ -368,8 +376,32 @@ unittest {
 		});
 }
 
-
 @("POST with and existing email should fail")
+unittest {
+	auto router = testRouter;
+
+	auto data = `{
+		"name": "test",
+		"username": "test",
+		"email": "test_user@gmail.com",
+		"password": "12345678910",
+		"response": "123"
+	}`.parseJsonString;
+
+	router
+		.request
+		.header("Content-Type", "application/json")
+		.post("/register/user")
+		.send(data)
+		.expectStatusCode(400)
+		.end((Response response) => {
+			response.bodyJson.keys.should.contain("error");
+			response.bodyJson["error"].keys.should.contain("message");
+		});
+}
+
+
+@("POST with and existing username should fail")
 unittest {
 	auto router = testRouter;
 
@@ -377,7 +409,7 @@ unittest {
 		"name": "test",
 		"username": "test_user",
 		"email": "user@gmail.com",
-		"password": "123456789",
+		"password": "12345678910",
 		"response": "123"
 	}`.parseJsonString;
 
