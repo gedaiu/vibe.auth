@@ -45,7 +45,8 @@ class RegistrationRoutes {
 		RegistrationForms forms;
 	}
 
-	this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue, const RegistrationConfiguration configuration = RegistrationConfiguration()) {
+	this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue,
+		const RegistrationConfiguration configuration = RegistrationConfiguration()) {
 		this.collection = collection;
 		this.challenge = challenge;
 		this.mailQueue = mailQueue;
@@ -319,6 +320,55 @@ unittest {
 		});
 }
 
+@("POST empty password should not create the user")
+unittest {
+	auto router = testRouter;
+
+	auto data = `{
+		"name": "test",
+		"username": "test_user",
+		"email": "test@test.com",
+		"password": "",
+		"response": "123"
+	}`.parseJsonString;
+
+	router
+		.request
+		.header("Content-Type", "application/json")
+		.post("/register/user")
+		.send(data)
+		.expectStatusCode(400)
+		.end((Response response) => {
+			response.bodyJson.keys.should.contain("error");
+			response.bodyJson["error"].keys.should.contain("message");
+		});
+}
+
+
+@("POST short password should not create the user")
+unittest {
+	auto router = testRouter;
+
+	auto data = `{
+		"name": "test",
+		"username": "test_user",
+		"email": "test@test.com",
+		"password": "123456789",
+		"response": "123"
+	}`.parseJsonString;
+
+	router
+		.request
+		.header("Content-Type", "application/json")
+		.post("/register/user")
+		.send(data)
+		.expectStatusCode(400)
+		.end((Response response) => {
+			response.bodyJson.keys.should.contain("error");
+			response.bodyJson["error"].keys.should.contain("message");
+		});
+}
+
 @("POST valid data should send a validation email")
 unittest {
 	auto router = testRouter;
@@ -413,7 +463,6 @@ unittest {
 			mailQueue.messages.length.should.equal(0);
 		});
 }
-
 
 @("POST with invalid email should respond with 200 page")
 unittest {

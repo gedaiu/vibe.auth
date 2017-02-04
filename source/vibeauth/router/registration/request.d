@@ -91,5 +91,13 @@ const struct RequestUserData {
 		if(missingFields.length > 1) {
 			throw new Exception("`" ~ missingFields.join(",") ~ "` is missing");
 		}
+
+		if(password == "") {
+			throw new Exception("The `password` is empty");
+		}
+
+		if(password.length < 10) {
+			throw new Exception("The `password` should have at least 10 chars");
+		}
 	}
 }
