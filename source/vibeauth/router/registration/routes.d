@@ -159,13 +159,16 @@ class RegistrationRoutes {
 
 		try {
 			auto user = collection[requestData.email];
-			auto tokens = user.getTokensByType("activation");
-			if(!tokens.empty) {
-				user.revoke(tokens.front.name);
-			}
 
-			auto token = collection.createToken(user.email, Clock.currTime + 3600.seconds, [], "activation");
-			mailQueue.addActivationMessage(user.email, token, activationVariables);
+			if(!user.isActive) {
+				auto tokens = user.getTokensByType("activation");
+				if(!tokens.empty) {
+					user.revoke(tokens.front.name);
+				}
+
+				auto token = collection.createToken(user.email, Clock.currTime + 3600.seconds, [], "activation");
+				mailQueue.addActivationMessage(user.email, token, activationVariables);
+			}
 		} catch (ItemNotFoundException e) {
 			version(unittest) {{}} else { debug e.writeln; }
 		}
@@ -375,7 +378,7 @@ unittest {
 		});
 }
 
-@("POST with valid email should send a new token")
+@("POST with valid email should send a new token to the inactive user")
 unittest {
 	auto router = testRouter;
 
@@ -392,6 +395,22 @@ unittest {
 			mailQueue.messages.length.should.equal(1);
 			mailQueue.messages[0].textMessage.should.contain(activationLink);
 			mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ activationLink ~ `">`);
+		});
+}
+
+
+@("POST with valid email should not send a new token to the active user")
+unittest {
+	auto router = testRouter;
+
+	collection["user@gmail.com"].isActive(true);
+
+	router
+		.request
+		.post("/register/activation?email=user@gmail.com")
+		.expectStatusCode(200)
+		.end((Response response) => {
+			mailQueue.messages.length.should.equal(0);
 		});
 }
 
