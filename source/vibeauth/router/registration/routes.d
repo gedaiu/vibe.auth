@@ -344,7 +344,6 @@ unittest {
 		});
 }
 
-
 @("POST short password should not create the user")
 unittest {
 	auto router = testRouter;
@@ -353,6 +352,31 @@ unittest {
 		"name": "test",
 		"username": "test_user",
 		"email": "test@test.com",
+		"password": "123456789",
+		"response": "123"
+	}`.parseJsonString;
+
+	router
+		.request
+		.header("Content-Type", "application/json")
+		.post("/register/user")
+		.send(data)
+		.expectStatusCode(400)
+		.end((Response response) => {
+			response.bodyJson.keys.should.contain("error");
+			response.bodyJson["error"].keys.should.contain("message");
+		});
+}
+
+
+@("POST with and existing email should fail")
+unittest {
+	auto router = testRouter;
+
+	auto data = `{
+		"name": "test",
+		"username": "test_user",
+		"email": "user@gmail.com",
 		"password": "123456789",
 		"response": "123"
 	}`.parseJsonString;
