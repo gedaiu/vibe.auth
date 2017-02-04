@@ -36,7 +36,7 @@ class RegistrationForms {
 		auto const addUserPath = configuration.paths.addUser;
 		auto const userData = const RequestUserData(req);
 
-		res.render!("registerForm.dt", style, challenge, addUserPath, userData);
+		res.render!("register/form.dt", style, challenge, addUserPath, userData);
 	}
 
 	void confirmationForm(HTTPServerRequest req, HTTPServerResponse res) {
@@ -44,6 +44,6 @@ class RegistrationForms {
 		auto const style = configuration.style;
 		auto const activation = configuration.paths.activation;
 
-		res.render!("registerConfirmation.dt", style, activation);
+		res.render!("register/confirmation.dt", style, activation);
 	}
 }

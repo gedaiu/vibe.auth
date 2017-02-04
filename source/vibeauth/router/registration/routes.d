@@ -83,7 +83,7 @@ class RegistrationRoutes {
 			version(unittest) {} else debug stderr.writeln(e);
 
 			if(!res.headerWritten) {
-				res.writeJsonBody([ "error": e.msg ], 500);
+				res.writeJsonBody([ "error": ["message": e.msg] ], 500);
 			}
 		}
 	}
@@ -188,7 +188,7 @@ class RegistrationRoutes {
 			auto const style = configuration.style;
 			auto const confirmation = configuration.paths.confirmation;
 
-			res.render!("registerSuccess.dt", style, confirmation);
+			res.render!("register/success.dt", style, confirmation);
 		}
 	}
 }
