@@ -199,7 +199,8 @@ unittest {
 	auto mailQueue = new MailQueueMock(config);
 	auto user = UserData();
 	user.email = "user@gmail.com";
-	mailQueue.addActivationMessage(user, Token());
+	string[string] variables;
+	mailQueue.addActivationMessage(user, Token(), variables);
 
 	mailQueue.lastMessage.to[0].should.be.equal("user@gmail.com");
 	mailQueue.lastMessage.from.should.be.equal("someone@service.com");

@@ -1,0 +1,18 @@
+doctype html
+html
+head
+	title Login
+	link(rel="stylesheet", href="#{style}", type="text/css")
+body
+	div.container
+		div.row
+			div.col-sm-4
+				h1 Resend confirmation instructions
+
+				form(method="post", action="#{activation}")
+
+					div.form-group
+						label Email
+						input.form-control(placeholder="Where do you want to be contacted?", type="email", name="email")
+
+					button.btn.btn-success(type="submit") Resend

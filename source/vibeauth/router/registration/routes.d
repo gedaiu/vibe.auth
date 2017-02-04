@@ -1,4 +1,4 @@
-module vibeauth.router.registration;
+module vibeauth.router.registration.routes;
 
 import std.stdio;
 import std.datetime;
@@ -10,10 +10,12 @@ import vibe.http.router;
 import vibe.data.json;
 import vibe.inet.url;
 
+import vibeauth.router.registration.forms;
 import vibeauth.users;
-import vibeauth.challenges.base;
 import vibeauth.mail.base;
+import vibeauth.challenges.base;
 import vibeauth.router.accesscontrol;
+import vibeauth.router.registration.request;
 
 struct RegistrationConfigurationPaths {
 	string register = "/register";
@@ -39,6 +41,7 @@ class RegistrationRoutes {
 		IChallenge challenge;
 		IMailQueue mailQueue;
 		const RegistrationConfiguration configuration;
+		RegistrationForms forms;
 	}
 
 	this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue, const RegistrationConfiguration configuration = RegistrationConfiguration()) {
@@ -46,6 +49,7 @@ class RegistrationRoutes {
 		this.challenge = challenge;
 		this.mailQueue = mailQueue;
 		this.configuration = configuration;
+		this.forms = new RegistrationForms(challenge, configuration);
 	}
 
 	void registration(HTTPServerRequest req, HTTPServerResponse res) {
@@ -56,15 +60,11 @@ class RegistrationRoutes {
 			}
 
 			if(req.method == HTTPMethod.GET && req.path == configuration.paths.register) {
-				registerForm(req, res);
+				forms.registerForm(req, res);
 			}
 
 			if(req.method == HTTPMethod.POST && req.path == configuration.paths.addUser) {
-				if(req.contentType.toLower.indexOf("json") != -1) {
-					addJsonUser(req, res);
-				} else {
-					addHtmlUser(req, res);
-				}
+				addUser(req, res);
 			}
 
 			if(req.method == HTTPMethod.GET && req.path == configuration.paths.activation) {
@@ -75,6 +75,10 @@ class RegistrationRoutes {
 				challenge.generate(req, res);
 			}
 
+			if(req.method == HTTPMethod.GET && req.path == configuration.paths.confirmation) {
+				forms.confirmationForm(req, res);
+			}
+
 		} catch(Exception e) {
 			version(unittest) {} else debug stderr.writeln(e);
 
@@ -82,21 +86,6 @@ class RegistrationRoutes {
 				res.writeJsonBody([ "error": e.msg ], 500);
 			}
 		}
-	}
-
-	private void registerForm(HTTPServerRequest req, HTTPServerResponse res) {
-		auto const style = configuration.style;
-		auto const challenge = this.challenge.getTemplate(configuration.paths.challange);
-		auto const addUserPath = configuration.paths.addUser;
-		auto const values = getAddUserData(req);
-
-		auto const name = "name" in values ? values["name"] : "";
-		auto const username = "username" in values ? values["username"] : "";
-		auto const email = "email" in values ? values["email"] : "";
-		auto const error = "error" in req.query ? req.query["error"] : "";
-
-		res.render!("registerForm.dt", style, challenge, addUserPath,
-			name, username, email, error);
 	}
 
 	private void activation(HTTPServerRequest req, HTTPServerResponse res) {
@@ -133,47 +122,19 @@ class RegistrationRoutes {
 		res.writeVoidBody;
 	}
 
-	string[string] getAddUserData(HTTPServerRequest req) {
-		string[string] data;
-
-		if(req.json.type == Json.Type.object) {
-			foreach(string key, value; req.json) {
-				data[key] = value.to!string;
-			}
-		}
-
-		foreach(string key, value; req.query) {
-			value = value.strip;
-
-			if(value.length > 0) {
-				data[key] = value;
-			}
-		}
-
-		foreach(string key, value; req.form) {
-			value = value.strip;
-
-			if(value.length > 0) {
-				data[key] = value;
-			}
-		}
-
-		return data;
-	}
-
-	private string queryUserData(string[string] values, string error = "") {
+	private string queryUserData(const RequestUserData userData, string error = "") {
 		string query = "?error=" ~ encodeComponent(error);
 
-		if("name" in values) {
-			query ~= "&name=" ~ encodeComponent(values["name"]);
+		if(userData.name != "") {
+			query ~= "&name=" ~ encodeComponent(userData.name);
 		}
 
-		if("username" in values) {
-			query ~= "&username=" ~ encodeComponent(values["username"]);
+		if(userData.username != "") {
+			query ~= "&username=" ~ encodeComponent(userData.username);
 		}
 
-		if("email" in values) {
-			query ~= "&email=" ~ encodeComponent(values["email"]);
+		if(userData.email != "") {
+			query ~= "&email=" ~ encodeComponent(userData.email);
 		}
 		return query;
 	}
@@ -188,108 +149,47 @@ class RegistrationRoutes {
 		return variables;
 	}
 
-	private void addHtmlUser(HTTPServerRequest req, HTTPServerResponse res) {
-		auto values = getAddUserData(req);
+	private void addUser(HTTPServerRequest req, HTTPServerResponse res) {
+		immutable bool isJson = req.contentType.toLower.indexOf("json") > -1;
+		auto requestData = const RequestUserData(req);
 
-		if("name" !in values) {
-			res.redirect(configuration.paths.register ~ queryUserData(values, "`name` is missing"));
-			return;
-		}
+		try {
+			requestData.validateUser;
 
-		if("username" !in values) {
-			res.redirect(configuration.paths.register ~ queryUserData(values, "`username` is missing"));
-			return;
-		}
+			if(!challenge.validate(req, res, requestData.response)) {
+				throw new Exception("Invalid challenge `response`");
+			}
+		} catch (Exception e) {
+			if(isJson) {
+				res.statusCode = 400;
+				res.writeJsonBody(["error": ["message": e.msg ]]);
+			} else {
+				res.redirect(configuration.paths.register ~ queryUserData(requestData, e.msg));
+			}
 
-		if("email" !in values) {
-			res.redirect(configuration.paths.register ~ queryUserData(values, "`email` is missing"));
-			return;
-		}
-
-		if("password" !in values) {
-			res.redirect(configuration.paths.register ~ queryUserData(values, "`password` is missing"));
-			return;
-		}
-
-		if("response" !in values) {
-			res.redirect(configuration.paths.register ~ queryUserData(values, "`response` is missing"));
-			return;
-		}
-
-		if(!challenge.validate(req, res, values["response"])) {
-			res.redirect(configuration.paths.register ~ queryUserData(values, "Invalid challenge `response`"));
 			return;
 		}
 
 		UserData data;
-		data.name = values["name"];
-		data.username = values["username"];
-		data.email = values["email"];
+		data.name = requestData.name;
+		data.username = requestData.username;
+		data.email = requestData.email;
 		data.isActive = false;
 
-		collection.createUser(data, values["password"]);
+		collection.createUser(data, requestData.password);
 		auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
 		mailQueue.addActivationMessage(data, token, activationVariables);
 
-		res.statusCode = 200;
+		res.statusCode = isJson ? 201 : 200;
 
-		auto const style = configuration.style;
-		auto const confirmation = configuration.paths.confirmation;
+		if(isJson) {
+			res.writeVoidBody;
+		} else {
+			auto const style = configuration.style;
+			auto const confirmation = configuration.paths.confirmation;
 
-		res.render!("registerSuccess.dt", style, confirmation);
-	}
-
-	private void addJsonUser(HTTPServerRequest req, HTTPServerResponse res) {
-		auto values = getAddUserData(req);
-
-		if("name" !in values) {
-			res.statusCode = 400;
-			res.writeJsonBody(["error": ["message": "`name` is missing"]]);
-			return;
+			res.render!("registerSuccess.dt", style, confirmation);
 		}
-
-		if("username" !in values) {
-			res.statusCode = 400;
-			res.writeJsonBody(["error": ["message": "`username` is missing"]]);
-			return;
-		}
-
-		if("email" !in values) {
-			res.statusCode = 400;
-			res.writeJsonBody(["error": ["message": "`email` is missing"]]);
-			return;
-		}
-
-		if("password" !in values) {
-			res.statusCode = 400;
-			res.writeJsonBody(["error": ["message": "`password` is missing"]]);
-			return;
-		}
-
-		if("response" !in values) {
-			res.statusCode = 400;
-			res.writeJsonBody(["error": ["message": "`response` is missing"]]);
-			return;
-		}
-
-		if(!challenge.validate(req, res, values["response"])) {
-			res.statusCode = 400;
-			res.writeJsonBody(["error": ["message": "Invalid challenge `response`"]]);
-			return;
-		}
-
-		UserData data;
-		data.name = values["name"];
-		data.username = values["username"];
-		data.email = values["email"];
-		data.isActive = false;
-
-		collection.createUser(data, values["password"]);
-		auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
-		mailQueue.addActivationMessage(data, token, activationVariables);
-
-		res.statusCode = 200;
-		res.writeVoidBody;
 	}
 }
 
