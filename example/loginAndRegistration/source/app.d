@@ -9,7 +9,7 @@ import vibeauth.router.registration.routes;
 import vibeauth.router.login;
 import vibeauth.mail.sendmail;
 import vibeauth.token;
-import vibeauth.request;
+import vibeauth.router.request;
 
 import vibe.d;
 
