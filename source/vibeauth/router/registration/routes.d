@@ -15,7 +15,7 @@ import vibeauth.users;
 import vibeauth.mail.base;
 import vibeauth.challenges.base;
 import vibeauth.router.accesscontrol;
-import vibeauth.router.registration.request;
+import vibeauth.router.request;
 import vibeauth.collection;
 import vibeauth.templatehelper;
 

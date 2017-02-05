@@ -1,7 +1,9 @@
-<form method="post" action="#{loginCheck}">
+#{error}
+
+<form method="post" action="#{loginPath}">
 	<div class="form-group">
 		<label>User name</label>
-		<input class="form-control" placeholder="Enter Login" type="text" name="email"/>
+		<input class="form-control" placeholder="Enter Login" type="text" name="username" value="#{email}"/>
 	</div>
 
 	<div class="form-group">

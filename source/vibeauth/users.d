@@ -234,7 +234,6 @@ class UserMemmoryCollection : UserCollection {
 	long index = 0;
 	immutable(string[]) accessList;
 
-
 	this(immutable(string[]) accessList, User[] list = []) {
 		this.accessList = accessList;
 		super(list);

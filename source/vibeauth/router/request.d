@@ -1,4 +1,4 @@
-module vibeauth.router.registration.request;
+module vibeauth.router.request;
 
 import vibeauth.challenges.base;
 
@@ -46,7 +46,26 @@ const struct RequestUserData {
 	}
 
 	Json toJson() {
-		return data.serializeToJson;
+		Json response = data.serializeToJson;
+
+		if("error" !in response) {
+			response["error"] = "";
+		}
+
+		if("name" !in response) {
+			response["name"] = "";
+		}
+
+		if("username" !in response) {
+			response["username"] = "";
+		}
+
+		if("email" !in response) {
+			response["email"] = "";
+		}
+
+
+		return response;
 	}
 
 	string[] getMissingFields(string[] fields) const {
