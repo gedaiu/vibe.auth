@@ -33,7 +33,8 @@ shared static this()
 	auto registration = new RegistrationRoutes(collection,
 		new MathCaptcha(captchaSettings),
 		new SendMailQueue(configuration.email),
-		configuration);
+		configurat
+		ion);
 
 	router.any("*", &registration.handler);
 

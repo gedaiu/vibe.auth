@@ -17,6 +17,7 @@ import vibeauth.challenges.base;
 import vibeauth.router.accesscontrol;
 import vibeauth.router.registration.request;
 import vibeauth.collection;
+import vibeauth.templatehelper;
 
 struct RegistrationConfigurationPaths {
 	string register = "/register";
@@ -43,6 +44,8 @@ class RegistrationRoutes {
 		IMailQueue mailQueue;
 		const RegistrationConfiguration configuration;
 		RegistrationForms forms;
+
+		immutable string successPage;
 	}
 
 	this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue,
@@ -52,6 +55,15 @@ class RegistrationRoutes {
 		this.mailQueue = mailQueue;
 		this.configuration = configuration;
 		this.forms = new RegistrationForms(challenge, configuration);
+
+		this.successPage = prepareSuccessPage;
+	}
+
+	string prepareSuccessPage() {
+		const defaultDestination = import("register/successTemplate.html");
+		const message = import("register/success.html");
+
+		return defaultDestination.replace("#{body}", message).replaceVariables(configuration.serializeToJson);
 	}
 
 	void handler(HTTPServerRequest req, HTTPServerResponse res) {
@@ -174,12 +186,8 @@ class RegistrationRoutes {
 			version(unittest) {{}} else { debug e.writeln; }
 		}
 
-		auto const style = configuration.style;
-
-		auto const confirmation = configuration.paths.confirmation;
-
 		res.statusCode = 200;
-		res.render!("register/success.dt", style, confirmation);
+		res.writeBody(successPage, "text/html");
 	}
 
 	private void addUser(HTTPServerRequest req, HTTPServerResponse res) {
@@ -226,10 +234,8 @@ class RegistrationRoutes {
 		if(isJson) {
 			res.writeVoidBody;
 		} else {
-			auto const style = configuration.style;
-			auto const confirmation = configuration.paths.confirmation;
-
-			res.render!("register/success.dt", style, confirmation);
+			res.statusCode = 200;
+			res.writeBody(successPage, "text/html");
 		}
 	}
 }

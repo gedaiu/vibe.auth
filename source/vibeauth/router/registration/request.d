@@ -45,6 +45,10 @@ const struct RequestUserData {
 		return field in data ? data[field] : "";
 	}
 
+	Json toJson() {
+		return data.serializeToJson;
+	}
+
 	string[] getMissingFields(string[] fields) const {
 		string[] missingFields;
 
