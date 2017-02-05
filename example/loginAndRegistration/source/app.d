@@ -9,6 +9,7 @@ import vibeauth.router.registration.routes;
 import vibeauth.router.login;
 import vibeauth.mail.sendmail;
 import vibeauth.token;
+import vibeauth.request;
 
 import vibe.d;
 
@@ -19,16 +20,7 @@ UserMemmoryCollection collection;
 void handler(HTTPServerRequest req, HTTPServerResponse res) {
 	const auto style = registerConfiguration.style;
 
-	string token = req.cookies.get("auth-token");
-	User user;
-
-	if(token !is null) {
-		try {
-			user = collection.byToken(token);
-		} catch(Exception) {
-			res.setCookie("auth-token", null);
-		}
-	}
+	User user = req.user(collection);
 
 	const bool isAuth = user !is null;
 

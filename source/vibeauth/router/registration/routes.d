@@ -25,6 +25,7 @@ struct RegistrationConfigurationPaths {
 	string activation = "/register/activation";
 	string challange = "/register/challenge";
 	string confirmation = "/register/confirmation";
+	string activationRedirect = "/";
 }
 
 struct RegistrationConfiguration {
@@ -136,8 +137,7 @@ class RegistrationRoutes {
 		user.isActive = true;
 		user.getTokensByType("activation").each!(a => user.revoke(a.name));
 
-		res.statusCode = 200;
-		res.writeVoidBody;
+		res.redirect(configuration.paths.activationRedirect);
 	}
 
 	private string queryUserData(const RequestUserData userData, string error = "") {

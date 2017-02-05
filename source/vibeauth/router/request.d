@@ -1,6 +1,6 @@
 module vibeauth.router.request;
 
-import vibeauth.challenges.base;
+import vibeauth.users;
 
 import vibe.http.router;
 import vibe.data.json;
@@ -123,4 +123,21 @@ const struct RequestUserData {
 			throw new Exception("The `password` should have at least 10 chars");
 		}
 	}
+}
+
+
+User user(HTTPServerRequest req, UserCollection collection) {
+	string token = req.cookies.get("auth-token");
+
+	User user;
+
+	if(token !is null) {
+		try {
+			user = collection.byToken(token);
+		} catch(Exception) {
+			return null;
+		}
+	}
+
+	return user;
 }
