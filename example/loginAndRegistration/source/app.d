@@ -21,7 +21,6 @@ void handler(HTTPServerRequest req, HTTPServerResponse res) {
 	const auto style = registerConfiguration.style;
 
 	User user = req.user(collection);
-	const bool isAuth = user !is null;
 
 	res.render!("index.dt", style, user);
 }
