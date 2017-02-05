@@ -132,6 +132,10 @@ class User {
 			return userData.tokens.filter!(a => a.name == token).front.scopes.to!(string[]);
 		}
 
+		string[] getScopes() {
+			return userData.scopes.dup;
+		}
+
 		bool can(string access)() {
 			return userData.scopes.canFind(access);
 		}

@@ -14,10 +14,25 @@ import vibe.d;
 
 const RegistrationConfiguration registerConfiguration;
 
+UserMemmoryCollection collection;
+
 void handler(HTTPServerRequest req, HTTPServerResponse res) {
 	const auto style = registerConfiguration.style;
-	const auto isAuth = false;
-	res.render!("index.dt", style, isAuth);
+
+	string token = req.cookies.get("auth-token");
+	User user;
+
+	if(token !is null) {
+		try {
+			user = collection.byToken(token);
+		} catch(Exception) {
+			res.setCookie("auth-token", null);
+		}
+	}
+
+	const bool isAuth = user !is null;
+
+	res.render!("index.dt", style, isAuth, user);
 }
 
 shared static this()
@@ -28,7 +43,7 @@ shared static this()
 
 	auto router = new URLRouter();
 
-	auto collection = new UserMemmoryCollection(["doStuff"]);
+	collection = new UserMemmoryCollection(["doStuff"]);
 
 	auto configurationJson = readText("configuration.json").parseJsonString;
 	configurationJson["email"]["confirmationText"] = readText("emails/registration.txt");

@@ -80,7 +80,6 @@ class MathCaptcha : IChallenge {
 	bool validate(HTTPServerRequest req, HTTPServerResponse res, string response) {
     clearExpired();
 
-    req.cookies.writeln;
     if("mathcaptcha" !in req.cookies) {
       return false;
     }

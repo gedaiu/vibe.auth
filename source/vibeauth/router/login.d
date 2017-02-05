@@ -21,6 +21,8 @@ struct LoginConfiguration {
 	string loginPath = "/login/check";
 	string redirectPath = "/";
 
+	ulong loginTimeoutSeconds = 86_400;
+
 	string style = "";
 }
 
@@ -100,6 +102,14 @@ class LoginRoutes {
 			return;
 		}
 
+		auto scopes = userCollection[requestData.username].getScopes;
+		auto expiration = Clock.currTime + configuration.loginTimeoutSeconds.seconds;
+
+		auto token = userCollection[requestData.username].createToken(expiration, scopes, "webLogin");
+
+		res.setCookie("auth-token", token.name);
+		res.cookies["auth-token"].maxAge = configuration.loginTimeoutSeconds;
+
 		res.redirect(configuration.redirectPath);
 	}
 
@@ -149,7 +159,10 @@ unittest {
 		.send(["username": "test", "password": "password"])
 		.expectStatusCode(302)
 		.expectHeader("Location", "/")
-		.end();
+		.expectHeaderContains("Set-Cookie", "auth-token=")
+		.end((Response res) => {
+			res.headers["Set-Cookie"].should.contain(user.getTokensByType("webLogin").front.name);
+		});
 }
 
 @("Login with valid email and password should redirect to root page")
