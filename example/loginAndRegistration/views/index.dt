@@ -6,9 +6,9 @@ head
 body
 	div.container
 		h1 Demo App
-		- if(isAuth)
+		- if(user !is null)
 			p welcome,
 				b  #{user.name}
 
-		- if(!isAuth)
+		- if(user is null)
 			a(href="/login") please login

@@ -4,7 +4,8 @@
     "addUser": "/register/user",
     "activation": "/register/activation",
     "challange": "/register/challenge",
-    "confirmation": "/register/confirmation"
+    "confirmation": "/register/confirmation",
+    "activationRedirect": "/"
   },
 
   "email": {
