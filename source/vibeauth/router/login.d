@@ -5,7 +5,7 @@ import vibe.data.json;
 import vibe.inet.url;
 
 import std.algorithm, std.base64, std.string, std.stdio, std.conv, std.array;
-import std.datetime, std.random, std.uri;
+import std.datetime, std.random, std.uri, std.file;
 import vibe.core.core;
 
 import vibeauth.users;
@@ -20,6 +20,8 @@ struct LoginConfiguration {
 	string formPath = "/login";
 	string loginPath = "/login/check";
 	string redirectPath = "/";
+
+	string loginTemplate;
 
 	ulong loginTimeoutSeconds = 86_400;
 
@@ -43,10 +45,14 @@ class LoginRoutes {
 	}
 
 	string prepareLoginTemplate() {
-		const defaultDestination = import("login/template.html");
+		string destination = import("login/template.html");
 		const form = import("login/form.html");
 
-		return defaultDestination.replace("#{body}", form).replaceVariables(configuration.serializeToJson);
+		if(configuration.loginTemplate != "") {
+			destination = readText(configuration.loginTemplate);
+		}
+
+		return destination.replace("#{body}", form).replaceVariables(configuration.serializeToJson);
 	}
 
 	void handler(HTTPServerRequest req, HTTPServerResponse res) {

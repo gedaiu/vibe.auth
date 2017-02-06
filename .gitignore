@@ -9,3 +9,4 @@ libuser-access-control.a
 libvibe-auth.a
 oauth-example
 registration-example
+login-and-registration-example

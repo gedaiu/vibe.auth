@@ -1,0 +1,29 @@
+body {
+  margin-top: 60px;
+}
+
+.navbar .container-fluid {
+  text-align: center;
+}
+
+.navbar-header {
+  width: 100%;
+}
+
+.navbar-default {
+  background-color: #fff;
+}
+
+.logo {
+  width: 49px;
+}
+
+.body-container {
+  border: 1px solid #ddd;
+  border-top: 0;
+  padding: 20px;
+}
+
+.auth-tabs {
+  margin-top: 40px;
+}

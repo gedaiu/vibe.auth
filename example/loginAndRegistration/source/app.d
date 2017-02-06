@@ -50,13 +50,16 @@ shared static this()
 		registerConfiguration);
 
 	LoginConfiguration loginConfiguration;
+	loginConfiguration.loginTemplate = "views/loginTemplate.html";
 	loginConfiguration.style = registerConfiguration.style;
 
 	auto loginRoutes = new LoginRoutes(collection, loginConfiguration);
 
-	router.any("*", &registrationRoutes.handler);
-	router.any("*", &loginRoutes.handler);
-	router.any("*", &handler);
+	router
+		.get("*", serveStaticFiles("./public/"))
+		.any("*", &registrationRoutes.handler)
+		.any("*", &loginRoutes.handler)
+		.any("*", &handler);
 
 	listenHTTP(settings, router);
 }

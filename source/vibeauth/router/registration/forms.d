@@ -5,6 +5,7 @@ import std.datetime;
 import std.algorithm;
 import std.string;
 import std.uri;
+import std.file;
 
 import vibe.http.router;
 import vibe.data.json;
@@ -29,6 +30,7 @@ class RegistrationForms {
 		immutable {
 			string confirmationPage;
 			string formTemplate;
+			string successPage;
 		}
 	}
 
@@ -38,20 +40,40 @@ class RegistrationForms {
 
 		this.formTemplate = prepareFormTemplate;
 		this.confirmationPage = prepareConfirmationPage;
+		this.successPage = prepareSuccessPage;
+	}
+
+	string prepareSuccessPage() {
+		string destination = import("register/successTemplate.html");
+		const message = import("register/success.html");
+
+		if(configuration.templates.success != "") {
+			destination = readText(configuration.templates.success);
+		}
+
+		return destination.replace("#{body}", message).replaceVariables(configuration.serializeToJson);
 	}
 
 	private string prepareFormTemplate() {
-		const defaultDestination = import("register/formTemplate.html");
+		string destination = import("register/formTemplate.html");
 		const form = import("register/form.html");
 
-		return defaultDestination.replace("#{body}", form).replaceVariables(configuration.serializeToJson);
+		if(configuration.templates.form != "") {
+			destination = readText(configuration.templates.form);
+		}
+
+		return destination.replace("#{body}", form).replaceVariables(configuration.serializeToJson);
 	}
 
 	private string prepareConfirmationPage() {
-		const defaultDestination = import("register/confirmationTemplate.html");
+		string destination = import("register/confirmationTemplate.html");
 		const message = import("register/confirmation.html");
 
-		return defaultDestination.replace("#{body}", message).replaceVariables(configuration.serializeToJson);
+		if(configuration.templates.confirmation != "") {
+			destination = readText(configuration.templates.confirmation);
+		}
+
+		return destination.replace("#{body}", message).replaceVariables(configuration.serializeToJson);
 	}
 
 	void registerForm(HTTPServerRequest req, HTTPServerResponse res) {
@@ -73,5 +95,10 @@ class RegistrationForms {
 	void confirmationForm(HTTPServerRequest req, HTTPServerResponse res) {
 		res.statusCode = 200;
 		res.writeBody(confirmationPage, "text/html");
+	}
+
+	void success(HTTPServerRequest req, HTTPServerResponse res) {
+		res.statusCode = 200;
+		res.writeBody(successPage, "text/html");
 	}
 }

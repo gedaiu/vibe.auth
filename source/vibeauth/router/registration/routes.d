@@ -28,9 +28,16 @@ struct RegistrationConfigurationPaths {
 	string activationRedirect = "/";
 }
 
+struct RegistrationConfigurationTemplates {
+	string form;
+	string confirmation;
+	string success;
+}
+
 struct RegistrationConfiguration {
 	RegistrationConfigurationPaths paths;
 	RegistrationConfigurationEmail email;
+	RegistrationConfigurationTemplates templates;
 
 	string serviceName = "Unknown app";
 	string location = "http://localhost";
@@ -45,8 +52,6 @@ class RegistrationRoutes {
 		IMailQueue mailQueue;
 		const RegistrationConfiguration configuration;
 		RegistrationForms forms;
-
-		immutable string successPage;
 	}
 
 	this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue,
@@ -56,15 +61,6 @@ class RegistrationRoutes {
 		this.mailQueue = mailQueue;
 		this.configuration = configuration;
 		this.forms = new RegistrationForms(challenge, configuration);
-
-		this.successPage = prepareSuccessPage;
-	}
-
-	string prepareSuccessPage() {
-		const defaultDestination = import("register/successTemplate.html");
-		const message = import("register/success.html");
-
-		return defaultDestination.replace("#{body}", message).replaceVariables(configuration.serializeToJson);
 	}
 
 	void handler(HTTPServerRequest req, HTTPServerResponse res) {
@@ -186,8 +182,7 @@ class RegistrationRoutes {
 			version(unittest) {{}} else { debug e.writeln; }
 		}
 
-		res.statusCode = 200;
-		res.writeBody(successPage, "text/html");
+		forms.success(req, res);
 	}
 
 	private void addUser(HTTPServerRequest req, HTTPServerResponse res) {
@@ -229,13 +224,11 @@ class RegistrationRoutes {
 		auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
 		mailQueue.addActivationMessage(requestData.email, token, activationVariables);
 
-		res.statusCode = isJson ? 201 : 200;
-
 		if(isJson) {
+			res.statusCode = 201;
 			res.writeVoidBody;
 		} else {
-			res.statusCode = 200;
-			res.writeBody(successPage, "text/html");
+			forms.success(req, res);
 		}
 	}
 }
