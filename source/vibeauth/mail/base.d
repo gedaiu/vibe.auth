@@ -9,16 +9,26 @@ import std.conv;
 import vibeauth.users;
 import vibeauth.token;
 
+struct MailTemplate {
+	string subject;
+
+	string text;
+	string html;
+}
+
 struct RegistrationConfigurationEmail {
 	string from = "noreply@service.com";
 
-	string confirmationSubject = "Confirmation instructions";
-	string confirmationText = "[location][activation]?email=[email]&token=[token]";
-	string confirmationHtml = "<a href=\"[location][activation]?email=[email]&token=[token]\">click here</a>";
+	MailTemplate activation =
+		MailTemplate("Confirmation instructions",
+								"[location][activation]?email=[email]&token=[token]",
+								"<a href=\"[location][activation]?email=[email]&token=[token]\">click here</a>");
 
-	string resetPasswordSubject = "Reset password instructions";
-	string resetPasswordText = "[location][reset]?email=[email]&token=[token]";
-	string resetPasswordHtml = "<a href=\"[location][reset]?email=[email]&token=[token]\">click here</a>";
+	MailTemplate resetPassword =
+		MailTemplate("Reset password instructions",
+								"[location][reset]?email=[email]&token=[token]",
+								"<a href=\"[location][reset]?email=[email]&token=[token]\">click here</a>");
+
 }
 
 interface IMailSender {
@@ -152,36 +162,31 @@ class MailQueue : IMailQueue {
 		messages ~= message;
 	}
 
-	void addResetPasswordMessage(string email, Token token, string[string] variables) {
+	private void addMessage(MailTemplate mailTemplate, string email, string[string] variables) {
 		Message message;
-
-		variables["email"] = email;
-		variables["token"] = token.name;
 
 		message.to ~= email;
 		message.from = settings.from;
-		message.subject = settings.resetPasswordSubject;
+		message.subject = mailTemplate.subject;
 
-		message.textMessage = replaceVariables(settings.resetPasswordText, variables);
-		message.htmlMessage = replaceVariables(settings.resetPasswordHtml, variables);
+		message.textMessage = replaceVariables(mailTemplate.text, variables);
+		message.htmlMessage = replaceVariables(mailTemplate.html, variables);
 
 		addMessage(message);
 	}
 
-	void addActivationMessage(string email, Token token, string[string] variables) {
-		Message message;
-
+	void addResetPasswordMessage(string email, Token token, string[string] variables) {
 		variables["email"] = email;
 		variables["token"] = token.name;
 
-		message.to ~= email;
-		message.from = settings.from;
-		message.subject = settings.confirmationSubject;
+		addMessage(settings.resetPassword, email, variables);
+	}
 
-		message.textMessage = replaceVariables(settings.confirmationText, variables);
-		message.htmlMessage = replaceVariables(settings.confirmationHtml, variables);
+	void addActivationMessage(string email, Token token, string[string] variables) {
+		variables["email"] = email;
+		variables["token"] = token.name;
 
-		addMessage(message);
+		addMessage(settings.activation, email, variables);
 	}
 
 	string replaceVariables(const(string) text, string[string] variables) {
@@ -214,9 +219,9 @@ version(unittest) {
 unittest {
 	auto config = RegistrationConfigurationEmail();
 	config.from = "someone@service.com";
-	config.confirmationSubject = "subject";
-	config.confirmationText = "text";
-	config.confirmationHtml = "html";
+	config.activation.subject = "subject";
+	config.activation.text = "text";
+	config.activation.html = "html";
 
 	auto mailQueue = new MailQueueMock(config);
 
@@ -234,9 +239,9 @@ unittest {
 unittest {
 	auto config = RegistrationConfigurationEmail();
 	config.from = "someone@service.com";
-	config.resetPasswordSubject = "subject";
-	config.resetPasswordText = "text";
-	config.resetPasswordHtml = "html";
+	config.resetPassword.subject = "subject";
+	config.resetPassword.text = "text";
+	config.resetPassword.html = "html";
 
 	auto mailQueue = new MailQueueMock(config);
 
