@@ -44,16 +44,19 @@ shared static this()
 	MathCaptchaSettings captchaSettings;
 	captchaSettings.fontName = buildNormalizedPath(getcwd, "fonts/warpstorm/WarpStorm.otf");
 
+	auto mailQueue = new SendMailQueue(registerConfiguration.email);
+
 	auto registrationRoutes = new RegistrationRoutes(collection,
 		new MathCaptcha(captchaSettings),
-		new SendMailQueue(registerConfiguration.email),
+		mailQueue,
 		registerConfiguration);
 
 	LoginConfiguration loginConfiguration;
-	loginConfiguration.loginTemplate = "views/loginTemplate.html";
+	loginConfiguration.templates.login = "views/loginTemplate.html";
+	loginConfiguration.templates.reset = "views/resetTemplate.html";
 	loginConfiguration.style = registerConfiguration.style;
 
-	auto loginRoutes = new LoginRoutes(collection, loginConfiguration);
+	auto loginRoutes = new LoginRoutes(collection, mailQueue, loginConfiguration);
 
 	router
 		.get("*", serveStaticFiles("./public/"))

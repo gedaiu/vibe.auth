@@ -460,7 +460,7 @@ unittest {
 	router
 		.request
 		.get("/register/activation?email=user@gmail.com&token=" ~ activationToken.name)
-		.expectStatusCode(200)
+		.expectStatusCode(302)
 		.end((Response response) => {
 			collection["user@gmail.com"].isValidToken(activationToken.name).should.equal(false);
 			collection["user@gmail.com"].isActive.should.equal(true);

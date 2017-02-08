@@ -27,3 +27,12 @@ body {
 .auth-tabs {
   margin-top: 40px;
 }
+
+.reset-question {
+  margin-top: 10px;
+}
+
+.confirmation-question {
+  margin-top: 10px;
+  text-align: center;
+}

@@ -11,9 +11,14 @@ import vibeauth.token;
 
 struct RegistrationConfigurationEmail {
 	string from = "noreply@service.com";
+
 	string confirmationSubject = "Confirmation instructions";
 	string confirmationText = "[location][activation]?email=[email]&token=[token]";
 	string confirmationHtml = "<a href=\"[location][activation]?email=[email]&token=[token]\">click here</a>";
+
+	string resetPasswordSubject = "Reset password instructions";
+	string resetPasswordText = "[location][reset]?email=[email]&token=[token]";
+	string resetPasswordHtml = "<a href=\"[location][reset]?email=[email]&token=[token]\">click here</a>";
 }
 
 interface IMailSender {
@@ -23,6 +28,7 @@ interface IMailSender {
 interface IMailQueue {
 	void addMessage(Message);
 	void addActivationMessage(string email, Token token, string[string] variables);
+	void addResetPasswordMessage(string email, Token token, string[string] variables);
 }
 
 struct Message {
@@ -146,6 +152,22 @@ class MailQueue : IMailQueue {
 		messages ~= message;
 	}
 
+	void addResetPasswordMessage(string email, Token token, string[string] variables) {
+		Message message;
+
+		variables["email"] = email;
+		variables["token"] = token.name;
+
+		message.to ~= email;
+		message.from = settings.from;
+		message.subject = settings.resetPasswordSubject;
+
+		message.textMessage = replaceVariables(settings.resetPasswordText, variables);
+		message.htmlMessage = replaceVariables(settings.resetPasswordHtml, variables);
+
+		addMessage(message);
+	}
+
 	void addActivationMessage(string email, Token token, string[string] variables) {
 		Message message;
 
@@ -200,6 +222,26 @@ unittest {
 
 	string[string] variables;
 	mailQueue.addActivationMessage("user@gmail.com", Token(), variables);
+
+	mailQueue.lastMessage.to[0].should.be.equal("user@gmail.com");
+	mailQueue.lastMessage.from.should.be.equal("someone@service.com");
+	mailQueue.lastMessage.subject.should.be.equal("subject");
+	mailQueue.lastMessage.textMessage.should.be.equal("text");
+	mailQueue.lastMessage.htmlMessage.should.be.equal("html");
+}
+
+@("it should set the text and html reset password message")
+unittest {
+	auto config = RegistrationConfigurationEmail();
+	config.from = "someone@service.com";
+	config.resetPasswordSubject = "subject";
+	config.resetPasswordText = "text";
+	config.resetPasswordHtml = "html";
+
+	auto mailQueue = new MailQueueMock(config);
+
+	string[string] variables;
+	mailQueue.addResetPasswordMessage("user@gmail.com", Token(), variables);
 
 	mailQueue.lastMessage.to[0].should.be.equal("user@gmail.com");
 	mailQueue.lastMessage.from.should.be.equal("someone@service.com");

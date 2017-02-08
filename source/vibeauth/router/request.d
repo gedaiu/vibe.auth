@@ -64,7 +64,6 @@ const struct RequestUserData {
 			response["email"] = "";
 		}
 
-
 		return response;
 	}
 
@@ -102,6 +101,10 @@ const struct RequestUserData {
 
 	string error() {
 		return get!"error";
+	}
+
+	string message() {
+		return get!"message";
 	}
 
 	void validateUser() {

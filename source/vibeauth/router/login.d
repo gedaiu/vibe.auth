@@ -6,6 +6,7 @@ import vibe.inet.url;
 
 import std.algorithm, std.base64, std.string, std.stdio, std.conv, std.array;
 import std.datetime, std.random, std.uri, std.file;
+
 import vibe.core.core;
 
 import vibeauth.users;
@@ -15,17 +16,32 @@ import vibeauth.collection;
 import vibeauth.templatehelper;
 import vibeauth.router.accesscontrol;
 import vibeauth.router.request;
+import vibeauth.mail.base;
+
+
+struct LoginConfigurationPaths {
+	string form = "/login";
+	string login = "/login/check";
+
+	string resetForm = "/login/reset";
+	string reset = "/login/reset/send";
+
+	string redirect = "/";
+}
+
+struct LoginConfigurationTemplates {
+	string login;
+	string reset;
+}
 
 struct LoginConfiguration {
-	string formPath = "/login";
-	string loginPath = "/login/check";
-	string redirectPath = "/";
-
-	string loginTemplate;
+	LoginConfigurationPaths paths;
+	LoginConfigurationTemplates templates;
 
 	ulong loginTimeoutSeconds = 86_400;
 
 	string style = "";
+	string location = "http://localhost";
 }
 
 class LoginRoutes {
@@ -33,23 +49,38 @@ class LoginRoutes {
 	private {
 		UserCollection userCollection;
 		LoginConfiguration configuration;
+		IMailQueue mailQueue;
 
 		immutable string loginFormTemplate;
+		immutable string resetFormPage;
 	}
 
-	this(UserCollection userCollection, const LoginConfiguration configuration = LoginConfiguration()) {
+	this(UserCollection userCollection, IMailQueue mailQueue, const LoginConfiguration configuration = LoginConfiguration()) {
 		this.configuration = configuration;
 		this.userCollection = userCollection;
+		this.mailQueue = mailQueue;
 
 		this.loginFormTemplate = prepareLoginTemplate;
+		this.resetFormPage = prepareResetFormPage;
+	}
+
+	string prepareResetFormPage() {
+		string destination = import("login/resetTemplate.html");
+		const form = import("login/reset.html");
+
+		if(configuration.templates.reset != "") {
+			destination = readText(configuration.templates.reset);
+		}
+
+		return destination.replace("#{body}", form).replaceVariables(configuration.serializeToJson);
 	}
 
 	string prepareLoginTemplate() {
 		string destination = import("login/template.html");
 		const form = import("login/form.html");
 
-		if(configuration.loginTemplate != "") {
-			destination = readText(configuration.loginTemplate);
+		if(configuration.templates.login  != "") {
+			destination = readText(configuration.templates.login);
 		}
 
 		return destination.replace("#{body}", form).replaceVariables(configuration.serializeToJson);
@@ -57,12 +88,20 @@ class LoginRoutes {
 
 	void handler(HTTPServerRequest req, HTTPServerResponse res) {
 		try {
-			if(req.method == HTTPMethod.GET && req.path == configuration.formPath) {
+			if(req.method == HTTPMethod.GET && req.path == configuration.paths.form) {
 				loginForm(req, res);
 			}
 
-			if(req.method == HTTPMethod.POST && req.path == configuration.loginPath) {
+			if(req.method == HTTPMethod.GET && req.path == configuration.paths.resetForm) {
+				resetForm(req, res);
+			}
+
+			if(req.method == HTTPMethod.POST && req.path == configuration.paths.login) {
 				loginCheck(req, res);
+			}
+
+			if(req.method == HTTPMethod.POST && req.path == configuration.paths.reset) {
+				reset(req, res);
 			}
 
 		} catch(Exception e) {
@@ -74,6 +113,34 @@ class LoginRoutes {
 		}
 	}
 
+	private string[string] resetPasswordVariables() {
+		string[string] variables;
+
+		variables["reset"] = configuration.paths.resetForm;
+		variables["location"] = configuration.location;
+
+		return variables;
+	}
+
+	void reset(HTTPServerRequest req, HTTPServerResponse res) {
+		auto requestData = const RequestUserData(req);
+
+		const string message = `If your email address exists in our database, you will ` ~
+			`receive a password recovery link at your email address in a few minutes.`;
+
+		auto expire = Clock.currTime + 15.minutes;
+		auto token = collection.createToken(requestData.email, expire, [], "passwordReset");
+
+		mailQueue.addResetPasswordMessage(requestData.email, token, resetPasswordVariables);
+
+		res.redirect(configuration.paths.form ~ "?username=" ~ requestData.email.encodeComponent ~
+			"&message=" ~ message.encodeComponent);
+	}
+
+	void resetForm(HTTPServerRequest req, HTTPServerResponse res) {
+		res.writeBody(resetFormPage, 200, "text/html; charset=UTF-8" );
+	}
+
 	void loginForm(HTTPServerRequest req, HTTPServerResponse res) {
 		auto requestData = const RequestUserData(req);
 		Json data = Json.emptyObject;
@@ -81,6 +148,8 @@ class LoginRoutes {
 		data["email"] = requestData.email;
 		data["error"] = requestData.error == "" ? "" :
 			`<div class="alert alert-danger" role="alert">` ~ requestData.error ~ `</div>`;
+		data["message"] = requestData.message == "" ? "" :
+			`<div class="alert alert-info" role="alert">` ~ requestData.message ~ `</div>`;
 
 		string loginFormPage = loginFormTemplate.replaceVariables(data);
 
@@ -92,19 +161,19 @@ class LoginRoutes {
 
 		if(!userCollection.contains(requestData.username)) {
 			sleep(uniform(0, 500).msecs);
-			res.redirect(configuration.formPath ~ queryUserData(requestData, "Invalid username or password"));
+			res.redirect(configuration.paths.form ~ queryUserData(requestData, "Invalid username or password"));
 			return;
 		}
 
 		if(!userCollection[requestData.username].isActive) {
 			sleep(uniform(0, 500).msecs);
-			res.redirect(configuration.formPath ~ queryUserData(requestData, "Please confirm your account before you log in"));
+			res.redirect(configuration.paths.form ~ queryUserData(requestData, "Please confirm your account before you log in"));
 			return;
 		}
 
 		if(!userCollection[requestData.username].isValidPassword(requestData.password)) {
 			sleep(uniform(0, 500).msecs);
-			res.redirect(configuration.formPath ~ queryUserData(requestData, "Invalid username or password"));
+			res.redirect(configuration.paths.form ~ queryUserData(requestData, "Invalid username or password"));
 			return;
 		}
 
@@ -116,7 +185,7 @@ class LoginRoutes {
 		res.setCookie("auth-token", token.name);
 		res.cookies["auth-token"].maxAge = configuration.loginTimeoutSeconds;
 
-		res.redirect(configuration.redirectPath);
+		res.redirect(configuration.paths.redirect);
 	}
 
 	private string queryUserData(const RequestUserData data, const string error = "") {
@@ -135,6 +204,21 @@ version(unittest) {
 	Client client;
 	ClientCollection clientCollection;
 	Token refreshToken;
+	TestMailQueue mailQueue;
+
+	class TestMailQueue : MailQueue
+	{
+		Message[] messages;
+
+		this() {
+			super(RegistrationConfigurationEmail());
+		}
+
+		override
+		void addMessage(Message message) {
+			messages ~= message;
+		}
+	}
 
 	auto testRouter() {
 		auto router = new URLRouter();
@@ -150,7 +234,8 @@ version(unittest) {
 
 		refreshToken = collection.createToken("user@gmail.com", Clock.currTime + 3600.seconds, ["doStuff", "refresh"], "Refresh");
 
-		auto auth = new LoginRoutes(collection);
+		mailQueue = new TestMailQueue;
+		auto auth = new LoginRoutes(collection, mailQueue);
 
 		router.any("*", &auth.handler);
 
@@ -213,4 +298,24 @@ unittest {
 		.expectStatusCode(302)
 		.expectHeader("Location", "/login?username=test&error=Invalid%20username%20or%20password")
 		.end();
+}
+
+@("Reset password form should send an email to existing user")
+unittest {
+	string expectedMessage = `If your email address exists in our database, you ` ~
+	`will receive a password recovery link at your email address in a few minutes.`;
+
+	testRouter
+		.request.post("/login/reset/send")
+		.send(["email": "user@gmail.com"])
+		.expectStatusCode(302)
+		.expectHeader("Location", "/login?username=user%40gmail.com&message=" ~ expectedMessage.encodeComponent)
+		.end((Response res) => {
+			string resetLink = "http://localhost/login/reset?email=user@gmail.com&token="
+				~ collection["user@gmail.com"].getTokensByType("passwordReset").front.name;
+
+			mailQueue.messages.length.should.equal(1);
+			mailQueue.messages[0].textMessage.should.contain(resetLink);
+			mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ resetLink ~ `">`);
+		});
 }
