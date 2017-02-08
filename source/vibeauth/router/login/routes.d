@@ -1,4 +1,4 @@
-module vibeauth.router.login;
+module vibeauth.router.login.routes;
 
 import vibe.http.router;
 import vibe.data.json;
@@ -10,12 +10,13 @@ import std.datetime, std.random, std.uri, std.file;
 import vibe.core.core;
 
 import vibeauth.users;
-import vibeauth.router.baseAuthRouter;
 import vibeauth.client;
 import vibeauth.collection;
 import vibeauth.templatehelper;
 import vibeauth.router.accesscontrol;
+import vibeauth.router.baseAuthRouter;
 import vibeauth.router.request;
+import vibeauth.router.login.responses;
 import vibeauth.mail.base;
 
 
@@ -50,50 +51,24 @@ class LoginRoutes {
 		UserCollection userCollection;
 		LoginConfiguration configuration;
 		IMailQueue mailQueue;
-
-		immutable string loginFormTemplate;
-		immutable string resetFormPage;
+		LoginResponses responses;
 	}
 
 	this(UserCollection userCollection, IMailQueue mailQueue, const LoginConfiguration configuration = LoginConfiguration()) {
 		this.configuration = configuration;
 		this.userCollection = userCollection;
 		this.mailQueue = mailQueue;
-
-		this.loginFormTemplate = prepareLoginTemplate;
-		this.resetFormPage = prepareResetFormPage;
-	}
-
-	string prepareResetFormPage() {
-		string destination = import("login/resetTemplate.html");
-		const form = import("login/reset.html");
-
-		if(configuration.templates.reset != "") {
-			destination = readText(configuration.templates.reset);
-		}
-
-		return destination.replace("#{body}", form).replaceVariables(configuration.serializeToJson);
-	}
-
-	string prepareLoginTemplate() {
-		string destination = import("login/template.html");
-		const form = import("login/form.html");
-
-		if(configuration.templates.login  != "") {
-			destination = readText(configuration.templates.login);
-		}
-
-		return destination.replace("#{body}", form).replaceVariables(configuration.serializeToJson);
+		this.responses = new LoginResponses(configuration);
 	}
 
 	void handler(HTTPServerRequest req, HTTPServerResponse res) {
 		try {
 			if(req.method == HTTPMethod.GET && req.path == configuration.paths.form) {
-				loginForm(req, res);
+				responses.loginForm(req, res);
 			}
 
 			if(req.method == HTTPMethod.GET && req.path == configuration.paths.resetForm) {
-				resetForm(req, res);
+				responses.resetForm(req, res);
 			}
 
 			if(req.method == HTTPMethod.POST && req.path == configuration.paths.login) {
@@ -135,25 +110,6 @@ class LoginRoutes {
 
 		res.redirect(configuration.paths.form ~ "?username=" ~ requestData.email.encodeComponent ~
 			"&message=" ~ message.encodeComponent);
-	}
-
-	void resetForm(HTTPServerRequest req, HTTPServerResponse res) {
-		res.writeBody(resetFormPage, 200, "text/html; charset=UTF-8" );
-	}
-
-	void loginForm(HTTPServerRequest req, HTTPServerResponse res) {
-		auto requestData = const RequestUserData(req);
-		Json data = Json.emptyObject;
-
-		data["email"] = requestData.email;
-		data["error"] = requestData.error == "" ? "" :
-			`<div class="alert alert-danger" role="alert">` ~ requestData.error ~ `</div>`;
-		data["message"] = requestData.message == "" ? "" :
-			`<div class="alert alert-info" role="alert">` ~ requestData.message ~ `</div>`;
-
-		string loginFormPage = loginFormTemplate.replaceVariables(data);
-
-		res.writeBody(loginFormPage, 200, "text/html; charset=UTF-8" );
 	}
 
 	void loginCheck(HTTPServerRequest req, HTTPServerResponse res) {

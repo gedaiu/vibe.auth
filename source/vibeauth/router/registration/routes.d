@@ -10,7 +10,7 @@ import vibe.http.router;
 import vibe.data.json;
 import vibe.inet.url;
 
-import vibeauth.router.registration.forms;
+import vibeauth.router.registration.responses;
 import vibeauth.users;
 import vibeauth.mail.base;
 import vibeauth.challenges.base;
@@ -18,6 +18,16 @@ import vibeauth.router.accesscontrol;
 import vibeauth.router.request;
 import vibeauth.collection;
 import vibeauth.templatehelper;
+
+struct RegistrationConfiguration {
+	RegistrationConfigurationPaths paths;
+	RegistrationConfigurationEmail email;
+	RegistrationConfigurationTemplates templates;
+
+	string serviceName = "Unknown app";
+	string location = "http://localhost";
+	string style = "";
+}
 
 struct RegistrationConfigurationPaths {
 	string register = "/register";
@@ -34,16 +44,6 @@ struct RegistrationConfigurationTemplates {
 	string success;
 }
 
-struct RegistrationConfiguration {
-	RegistrationConfigurationPaths paths;
-	RegistrationConfigurationEmail email;
-	RegistrationConfigurationTemplates templates;
-
-	string serviceName = "Unknown app";
-	string location = "http://localhost";
-	string style = "";
-}
-
 class RegistrationRoutes {
 
 	private {
@@ -51,7 +51,7 @@ class RegistrationRoutes {
 		IChallenge challenge;
 		IMailQueue mailQueue;
 		const RegistrationConfiguration configuration;
-		RegistrationForms forms;
+		RegistrationResponses responses;
 	}
 
 	this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue,
@@ -60,7 +60,7 @@ class RegistrationRoutes {
 		this.challenge = challenge;
 		this.mailQueue = mailQueue;
 		this.configuration = configuration;
-		this.forms = new RegistrationForms(challenge, configuration);
+		this.responses = new RegistrationResponses(challenge, configuration);
 	}
 
 	void handler(HTTPServerRequest req, HTTPServerResponse res) {
@@ -71,7 +71,7 @@ class RegistrationRoutes {
 			}
 
 			if(req.method == HTTPMethod.GET && req.path == configuration.paths.register) {
-				forms.registerForm(req, res);
+				responses.registerForm(req, res);
 			}
 
 			if(req.method == HTTPMethod.POST && req.path == configuration.paths.addUser) {
@@ -91,7 +91,7 @@ class RegistrationRoutes {
 			}
 
 			if(req.method == HTTPMethod.GET && req.path == configuration.paths.confirmation) {
-				forms.confirmationForm(req, res);
+				responses.confirmationForm(req, res);
 			}
 
 		} catch(Exception e) {
@@ -103,132 +103,139 @@ class RegistrationRoutes {
 		}
 	}
 
-	private void activation(HTTPServerRequest req, HTTPServerResponse res) {
-		if("token" !in req.query || "email" !in req.query) {
-			res.statusCode = 400;
-			res.writeJsonBody(["error": ["message": "invalid request"]]);
+	private {
+		void activation(HTTPServerRequest req, HTTPServerResponse res)
+		{
+			if("token" !in req.query || "email" !in req.query) {
+				res.statusCode = 400;
+				res.writeJsonBody(["error": ["message": "invalid request"]]);
 
-			return;
+				return;
+			}
+
+			auto token = req.query["token"];
+			auto email = req.query["email"];
+
+			if(!collection.contains(email)) {
+				res.statusCode = 400;
+				res.writeJsonBody(["error": ["message": "invalid request"]]);
+
+				return;
+			}
+
+			auto user = collection[email];
+
+			if(!user.isValidToken(token)) {
+				res.statusCode = 400;
+				res.writeJsonBody(["error": ["message": "invalid request"]]);
+
+				return;
+			}
+
+			user.isActive = true;
+			user.getTokensByType("activation").each!(a => user.revoke(a.name));
+
+			res.redirect(configuration.paths.activationRedirect);
 		}
 
-		auto token = req.query["token"];
-		auto email = req.query["email"];
+		string queryUserData(const RequestUserData userData, string error = "")
+		{
+			string query = "?error=" ~ encodeComponent(error);
 
-		if(!collection.contains(email)) {
-			res.statusCode = 400;
-			res.writeJsonBody(["error": ["message": "invalid request"]]);
+			if(userData.name != "") {
+				query ~= "&name=" ~ encodeComponent(userData.name);
+			}
 
-			return;
+			if(userData.username != "") {
+				query ~= "&username=" ~ encodeComponent(userData.username);
+			}
+
+			if(userData.email != "") {
+				query ~= "&email=" ~ encodeComponent(userData.email);
+			}
+			return query;
 		}
 
-		auto user = collection[email];
+		string[string] activationVariables()
+		{
+			string[string] variables;
 
-		if(!user.isValidToken(token)) {
-			res.statusCode = 400;
-			res.writeJsonBody(["error": ["message": "invalid request"]]);
+			variables["activation"] = configuration.paths.activation;
+			variables["serviceName"] = configuration.serviceName;
+			variables["location"] = configuration.location;
 
-			return;
+			return variables;
 		}
 
-		user.isActive = true;
-		user.getTokensByType("activation").each!(a => user.revoke(a.name));
+		void newActivation(HTTPServerRequest req, HTTPServerResponse res)
+		{
+			auto requestData = const RequestUserData(req);
 
-		res.redirect(configuration.paths.activationRedirect);
-	}
+			try {
+				auto user = collection[requestData.email];
 
-	private string queryUserData(const RequestUserData userData, string error = "") {
-		string query = "?error=" ~ encodeComponent(error);
+				if(!user.isActive) {
+					auto tokens = user.getTokensByType("activation");
+					if(!tokens.empty) {
+						user.revoke(tokens.front.name);
+					}
 
-		if(userData.name != "") {
-			query ~= "&name=" ~ encodeComponent(userData.name);
+					auto token = collection.createToken(user.email, Clock.currTime + 3600.seconds, [], "activation");
+					mailQueue.addActivationMessage(user.email, token, activationVariables);
+				}
+			} catch (ItemNotFoundException e) {
+				version(unittest) {{}} else { debug e.writeln; }
+			}
+
+			responses.success(req, res);
 		}
 
-		if(userData.username != "") {
-			query ~= "&username=" ~ encodeComponent(userData.username);
-		}
+		void addUser(HTTPServerRequest req, HTTPServerResponse res)
+		{
+			immutable bool isJson = req.contentType.toLower.indexOf("json") > -1;
+			auto requestData = const RequestUserData(req);
 
-		if(userData.email != "") {
-			query ~= "&email=" ~ encodeComponent(userData.email);
-		}
-		return query;
-	}
+			try {
+				requestData.validateUser;
 
-	private string[string] activationVariables() {
-		string[string] variables;
-
-		variables["activation"] = configuration.paths.activation;
-		variables["serviceName"] = configuration.serviceName;
-		variables["location"] = configuration.location;
-
-		return variables;
-	}
-
-	private void newActivation(HTTPServerRequest req, HTTPServerResponse res) {
-		auto requestData = const RequestUserData(req);
-
-		try {
-			auto user = collection[requestData.email];
-
-			if(!user.isActive) {
-				auto tokens = user.getTokensByType("activation");
-				if(!tokens.empty) {
-					user.revoke(tokens.front.name);
+				if(!challenge.validate(req, res, requestData.response)) {
+					throw new Exception("Invalid challenge `response`");
 				}
 
-				auto token = collection.createToken(user.email, Clock.currTime + 3600.seconds, [], "activation");
-				mailQueue.addActivationMessage(user.email, token, activationVariables);
-			}
-		} catch (ItemNotFoundException e) {
-			version(unittest) {{}} else { debug e.writeln; }
-		}
+				if(collection.contains(requestData.email)) {
+					throw new Exception("Email has already been taken");
+				}
 
-		forms.success(req, res);
-	}
+				if(collection.contains(requestData.username)) {
+					throw new Exception("Username has already been taken");
+				}
+			} catch (Exception e) {
+				if(isJson) {
+					res.statusCode = 400;
+					res.writeJsonBody(["error": ["message": e.msg ]]);
+				} else {
+					res.redirect(configuration.paths.register ~ queryUserData(requestData, e.msg));
+				}
 
-	private void addUser(HTTPServerRequest req, HTTPServerResponse res) {
-		immutable bool isJson = req.contentType.toLower.indexOf("json") > -1;
-		auto requestData = const RequestUserData(req);
-
-		try {
-			requestData.validateUser;
-
-			if(!challenge.validate(req, res, requestData.response)) {
-				throw new Exception("Invalid challenge `response`");
+				return;
 			}
 
-			if(collection.contains(requestData.email)) {
-				throw new Exception("Email has already been taken");
-			}
+			UserData data;
+			data.name = requestData.name;
+			data.username = requestData.username;
+			data.email = requestData.email;
+			data.isActive = false;
 
-			if(collection.contains(requestData.username)) {
-				throw new Exception("Username has already been taken");
-			}
-		} catch (Exception e) {
+			collection.createUser(data, requestData.password);
+			auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
+			mailQueue.addActivationMessage(requestData.email, token, activationVariables);
+
 			if(isJson) {
-				res.statusCode = 400;
-				res.writeJsonBody(["error": ["message": e.msg ]]);
+				res.statusCode = 201;
+				res.writeVoidBody;
 			} else {
-				res.redirect(configuration.paths.register ~ queryUserData(requestData, e.msg));
+				responses.success(req, res);
 			}
-
-			return;
-		}
-
-		UserData data;
-		data.name = requestData.name;
-		data.username = requestData.username;
-		data.email = requestData.email;
-		data.isActive = false;
-
-		collection.createUser(data, requestData.password);
-		auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
-		mailQueue.addActivationMessage(requestData.email, token, activationVariables);
-
-		if(isJson) {
-			res.statusCode = 201;
-			res.writeVoidBody;
-		} else {
-			forms.success(req, res);
 		}
 	}
 }
@@ -399,7 +406,6 @@ unittest {
 		});
 }
 
-
 @("POST with and existing username should fail")
 unittest {
 	auto router = testRouter;
@@ -502,7 +508,6 @@ unittest {
 			mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ activationLink ~ `">`);
 		});
 }
-
 
 @("POST with valid email should not send a new token to the active user")
 unittest {
