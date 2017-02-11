@@ -10,7 +10,7 @@ import std.string;
 
 class SendMailQueue : MailQueue {
 
-	this(RegistrationConfigurationEmail settings) {
+	this(EmailConfiguration settings) {
 		super(settings);
 	}
 

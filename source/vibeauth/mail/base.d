@@ -16,7 +16,7 @@ struct MailTemplate {
 	string html;
 }
 
-struct RegistrationConfigurationEmail {
+struct EmailConfiguration {
 	string from = "noreply@service.com";
 
 	MailTemplate activation =
@@ -151,10 +151,10 @@ class MailQueue : IMailQueue {
 
 	protected {
 		Message[] messages;
-		const RegistrationConfigurationEmail settings;
+		const EmailConfiguration settings;
 	}
 
-	this(const RegistrationConfigurationEmail settings) {
+	this(const EmailConfiguration settings) {
 		this.settings = settings;
 	}
 
@@ -205,7 +205,7 @@ version(unittest) {
 
 	class MailQueueMock : MailQueue {
 
-		this(RegistrationConfigurationEmail config) {
+		this(EmailConfiguration config) {
 			super(config);
 		}
 
@@ -217,7 +217,7 @@ version(unittest) {
 
 @("it should set the text and html activation message")
 unittest {
-	auto config = RegistrationConfigurationEmail();
+	auto config = EmailConfiguration();
 	config.from = "someone@service.com";
 	config.activation.subject = "subject";
 	config.activation.text = "text";
@@ -237,7 +237,7 @@ unittest {
 
 @("it should set the text and html reset password message")
 unittest {
-	auto config = RegistrationConfigurationEmail();
+	auto config = EmailConfiguration();
 	config.from = "someone@service.com";
 	config.resetPassword.subject = "subject";
 	config.resetPassword.text = "text";

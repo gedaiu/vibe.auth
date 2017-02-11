@@ -1,25 +1,56 @@
 {
-  "paths": {
-    "register": "/register",
-    "addUser": "/register/user",
-    "activation": "/register/activation",
-    "challange": "/register/challenge",
-    "confirmation": "/register/confirmation",
-    "activationRedirect": "/"
-  },
-
   "email": {
     "from": "noreply@demoapp.com",
-    "confirmationSubject": "Confirmation instructions"
+    "activation": {
+      "subject": "Confirmation instructions",
+      "text": "",
+      "html": ""
+    },
+    "resetPassword": {
+      "subject": "Reset password instructions",
+      "text": "",
+      "html": ""
+    }
   },
 
-  "templates": {
-    "form": "views/registerTemplate.html",
-    "confirmation": "views/confirmationTemplate.html",
-    "success": "views/successTemplate.html"
+  "registration": {
+    "paths": {
+      "register": "/register",
+      "addUser": "/register/user",
+      "activation": "/register/activation",
+      "challange": "/register/challenge",
+      "confirmation": "/register/confirmation",
+      "activationRedirect": "/"
+    },
+
+    "templates": {
+      "form": "views/registerTemplate.html",
+      "confirmation": "views/confirmationTemplate.html",
+      "success": "views/successTemplate.html"
+    },
+
+    "serviceName": "Demo App",
+    "location": "http://localhost:8888",
+    "style": "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
   },
 
-  "serviceName": "Demo App",
-  "location": "http://localhost:8888",
-  "style": "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+  "login": {
+    "paths": {
+      "form": "/login",
+      "login": "/login/check",
+
+      "resetForm": "/login/reset",
+      "reset": "/login/reset/send",
+
+      "redirect": "/"
+    },
+
+    "templates": {
+      "login": "views/loginTemplate.html",
+      "reset": "views/resetTemplate.html"
+    },
+    "loginTimeoutSeconds": 86400,
+    "location": "http://localhost",
+    "style": "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+  }
 }

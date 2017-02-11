@@ -58,6 +58,7 @@ class LoginRoutes {
 		this.configuration = configuration;
 		this.userCollection = userCollection;
 		this.mailQueue = mailQueue;
+
 		this.responses = new LoginResponses(configuration);
 	}
 
@@ -104,7 +105,7 @@ class LoginRoutes {
 			`receive a password recovery link at your email address in a few minutes.`;
 
 		auto expire = Clock.currTime + 15.minutes;
-		auto token = collection.createToken(requestData.email, expire, [], "passwordReset");
+		auto token = userCollection.createToken(requestData.email, expire, [], "passwordReset");
 
 		mailQueue.addResetPasswordMessage(requestData.email, token, resetPasswordVariables);
 
@@ -167,7 +168,7 @@ version(unittest) {
 		Message[] messages;
 
 		this() {
-			super(RegistrationConfigurationEmail());
+			super(EmailConfiguration());
 		}
 
 		override

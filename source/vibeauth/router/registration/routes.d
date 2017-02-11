@@ -21,7 +21,6 @@ import vibeauth.templatehelper;
 
 struct RegistrationConfiguration {
 	RegistrationConfigurationPaths paths;
-	RegistrationConfigurationEmail email;
 	RegistrationConfigurationTemplates templates;
 
 	string serviceName = "Unknown app";
@@ -258,7 +257,7 @@ version(unittest) {
 		Message[] messages;
 
 		this() {
-			super(RegistrationConfigurationEmail());
+			super(EmailConfiguration());
 		}
 
 		override

@@ -27,9 +27,9 @@ class LoginResponses {
   }
 
   this(const LoginConfiguration configuration = LoginConfiguration()) {
+    this.configuration = configuration;
     this.loginFormTemplate = prepareLoginTemplate;
     this.resetFormPage = prepareResetFormPage;
-    this.configuration = configuration;
   }
 
   private {
@@ -48,7 +48,7 @@ class LoginResponses {
       string destination = import("login/template.html");
       const form = import("login/form.html");
 
-      if(configuration.templates.login  != "") {
+      if(configuration.templates.login != "") {
         destination = readText(configuration.templates.login);
       }
 
@@ -64,7 +64,7 @@ class LoginResponses {
     auto requestData = const RequestUserData(req);
 		Json data = Json.emptyObject;
 
-		data["email"] = requestData.email;
+		data["username"] = requestData.email;
 		data["error"] = requestData.error == "" ? "" :
 			`<div class="alert alert-danger" role="alert">` ~ requestData.error ~ `</div>`;
 		data["message"] = requestData.message == "" ? "" :

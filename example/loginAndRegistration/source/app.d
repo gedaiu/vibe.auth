@@ -6,14 +6,19 @@ import vibeauth.challenges.mathcaptcha;
 import vibeauth.client;
 import vibeauth.users;
 import vibeauth.router.registration.routes;
-import vibeauth.router.login;
+import vibeauth.router.login.routes;
 import vibeauth.mail.sendmail;
 import vibeauth.token;
 import vibeauth.router.request;
+import vibeauth.mail.base;
 
 import vibe.d;
 
-const RegistrationConfiguration registerConfiguration;
+const {
+	RegistrationConfiguration registerConfiguration;
+	LoginConfiguration loginConfiguration;
+	EmailConfiguration emailConfiguration;
+}
 
 UserMemmoryCollection collection;
 
@@ -36,25 +41,26 @@ shared static this()
 	collection = new UserMemmoryCollection(["doStuff"]);
 
 	auto configurationJson = readText("configuration.json").parseJsonString;
-	configurationJson["email"]["confirmationText"] = readText("emails/registration.txt");
-	configurationJson["email"]["confirmationHtml"] = readText("emails/registration.html");
+	configurationJson["email"]["activation"]["text"] = readText("emails/activation.txt");
+	configurationJson["email"]["activation"]["html"] = readText("emails/activation.html");
 
-	registerConfiguration = configurationJson.deserializeJson!RegistrationConfiguration;
+	configurationJson["email"]["resetPassword"]["text"] = readText("emails/resetPassword.txt");
+	configurationJson["email"]["resetPassword"]["html"] = readText("emails/resetPassword.html");
+
+	emailConfiguration = configurationJson["email"].deserializeJson!EmailConfiguration;
+	registerConfiguration = configurationJson["registration"].deserializeJson!RegistrationConfiguration;
+	loginConfiguration = configurationJson["login"].deserializeJson!LoginConfiguration;
 
 	MathCaptchaSettings captchaSettings;
 	captchaSettings.fontName = buildNormalizedPath(getcwd, "fonts/warpstorm/WarpStorm.otf");
 
-	auto mailQueue = new SendMailQueue(registerConfiguration.email);
+	auto mailQueue = new SendMailQueue(emailConfiguration);
 
 	auto registrationRoutes = new RegistrationRoutes(collection,
 		new MathCaptcha(captchaSettings),
 		mailQueue,
 		registerConfiguration);
 
-	LoginConfiguration loginConfiguration;
-	loginConfiguration.templates.login = "views/loginTemplate.html";
-	loginConfiguration.templates.reset = "views/resetTemplate.html";
-	loginConfiguration.style = registerConfiguration.style;
 
 	auto loginRoutes = new LoginRoutes(collection, mailQueue, loginConfiguration);
 
