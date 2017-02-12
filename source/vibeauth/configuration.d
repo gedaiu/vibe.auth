@@ -2,7 +2,7 @@ module vibeauth.configuration;
 
 struct ServiceConfiguration {
   string name = "Unknown App";
-  string location = "http://localhost:8888";
+  string location = "http://localhost";
   string style;
 }
 

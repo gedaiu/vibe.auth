@@ -251,7 +251,7 @@ unittest {
 
 	testRouter
 		.request.post("/login/reset/send")
-		.send(["email": "user@gmail.com"])
+		.send(["username": "user@gmail.com"])
 		.expectStatusCode(302)
 		.expectHeader("Location", "/login?username=user%40gmail.com&message=" ~ expectedMessage.encodeComponent)
 		.end((Response res) => {
