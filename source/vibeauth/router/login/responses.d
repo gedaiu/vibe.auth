@@ -10,6 +10,7 @@ import vibe.http.router;
 import vibe.data.json;
 
 import vibeauth.users;
+import vibeauth.configuration;
 import vibeauth.mail.base;
 import vibeauth.router.login.routes;
 import vibeauth.router.request;
@@ -23,11 +24,15 @@ class LoginResponses {
       string resetFormPage;
     }
 
-    const LoginConfiguration configuration;
+    const {
+      LoginConfiguration configuration;
+      ServiceConfiguration serviceConfiguration;
+    }
   }
 
-  this(const LoginConfiguration configuration = LoginConfiguration()) {
+  this(const LoginConfiguration configuration, const ServiceConfiguration serviceConfiguration) {
     this.configuration = configuration;
+    this.serviceConfiguration = serviceConfiguration;
     this.loginFormTemplate = prepareLoginTemplate;
     this.resetFormPage = prepareResetFormPage;
   }
@@ -41,7 +46,9 @@ class LoginResponses {
         destination = readText(configuration.templates.reset);
       }
 
-      return destination.replace("#{body}", form).replaceVariables(configuration.serializeToJson);
+      return destination.replace("#{body}", form)
+        .replaceVariables(serviceConfiguration.serializeToJson)
+        .replaceVariables(configuration.serializeToJson);
     }
 
     string prepareLoginTemplate() {
@@ -52,7 +59,9 @@ class LoginResponses {
         destination = readText(configuration.templates.login);
       }
 
-      return destination.replace("#{body}", form).replaceVariables(configuration.serializeToJson);
+      return destination.replace("#{body}", form)
+        .replaceVariables(configuration.serializeToJson)
+        .replaceVariables(serviceConfiguration.serializeToJson);
     }
   }
 
@@ -64,7 +73,7 @@ class LoginResponses {
     auto requestData = const RequestUserData(req);
 		Json data = Json.emptyObject;
 
-		data["username"] = requestData.email;
+		data["username"] = requestData.username;
 		data["error"] = requestData.error == "" ? "" :
 			`<div class="alert alert-danger" role="alert">` ~ requestData.error ~ `</div>`;
 		data["message"] = requestData.message == "" ? "" :

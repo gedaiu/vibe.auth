@@ -1,4 +1,10 @@
 {
+  "service": {
+    "name": "Demo App",
+    "location": "http://localhost:8888",
+    "style": "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+  },
+
   "email": {
     "from": "noreply@demoapp.com",
     "activation": {
@@ -28,10 +34,6 @@
       "confirmation": "views/confirmationTemplate.html",
       "success": "views/successTemplate.html"
     },
-
-    "serviceName": "Demo App",
-    "location": "http://localhost:8888",
-    "style": "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
   },
 
   "login": {
@@ -49,8 +51,7 @@
       "login": "views/loginTemplate.html",
       "reset": "views/resetTemplate.html"
     },
-    "loginTimeoutSeconds": 86400,
-    "location": "http://localhost",
-    "style": "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+
+    "loginTimeoutSeconds": 86400
   }
 }

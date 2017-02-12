@@ -12,6 +12,7 @@ import vibe.inet.url;
 
 import vibeauth.router.registration.responses;
 import vibeauth.users;
+import vibeauth.configuration;
 import vibeauth.mail.base;
 import vibeauth.challenges.base;
 import vibeauth.router.accesscontrol;
@@ -19,47 +20,29 @@ import vibeauth.router.request;
 import vibeauth.collection;
 import vibeauth.templatehelper;
 
-struct RegistrationConfiguration {
-	RegistrationConfigurationPaths paths;
-	RegistrationConfigurationTemplates templates;
-
-	string serviceName = "Unknown app";
-	string location = "http://localhost";
-	string style = "";
-}
-
-struct RegistrationConfigurationPaths {
-	string register = "/register";
-	string addUser = "/register/user";
-	string activation = "/register/activation";
-	string challange = "/register/challenge";
-	string confirmation = "/register/confirmation";
-	string activationRedirect = "/";
-}
-
-struct RegistrationConfigurationTemplates {
-	string form;
-	string confirmation;
-	string success;
-}
-
 class RegistrationRoutes {
 
 	private {
 		UserCollection collection;
 		IChallenge challenge;
 		IMailQueue mailQueue;
-		const RegistrationConfiguration configuration;
 		RegistrationResponses responses;
+
+		const {
+			RegistrationConfiguration configuration;
+			ServiceConfiguration serviceConfiguration;
+		}
 	}
 
 	this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue,
-		const RegistrationConfiguration configuration = RegistrationConfiguration()) {
+		const RegistrationConfiguration configuration = RegistrationConfiguration(),
+		const ServiceConfiguration serviceConfiguration = ServiceConfiguration()) {
 		this.collection = collection;
 		this.challenge = challenge;
 		this.mailQueue = mailQueue;
 		this.configuration = configuration;
-		this.responses = new RegistrationResponses(challenge, configuration);
+		this.serviceConfiguration = serviceConfiguration;
+		this.responses = new RegistrationResponses(challenge, configuration, serviceConfiguration);
 	}
 
 	void handler(HTTPServerRequest req, HTTPServerResponse res) {
@@ -160,8 +143,8 @@ class RegistrationRoutes {
 			string[string] variables;
 
 			variables["activation"] = configuration.paths.activation;
-			variables["serviceName"] = configuration.serviceName;
-			variables["location"] = configuration.location;
+			variables["serviceName"] = serviceConfiguration.name;
+			variables["location"] = serviceConfiguration.location;
 
 			return variables;
 		}

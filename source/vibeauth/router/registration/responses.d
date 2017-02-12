@@ -10,6 +10,7 @@ import vibe.http.router;
 import vibe.data.json;
 
 import vibeauth.users;
+import vibeauth.configuration;
 import vibeauth.challenges.base;
 import vibeauth.mail.base;
 import vibeauth.router.accesscontrol;
@@ -21,7 +22,10 @@ class RegistrationResponses {
 
 	private {
 		IChallenge challenge;
-		const RegistrationConfiguration configuration;
+		const {
+			RegistrationConfiguration configuration;
+			ServiceConfiguration serviceConfiguration;
+		}
 
 		immutable {
 			string confirmationPage;
@@ -30,9 +34,11 @@ class RegistrationResponses {
 		}
 	}
 
-	this(IChallenge challenge, const RegistrationConfiguration configuration) {
+	this(IChallenge challenge, const RegistrationConfiguration configuration ,
+			const ServiceConfiguration serviceConfiguration) {
 		this.challenge = challenge;
 		this.configuration = configuration;
+		this.serviceConfiguration = serviceConfiguration;
 
 		this.formTemplate = prepareFormTemplate;
 		this.confirmationPage = prepareConfirmationPage;
@@ -48,7 +54,10 @@ class RegistrationResponses {
 				destination = readText(configuration.templates.success);
 			}
 
-			return destination.replace("#{body}", message).replaceVariables(configuration.serializeToJson);
+			return destination
+								.replace("#{body}", message)
+								.replaceVariables(configuration.serializeToJson)
+								.replaceVariables(serviceConfiguration.serializeToJson);
 		}
 
 		string prepareFormTemplate() {
@@ -70,7 +79,10 @@ class RegistrationResponses {
 				destination = readText(configuration.templates.confirmation);
 			}
 
-			return destination.replace("#{body}", message).replaceVariables(configuration.serializeToJson);
+			return destination
+							.replace("#{body}", message)
+							.replaceVariables(configuration.serializeToJson)
+							.replaceVariables(serviceConfiguration.serializeToJson);
 		}
 	}
 
@@ -85,7 +97,9 @@ class RegistrationResponses {
 				`</div>`;
 		}
 
-		string formPage = formTemplate.replaceVariables(variables);
+		string formPage = formTemplate
+			.replaceVariables(variables)
+			.replaceVariables(serviceConfiguration.serializeToJson);
 
 		res.writeBody(formPage, "text/html");
 	}

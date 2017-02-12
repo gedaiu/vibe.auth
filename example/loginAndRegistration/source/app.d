@@ -5,6 +5,7 @@ import std.file;
 import vibeauth.challenges.mathcaptcha;
 import vibeauth.client;
 import vibeauth.users;
+import vibeauth.configuration;
 import vibeauth.router.registration.routes;
 import vibeauth.router.login.routes;
 import vibeauth.mail.sendmail;
@@ -18,12 +19,13 @@ const {
 	RegistrationConfiguration registerConfiguration;
 	LoginConfiguration loginConfiguration;
 	EmailConfiguration emailConfiguration;
+	ServiceConfiguration serviceConfiguration;
 }
 
 UserMemmoryCollection collection;
 
 void handler(HTTPServerRequest req, HTTPServerResponse res) {
-	const auto style = registerConfiguration.style;
+	const auto style = serviceConfiguration.style;
 
 	User user = req.user(collection);
 
@@ -47,6 +49,7 @@ shared static this()
 	configurationJson["email"]["resetPassword"]["text"] = readText("emails/resetPassword.txt");
 	configurationJson["email"]["resetPassword"]["html"] = readText("emails/resetPassword.html");
 
+	serviceConfiguration = configurationJson["service"].deserializeJson!ServiceConfiguration;
 	emailConfiguration = configurationJson["email"].deserializeJson!EmailConfiguration;
 	registerConfiguration = configurationJson["registration"].deserializeJson!RegistrationConfiguration;
 	loginConfiguration = configurationJson["login"].deserializeJson!LoginConfiguration;
@@ -59,10 +62,11 @@ shared static this()
 	auto registrationRoutes = new RegistrationRoutes(collection,
 		new MathCaptcha(captchaSettings),
 		mailQueue,
-		registerConfiguration);
+		registerConfiguration,
+		serviceConfiguration);
 
 
-	auto loginRoutes = new LoginRoutes(collection, mailQueue, loginConfiguration);
+	auto loginRoutes = new LoginRoutes(collection, mailQueue, loginConfiguration, serviceConfiguration);
 
 	router
 		.get("*", serveStaticFiles("./public/"))

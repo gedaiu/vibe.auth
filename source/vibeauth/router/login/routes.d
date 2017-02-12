@@ -13,53 +13,34 @@ import vibeauth.users;
 import vibeauth.client;
 import vibeauth.collection;
 import vibeauth.templatehelper;
+import vibeauth.configuration;
 import vibeauth.router.accesscontrol;
 import vibeauth.router.baseAuthRouter;
-import vibeauth.router.request;
 import vibeauth.router.login.responses;
+import vibeauth.router.request;
 import vibeauth.mail.base;
-
-
-struct LoginConfigurationPaths {
-	string form = "/login";
-	string login = "/login/check";
-
-	string resetForm = "/login/reset";
-	string reset = "/login/reset/send";
-
-	string redirect = "/";
-}
-
-struct LoginConfigurationTemplates {
-	string login;
-	string reset;
-}
-
-struct LoginConfiguration {
-	LoginConfigurationPaths paths;
-	LoginConfigurationTemplates templates;
-
-	ulong loginTimeoutSeconds = 86_400;
-
-	string style = "";
-	string location = "http://localhost";
-}
 
 class LoginRoutes {
 
 	private {
 		UserCollection userCollection;
 		LoginConfiguration configuration;
+		ServiceConfiguration serviceConfiguration;
 		IMailQueue mailQueue;
 		LoginResponses responses;
 	}
 
-	this(UserCollection userCollection, IMailQueue mailQueue, const LoginConfiguration configuration = LoginConfiguration()) {
+	this(UserCollection userCollection, IMailQueue mailQueue,
+			const LoginConfiguration configuration = LoginConfiguration(),
+			const ServiceConfiguration serviceConfiguration = ServiceConfiguration()) {
+
 		this.configuration = configuration;
+		this.serviceConfiguration = serviceConfiguration;
+
 		this.userCollection = userCollection;
 		this.mailQueue = mailQueue;
 
-		this.responses = new LoginResponses(configuration);
+		this.responses = new LoginResponses(configuration, serviceConfiguration);
 	}
 
 	void handler(HTTPServerRequest req, HTTPServerResponse res) {
@@ -89,11 +70,12 @@ class LoginRoutes {
 		}
 	}
 
-	private string[string] resetPasswordVariables() {
+	private auto resetPasswordVariables() {
 		string[string] variables;
 
 		variables["reset"] = configuration.paths.resetForm;
-		variables["location"] = configuration.location;
+		variables["location"] = serviceConfiguration.location;
+		variables["serviceName"] = serviceConfiguration.name;
 
 		return variables;
 	}
@@ -105,11 +87,16 @@ class LoginRoutes {
 			`receive a password recovery link at your email address in a few minutes.`;
 
 		auto expire = Clock.currTime + 15.minutes;
-		auto token = userCollection.createToken(requestData.email, expire, [], "passwordReset");
+		auto token = userCollection.createToken(requestData.username, expire, [], "passwordReset");
 
-		mailQueue.addResetPasswordMessage(requestData.email, token, resetPasswordVariables);
+		auto user = userCollection[requestData.username];
 
-		res.redirect(configuration.paths.form ~ "?username=" ~ requestData.email.encodeComponent ~
+		auto variables = resetPasswordVariables;
+		variables["user.name"] = user.name;
+
+		mailQueue.addResetPasswordMessage(user.email, token, variables);
+
+		res.redirect(configuration.paths.form ~ "?username=" ~ requestData.username.encodeComponent ~
 			"&message=" ~ message.encodeComponent);
 	}
 
