@@ -61,6 +61,9 @@ class LoginRoutes {
 				reset(req, res);
 			}
 
+			if(req.method == HTTPMethod.POST && req.path == configuration.paths.changePassword) {
+				changePassword(req, res);
+			}
 		} catch(Exception e) {
 			version(unittest) {} else debug stderr.writeln(e);
 
@@ -97,6 +100,54 @@ class LoginRoutes {
 		mailQueue.addResetPasswordMessage(user.email, token, variables);
 
 		res.redirect(configuration.paths.form ~ "?username=" ~ requestData.username.encodeComponent ~
+			"&message=" ~ message.encodeComponent);
+	}
+
+	void changePassword(HTTPServerRequest req, HTTPServerResponse res) {
+		auto requestData = const RequestUserData(req);
+		auto user = userCollection[requestData.email];
+
+		if(requestData.passwordConfirm != requestData.password) {
+			string message = "Your password confirmation doesn't match password";
+
+			res.redirect(configuration.paths.resetForm ~ "?email=" ~ requestData.email.encodeComponent ~
+				"&token=" ~ requestData.token.encodeComponent ~
+				"&message=" ~ message.encodeComponent);
+			return;
+		}
+
+		if(requestData.password.length < 10) {
+			string message = "Your password should have at least 10 characters";
+
+			res.redirect(configuration.paths.resetForm ~ "?email=" ~ requestData.email.encodeComponent ~
+				"&token=" ~ requestData.token.encodeComponent ~
+				"&message=" ~ message.encodeComponent);
+			return;
+		}
+
+		if(user.getTokensByType("passwordReset").front.name != requestData.token) {
+			sleep(uniform(0, 1000).msecs);
+			string message = "Invalid reset password token";
+
+			res.redirect(configuration.paths.form ~ "?message=" ~ message.encodeComponent);
+
+			return;
+		}
+
+		user
+			.getTokensByType("passwordReset")
+			.map!(a => a.name)
+			.each!(a => user.revoke(a));
+
+		string message = "Your password has been changed successfully.";
+		userCollection[requestData.email].setPassword(requestData.password);
+
+		auto variables = resetPasswordVariables;
+		variables["user.name"] = user.name;
+
+		mailQueue.addResetPasswordConfirmationMessage(requestData.email, variables);
+
+		res.redirect(configuration.paths.form ~ "?username=" ~ requestData.email.encodeComponent ~
 			"&message=" ~ message.encodeComponent);
 	}
 
@@ -261,5 +312,76 @@ unittest {
 			mailQueue.messages.length.should.equal(1);
 			mailQueue.messages[0].textMessage.should.contain(resetLink);
 			mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ resetLink ~ `">`);
+		});
+}
+
+@("Change password route should set a new password")
+unittest {
+	string expectedMessage = "Your password has been changed successfully.";
+	auto router = testRouter;
+	auto token = collection.createToken(user.email, Clock.currTime + 10.seconds, [], "passwordReset");
+
+	router
+		.request.post("/login/reset/change?email=user%40gmail.com&token=" ~ token.name)
+		.send(["password": "MyNewPassword", "passwordConfirm": "MyNewPassword"])
+		.expectStatusCode(302)
+		.expectHeader("Location", "/login?username=user%40gmail.com&message=" ~ expectedMessage.encodeComponent)
+		.end((Response res) => {
+			collection["user@gmail.com"].isValidPassword("MyNewPassword").should.equal(true);
+
+			mailQueue.messages.length.should.equal(1);
+			mailQueue.messages[0].textMessage.should.contain("has successfully been changed");
+			mailQueue.messages[0].htmlMessage.should.contain("has successfully been changed");
+
+			user.isValidToken(token.name).should.equal(false);
+		});
+}
+
+@("Change password route should return to form on password missmatch")
+unittest {
+	string expectedMessage = "Your password confirmation doesn't match password";
+	auto router = testRouter;
+	auto token = collection.createToken(user.email, Clock.currTime + 10.seconds, [], "passwordReset");
+
+	router
+		.request.post("/login/reset/change?email=user%40gmail.com&token=" ~ token.name)
+		.send(["password": "MyNewPassword", "passwordConfirm": "password"])
+		.expectStatusCode(302)
+		.expectHeader("Location", "/login/reset?email=user%40gmail.com&token=" ~ token.name ~ "&message=" ~ expectedMessage.encodeComponent)
+		.end((Response res) => {
+			mailQueue.messages.length.should.equal(0);
+		});
+}
+
+@("Change password route should return to form on short password")
+unittest {
+	string expectedMessage = "Your password should have at least 10 characters";
+	auto router = testRouter;
+
+	auto token = collection.createToken(user.email, Clock.currTime + 10.seconds, [], "passwordReset");
+
+	router
+		.request.post("/login/reset/change?email=user%40gmail.com&token=" ~ token.name)
+		.send(["password": "123", "passwordConfirm": "123"])
+		.expectStatusCode(302)
+		.expectHeader("Location", "/login/reset?email=user%40gmail.com&token=" ~ token.name ~ "&message=" ~ expectedMessage.encodeComponent)
+		.end((Response res) => {
+			mailQueue.messages.length.should.equal(0);
+		});
+}
+
+@("Change password should redirect to login on invalid token")
+unittest {
+	string expectedMessage = "Invalid reset password token";
+	auto router = testRouter;
+	collection.createToken(user.email, Clock.currTime + 10.seconds, [], "passwordReset");
+
+	router
+		.request.post("/login/reset/change?email=user%40gmail.com&token=invalid")
+		.send(["password": "MyNewPassword", "passwordConfirm": "MyNewPassword"])
+		.expectStatusCode(302)
+		.expectHeader("Location", "/login?message=" ~ expectedMessage.encodeComponent)
+		.end((Response res) => {
+			mailQueue.messages.length.should.equal(0);
 		});
 }

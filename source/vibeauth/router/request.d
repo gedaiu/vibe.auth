@@ -99,12 +99,20 @@ const struct RequestUserData {
 		return get!"password";
 	}
 
+	string passwordConfirm() {
+		return get!"passwordConfirm";
+	}
+
 	string error() {
 		return get!"error";
 	}
 
 	string message() {
 		return get!"message";
+	}
+
+	string token() {
+		return get!"token";
 	}
 
 	void validateUser() {

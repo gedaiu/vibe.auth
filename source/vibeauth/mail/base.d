@@ -29,6 +29,12 @@ struct EmailConfiguration {
 								"[location][reset]?email=[email]&token=[token]",
 								"<a href=\"[location][reset]?email=[email]&token=[token]\">click here</a>");
 
+	MailTemplate resetPasswordConfirmation =
+		MailTemplate("Password changed",
+								"Hello, [user.name]!\n\nThe password has successfully been changed.\n\nIf you did not initiate this change, please contact your administrator immediately.",
+								"<h1>Hello, [user.name]!</h1><p>The password has successfully been changed.</p><p>If you did not initiate this change, please contact your administrator immediately.</p>");
+
+
 }
 
 interface IMailSender {
@@ -39,6 +45,7 @@ interface IMailQueue {
 	void addMessage(Message);
 	void addActivationMessage(string email, Token token, string[string] variables);
 	void addResetPasswordMessage(string email, Token token, string[string] variables);
+	void addResetPasswordConfirmationMessage(string email, string[string] variables);
 }
 
 struct Message {
@@ -187,6 +194,12 @@ class MailQueue : IMailQueue {
 		variables["token"] = token.name;
 
 		addMessage(settings.activation, email, variables);
+	}
+
+	void addResetPasswordConfirmationMessage(string email, string[string] variables) {
+		variables["email"] = email;
+
+		addMessage(settings.resetPasswordConfirmation, email, variables);
 	}
 
 	string replaceVariables(const(string) text, string[string] variables) {

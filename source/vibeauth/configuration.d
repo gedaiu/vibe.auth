@@ -33,6 +33,8 @@ struct LoginConfigurationPaths {
 	string resetForm = "/login/reset";
 	string reset = "/login/reset/send";
 
+  string changePassword =  "/login/reset/change";
+
 	string redirect = "/";
 }
 

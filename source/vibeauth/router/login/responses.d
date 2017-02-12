@@ -22,6 +22,7 @@ class LoginResponses {
     immutable {
       string loginFormTemplate;
       string resetFormPage;
+      string resetPasswordTemplate;
     }
 
     const {
@@ -35,9 +36,23 @@ class LoginResponses {
     this.serviceConfiguration = serviceConfiguration;
     this.loginFormTemplate = prepareLoginTemplate;
     this.resetFormPage = prepareResetFormPage;
+    this.resetPasswordTemplate = prepareResetPasswordTemplate;
   }
 
   private {
+    string prepareResetPasswordTemplate() {
+      string destination = import("login/resetTemplate.html");
+      const form = import("login/resetPasswordForm.html");
+
+      if(configuration.templates.reset != "") {
+        destination = readText(configuration.templates.reset);
+      }
+
+      return destination.replace("#{body}", form)
+        .replaceVariables(serviceConfiguration.serializeToJson)
+        .replaceVariables(configuration.serializeToJson);
+    }
+
     string prepareResetFormPage() {
       string destination = import("login/resetTemplate.html");
       const form = import("login/reset.html");
@@ -65,8 +80,24 @@ class LoginResponses {
     }
   }
 
-  void resetForm(HTTPServerRequest, HTTPServerResponse res) {
-    res.writeBody(resetFormPage, 200, "text/html; charset=UTF-8" );
+  void resetForm(HTTPServerRequest req, HTTPServerResponse res) {
+    auto requestData = const RequestUserData(req);
+
+    if(requestData.email == "" || requestData.token == "") {
+      res.writeBody(resetFormPage, 200, "text/html; charset=UTF-8" );
+      return;
+    }
+
+    Json data = Json.emptyObject;
+
+		data["email"] = requestData.email;
+		data["token"] = requestData.token;
+		data["error"] = requestData.error == "" ? "" :
+			`<div class="alert alert-danger" role="alert">` ~ requestData.error ~ `</div>`;
+
+		string resetPasswordPage = resetPasswordTemplate.replaceVariables(data);
+
+		res.writeBody(resetPasswordPage, 200, "text/html; charset=UTF-8" );
   }
 
   void loginForm(HTTPServerRequest req, HTTPServerResponse res) {
