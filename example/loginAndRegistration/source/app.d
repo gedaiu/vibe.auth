@@ -49,6 +49,9 @@ shared static this()
 	configurationJson["email"]["resetPassword"]["text"] = readText("emails/resetPassword.txt");
 	configurationJson["email"]["resetPassword"]["html"] = readText("emails/resetPassword.html");
 
+	configurationJson["email"]["resetPasswordConfirmation"]["text"] = readText("emails/resetPasswordConfirmation.txt");
+	configurationJson["email"]["resetPasswordConfirmation"]["html"] = readText("emails/resetPasswordConfirmation.html");
+
 	serviceConfiguration = configurationJson["service"].deserializeJson!ServiceConfiguration;
 	emailConfiguration = configurationJson["email"].deserializeJson!EmailConfiguration;
 	registerConfiguration = configurationJson["registration"].deserializeJson!RegistrationConfiguration;

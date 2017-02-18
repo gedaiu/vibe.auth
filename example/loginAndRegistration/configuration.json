@@ -12,8 +12,15 @@
       "text": "",
       "html": ""
     },
+
     "resetPassword": {
       "subject": "Reset password instructions",
+      "text": "",
+      "html": ""
+    },
+
+    "resetPasswordConfirmation": {
+      "subject": "Password Changed",
       "text": "",
       "html": ""
     }
