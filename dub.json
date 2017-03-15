@@ -3,6 +3,7 @@
 	"description": "OAuth2 server for vibe.d ",
 	"copyright": "Copyright © 2016, Szabo Bogdan",
 	"authors": ["Szabo Bogdan"],
+  "license": "MIT",
 
 	"dependencies": {
 		"vibe-d": "*",
