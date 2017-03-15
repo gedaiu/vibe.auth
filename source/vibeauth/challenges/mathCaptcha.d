@@ -86,7 +86,6 @@ class MathCaptcha : IChallenge {
 
     auto key = req.cookies["mathcaptcha"];
 
-    codes.writeln;
     if(key !in codes) {
       return false;
     }
@@ -95,8 +94,6 @@ class MathCaptcha : IChallenge {
 
     codes.remove(key);
     res.setCookie("mathcaptcha", null);
-
-    writeln("?", response ,"==", expected);
 
 		return response == expected;
 	}
