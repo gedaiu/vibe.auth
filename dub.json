@@ -7,7 +7,7 @@
 
 	"dependencies": {
 		"vibe-d": "*",
-		"should": "~>0.1.0"
+		"fluent-asserts": "~>0.2.0"
 	},
 
 	"libs": ["MagickWand"]
