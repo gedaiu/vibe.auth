@@ -23,7 +23,7 @@ string replaceVariables(const string data, const Json variables, const string pr
 }
 
 version(unittest) {
-  import bdd.base;
+  import fluent.asserts;
 }
 
 @("replace variables")

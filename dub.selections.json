@@ -1,14 +1,13 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"fluent-asserts": "0.2.0",
-		"libasync": "0.7.5",
-		"libev": "5.0.0+4.04",
-		"libevent": "2.0.1+2.0.16",
-		"memutils": "0.4.4",
-		"openssl": "1.1.4+1.0.1g",
-		"should": {"path":"../should"},
-		"vibe-d": "0.7.30",
-		"vibemail": "2.0.0"
+		"consoled": "1.0.4",
+		"diet-ng": "1.2.1",
+		"fluent-asserts": {"path":"../should"},
+		"libasync": "0.8.3",
+		"libevent": "2.0.2+2.0.16",
+		"memutils": "0.4.9",
+		"openssl": "1.1.5+1.0.1g",
+		"vibe-d": "0.7.31"
 	}
 }

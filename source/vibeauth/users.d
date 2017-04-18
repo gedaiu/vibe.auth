@@ -14,7 +14,7 @@ import std.array;
 import vibeauth.collection;
 import vibeauth.token;
 
-version(unittest) import bdd.base;
+version(unittest) import fluent.asserts;
 
 alias UserNotFoundException = ItemNotFoundException;
 

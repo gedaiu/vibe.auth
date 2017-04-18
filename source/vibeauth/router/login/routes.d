@@ -189,9 +189,9 @@ class LoginRoutes {
 }
 
 version(unittest) {
-	import http.request;
-	import http.json;
-	import bdd.base;
+	import fluentasserts.vibe.request;
+	import fluentasserts.vibe.json;
+	import fluent.asserts;
 	import vibeauth.token;
 
 	UserMemmoryCollection collection;

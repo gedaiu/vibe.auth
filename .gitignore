@@ -10,3 +10,6 @@ libvibe-auth.a
 oauth-example
 registration-example
 login-and-registration-example
+/generated.d
+/trial.json
+/vibe-auth-test-library

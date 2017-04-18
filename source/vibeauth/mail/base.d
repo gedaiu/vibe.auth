@@ -214,7 +214,7 @@ class MailQueue : IMailQueue {
 }
 
 version(unittest) {
-	import bdd.base;
+	import fluent.asserts;
 
 	class MailQueueMock : MailQueue {
 
