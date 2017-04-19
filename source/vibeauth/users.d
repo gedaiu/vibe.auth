@@ -291,6 +291,7 @@ class UserMemmoryCollection : UserCollection {
 	}
 }
 
+@("Throw exceptions on selecting invalid users")
 unittest {
 	auto collection = new UserMemmoryCollection([]);
 	auto user = new User("user", "password");
@@ -300,17 +301,12 @@ unittest {
 	assert(collection.contains("user"), "It should find user by name");
 	assert(!collection.contains("other user"), "It should not find user by name");
 
-	bool thwrown;
-
-	try {
+	({
 		collection["other user"];
-	} catch (Exception e) {
-		thwrown = true;
-	}
-
-	assert(thwrown, "It should raise exception when the user it's not found");
+	}).should.throwAnyException;
 }
 
+@("Password validation")
 unittest {
 	auto user = new User("user", "password");
 	auto password = user.toJson["password"].to!string;
@@ -421,6 +417,7 @@ unittest {
 	assert(!otherUser.can!"doStuff", "It should return false if the user can not `doStuff`");
 }
 
+@("Searching for a missing token")
 unittest {
 	auto collection = new UserMemmoryCollection([]);
 	auto user = new User("user", "password");
@@ -430,15 +427,9 @@ unittest {
 
 	assert(collection.byToken(token.name) == user, "It should find user by token");
 
-	bool thwrown;
-
-	try {
+	({
 		collection.byToken("token");
-	} catch (Exception e) {
-		thwrown = true;
-	}
-
-	assert(thwrown, "It should raise exception when an user it's not found by token");
+	}).should.throwAnyException;
 }
 
 @("Token revoke")
@@ -453,9 +444,9 @@ unittest {
 
 	collection.revoke(token.name);
 
-	should.throwAnyException({
+	({
 		collection.byToken(token.name);
-	});
+	}).should.throwAnyException;
 }
 
 @("Get tokens by type")

@@ -207,28 +207,43 @@ class OAuth2: BaseAuthRouter {
 		this.clientCollection = clientCollection;
 	}
 
+	void tokenHandlers(HTTPServerRequest req, HTTPServerResponse res) {
+		try {
+			setAccessControl(res);
+			if(req.method == HTTPMethod.OPTIONS) {
+				return;
+			}
+
+			if(req.path == configuration.tokenPath) {
+				createToken(req, res);
+			}
+
+			if (req.path == configuration.authorizePath) {
+				authorize(req, res);
+			}
+
+			if(req.path == configuration.authenticatePath) {
+				authenticate(req, res);
+			}
+
+			if(req.path == configuration.revokePath) {
+				revoke(req, res);
+			}
+		} catch(Exception e) {
+			version(unittest) {} else debug stderr.writeln(e);
+
+			if(!res.headerWritten) {
+				res.writeJsonBody([ "error": e.msg ], 500);
+			}
+		}
+	}
+
 	override {
 		void checkLogin(HTTPServerRequest req, HTTPServerResponse res) {
 			try {
 				setAccessControl(res);
 				if(req.method == HTTPMethod.OPTIONS) {
 					return;
-				}
-
-				if(req.path == configuration.tokenPath) {
-					createToken(req, res);
-				}
-
-				if (req.path == configuration.authorizePath) {
-					authorize(req, res);
-				}
-
-				if(req.path == configuration.authenticatePath) {
-					authenticate(req, res);
-				}
-
-				if(req.path == configuration.revokePath) {
-					revoke(req, res);
 				}
 
 				if(!res.headerWritten && req.path != configuration.style && !isValidBearer(req)) {
@@ -357,7 +372,7 @@ version(unittest) {
 	OAuth2 auth;
 	Token refreshToken;
 
-	auto testRouter() {
+	auto testRouter(bool requireLogin = true) {
 		auto router = new URLRouter();
 
 		collection = new UserMemmoryCollection(["doStuff"]);
@@ -376,7 +391,13 @@ version(unittest) {
 		clientCollection = new ClientCollection([ client ]);
 
 		auth = new OAuth2(collection, clientCollection);
-		router.any("*", &auth.checkLogin);
+
+
+		router.any("*", &auth.tokenHandlers);
+
+		if(requireLogin) {
+			router.any("*", &auth.checkLogin);
+		}
 
 		return router;
 	}
@@ -414,7 +435,6 @@ unittest {
 		});
 }
 
-
 @("it should return tokens on valid username and password")
 unittest {
 	testRouter
@@ -450,7 +470,7 @@ unittest {
 		});
 }
 
-@("it should return a new access token on ")
+@("it should return a new access token on refresh token")
 unittest {
 	auto router = testRouter;
 
@@ -469,4 +489,15 @@ unittest {
 			response.bodyJson["token_type"].to!string.should.equal("Bearer");
 			response.bodyJson["expires_in"].to!int.should.equal(3600);
 		});
+}
+
+@("it should be able to not block the requests without login")
+unittest {
+	auto router = testRouter(false);
+
+	router
+		.request
+		.get("/path")
+		.expectStatusCode(404)
+		.end();
 }
