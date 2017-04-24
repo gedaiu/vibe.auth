@@ -29,12 +29,6 @@ class VibeMailQueue : MailQueue {
 		smtpSettings.tlsValidationMode = settings.smtp.tlsValidationMode.to!TLSPeerValidationMode;
 		smtpSettings.tlsVersion = settings.smtp.tlsVersion.to!TLSVersion;
 
-		smtpSettings.authType.writeln;
-		smtpSettings.connectionType.writeln;
-		smtpSettings.tlsValidationMode.writeln;
-		smtpSettings.tlsVersion.writeln;
-
-
 		smtpSettings.localname = settings.smtp.localname;
 		smtpSettings.password = settings.smtp.password;
 		smtpSettings.username = settings.smtp.username;
