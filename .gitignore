@@ -13,3 +13,4 @@ login-and-registration-example
 /generated.d
 /trial.json
 /vibe-auth-test-library
+example/loginAndRegistration/configuration.json
