@@ -9,6 +9,7 @@ import vibeauth.configuration;
 import vibeauth.router.registration.routes;
 import vibeauth.router.login.routes;
 import vibeauth.mail.sendmail;
+import vibeauth.mail.vibe;
 import vibeauth.token;
 import vibeauth.router.request;
 import vibeauth.mail.base;
@@ -60,7 +61,7 @@ shared static this()
 	MathCaptchaSettings captchaSettings;
 	captchaSettings.fontName = buildNormalizedPath(getcwd, "fonts/warpstorm/WarpStorm.otf");
 
-	auto mailQueue = new SendMailQueue(emailConfiguration);
+	auto mailQueue = new VibeMailQueue(emailConfiguration);
 
 	auto registrationRoutes = new RegistrationRoutes(collection,
 		new MathCaptcha(captchaSettings),

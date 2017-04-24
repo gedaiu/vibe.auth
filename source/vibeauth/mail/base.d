@@ -9,6 +9,10 @@ import std.conv;
 import vibeauth.users;
 import vibeauth.token;
 
+import vibe.mail.smtp;
+import vibe.stream.tls;
+import vibe.data.json;
+
 struct MailTemplate {
 	string subject;
 
@@ -16,8 +20,26 @@ struct MailTemplate {
 	string html;
 }
 
+struct SMTPConfig {
+	@optional {
+		string authType = "none";
+		string connectionType = "plain";
+		string tlsValidationMode = "none";
+		string tlsVersion = "any";
+
+		string host;
+		ushort port;
+
+		string localname;
+		string password;
+		string username;
+	}
+}
+
 struct EmailConfiguration {
 	string from = "noreply@service.com";
+
+	@optional SMTPConfig smtp;
 
 	MailTemplate activation =
 		MailTemplate("Confirmation instructions",

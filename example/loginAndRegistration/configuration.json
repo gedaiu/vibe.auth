@@ -6,7 +6,17 @@
   },
 
   "email": {
+    "smtp": {
+      "authType": "",
+      "connectionType": "",
+      "host": "",
+      "port": 465,
+      "username": "",
+      "password": ""
+    },
+
     "from": "noreply@demoapp.com",
+
     "activation": {
       "subject": "Confirmation instructions",
       "text": "",
