@@ -11,7 +11,8 @@ import std.random;
 import std.stdio;
 
 import vibe.stream.memory;
-import vibe.templ.diet;
+import vibe.stream.wrapper;
+import diet.html;
 
 struct MathCaptchaSettings {
   string bgColor = "white";
@@ -113,8 +114,11 @@ class MathCaptcha : IChallenge {
   }
 
 	string getTemplate(string challangeLocation) {
-		auto output = new MemoryOutputStream();
-		output.compileDietFile!("challanges/math.dt", challangeLocation);
-		return output.data.assumeUTF;
+		auto output = createMemoryOutputStream();
+    auto range = streamOutputRange(output);
+
+		range.compileHTMLDietFile!("challanges/math.dt", challangeLocation);
+
+    return output.data.assumeUTF;
 	}
 }
