@@ -235,16 +235,18 @@ version(unittest) {
 	TestMailQueue mailQueue;
 	Token activationToken;
 
+	alias MailMessage = vibeauth.mail.base.Message;
+
 	class TestMailQueue : MailQueue
 	{
-		Message[] messages;
+		MailMessage[] messages;
 
 		this() {
 			super(EmailConfiguration());
 		}
 
 		override
-		void addMessage(Message message) {
+		void addMessage(MailMessage message) {
 			messages ~= message;
 		}
 	}
@@ -319,7 +321,6 @@ unittest {
 @("POST empty password should not create the user")
 unittest {
 	auto router = testRouter;
-
 	auto data = `{
 		"name": "test",
 		"username": "test_user",

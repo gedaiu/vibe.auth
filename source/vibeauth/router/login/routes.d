@@ -201,16 +201,18 @@ version(unittest) {
 	Token refreshToken;
 	TestMailQueue mailQueue;
 
+	alias MailMessage = vibeauth.mail.base.Message;
+
 	class TestMailQueue : MailQueue
 	{
-		Message[] messages;
+		MailMessage[] messages;
 
 		this() {
 			super(EmailConfiguration());
 		}
 
 		override
-		void addMessage(Message message) {
+		void addMessage(MailMessage message) {
 			messages ~= message;
 		}
 	}

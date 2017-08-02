@@ -425,7 +425,7 @@ unittest {
 	collection.add(user);
 	auto token = user.createToken(Clock.currTime + 3600.seconds);
 
-	assert(collection.byToken(token.name) == user, "It should find user by token");
+	collection.byToken(token.name).name.should.equal(user.name).because("It should find user by token");
 
 	({
 		collection.byToken("token");
@@ -455,8 +455,8 @@ unittest {
 	auto user = new User("user", "password");
 
 	collection.add(user);
-	auto token = user.createToken(Clock.currTime + 3600.seconds, [], "activation");
-	auto tokens = collection["user"].getTokensByType("activation").array;
+	auto token = user.createToken(Clock.currTime + 3600.seconds, [], "activation").name;
+	auto tokens = collection["user"].getTokensByType("activation").map!(a => a.name).array;
 
 	tokens.length.should.equal(1);
 	tokens.should.contain(token);
