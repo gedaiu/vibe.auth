@@ -20,8 +20,8 @@ struct MathCaptchaSettings {
   long fontSize = 15;
   string fontName = "sans-serif";
 
-  long maxWidth = 350;
-  long maxHeight = 100;
+  size_t maxWidth = 350;
+  size_t maxHeight = 100;
 }
 
 class MathCaptcha : IChallenge {
