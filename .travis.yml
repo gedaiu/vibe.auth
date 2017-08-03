@@ -9,7 +9,8 @@ addons:
     - libssl-dev
     - pkg-config
     - zlib1g-dev
-    - imagemagick-dev
+    - libmagickwand-dev
+    - imagemagick
 
 d:
   # order: latest DMD, oldest DMD, LDC/GDC, remaining DMD versions
