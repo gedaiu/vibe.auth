@@ -1,3 +1,10 @@
+/++
+  A module containing helper functions to ease the template usage
+
+  Copyright: © 2018 Szabo Bogdan
+  License: Subject to the terms of the MIT license, as written in the included LICENSE.txt file.
+  Authors: Szabo Bogdan
++/
 module vibeauth.templatehelper;
 
 import std.conv;
@@ -5,6 +12,7 @@ import std.stdio;
 import std.string;
 import vibe.data.json;
 
+/// Search variables `#{variable_name}` and replace them with the values from json
 string replaceVariables(const string data, const Json variables, const string prefix = "") {
   string result = data.dup;
 

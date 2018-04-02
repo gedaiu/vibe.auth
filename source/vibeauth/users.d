@@ -1,3 +1,10 @@
+/++
+  A module containing the user handling logic
+
+  Copyright: © 2018 Szabo Bogdan
+  License: Subject to the terms of the MIT license, as written in the included LICENSE.txt file.
+  Authors: Szabo Bogdan
++/
 module vibeauth.users;
 
 import vibe.data.json;

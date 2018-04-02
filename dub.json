@@ -1,13 +1,13 @@
 {
 	"name": "vibe-auth",
-	"description": "OAuth2 server for vibe.d ",
-	"copyright": "Copyright © 2016, Szabo Bogdan",
+	"description": "OAuth2 server for vibe.d",
+	"copyright": "Copyright © 2018, Szabo Bogdan",
 	"authors": [
 		"Szabo Bogdan"
 	],
 	"license": "MIT",
 	"dependencies": {
-		"vibe-d": "~>0.8.0",
+		"vibe-d": ">=0.8.0",
 		"diet-ng": "~>1.4.5"
 	},
 	"configurations": [

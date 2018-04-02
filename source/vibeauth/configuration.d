@@ -1,3 +1,10 @@
+/++
+  A module containing the configuration structures used to setup your auth process
+
+  Copyright: © 2018 Szabo Bogdan
+  License: Subject to the terms of the MIT license, as written in the included LICENSE.txt file.
+  Authors: Szabo Bogdan
++/
 module vibeauth.configuration;
 
 struct ServiceConfiguration {
