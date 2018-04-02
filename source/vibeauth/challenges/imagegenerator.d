@@ -139,7 +139,7 @@ struct ImageGenerator {
 		auto blob = MagickGetImageBlob(mw, &length);
 
 		ubyte[] data = blob[0..length];
-		RandomAccessStream stream = new MemoryStream(data, false, length);
+		auto stream = createMemoryStream(data, false, length);
 
 		MagickRelinquishMemory(blob);
 

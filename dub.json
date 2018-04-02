@@ -2,15 +2,29 @@
 	"name": "vibe-auth",
 	"description": "OAuth2 server for vibe.d ",
 	"copyright": "Copyright © 2016, Szabo Bogdan",
-	"authors": ["Szabo Bogdan"],
-  "license": "MIT",
-
+	"authors": [
+		"Szabo Bogdan"
+	],
+	"license": "MIT",
 	"dependencies": {
-		"vibe-d": "~>0.8.1-beta.1",
-		"fluent-asserts": "~>0.6.3",
-		"fluent-asserts:vibe": "~>0.6.3",
-		"diet-ng": "~>1.3.0"
+		"vibe-d": "~>0.8.0",
+		"diet-ng": "~>1.4.5"
 	},
-
-	"libs": ["MagickWand"]
+	"configurations": [
+		{
+			"name": "trial",
+			"dependencies": {
+				"vibe-d": "*",
+				"fluent-asserts": "~>0.11.2",
+				"trial:lifecycle": "~>0.7.0-alpha.5"
+			},
+			"versions": [
+				"JsonLineNumbers",
+				"VibeJsonFieldNames"
+			]
+		}
+	],
+	"libs": [
+		"MagickWand"
+	]
 }
