@@ -37,7 +37,6 @@ shared static this()
 {
 	auto settings = new HTTPServerSettings;
 	settings.port = 8888;
-	settings.options = HTTPServerOption.parseCookies | HTTPServerOption.parseFormBody | HTTPServerOption.parseQueryString | HTTPServerOption.parseJsonBody;
 
 	auto router = new URLRouter();
 

@@ -1,0 +1,14 @@
+doctype html
+html
+head
+	title Demo App
+	link(rel="stylesheet", href="#{style}", type="text/css")
+body
+	div.container
+		h1 Demo App
+		- if(user !is null)
+			p welcome,
+				b  #{user.name}
+
+		- if(user is null)
+			a(href="/login") please login

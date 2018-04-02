@@ -15,3 +15,6 @@ login-and-registration-example
 /vibe-auth-test-library
 example/loginAndRegistration/configuration.json
 coverage
+trial-root
+trial_root.d
+.trial

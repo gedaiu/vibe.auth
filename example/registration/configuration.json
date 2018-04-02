@@ -4,7 +4,8 @@
     "addUser": "/register/user",
     "activation": "/register/activation",
     "challange": "/register/challenge",
-    "confirmation": "/register/confirmation"
+    "confirmation": "/register/confirmation",
+    "activationRedirect": "/"
   },
 
   "email": {
@@ -14,5 +15,12 @@
 
   "serviceName": "Demo App",
   "location": "http://localhost:8888",
-  "style": "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+  "style": "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css",
+
+
+  "templates": {
+    "form": "views/registerTemplate.html",
+    "confirmation": "views/confirmationTemplate.html",
+    "success": "views/successTemplate.html"
+  }
 }
