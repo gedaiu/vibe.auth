@@ -1,18 +1,18 @@
 module vibeauth.router.accesscontrol;
 
-
 import vibe.http.router;
+import std.string;
+import std.algorithm;
+
+void addHeaderValue(ref HTTPServerResponse res, string name, string[] values) {
+  if(name in res.headers) {
+    values = res.headers[name].split(",") ~ values;
+  }
+
+  res.headers[name] = values.map!(a => a.strip).uniq.filter!(a => a != "").join(", ");
+}
 
 void setAccessControl(ref HTTPServerResponse res) {
-	if("Access-Control-Allow-Origin" !in res.headers) {
-		res.headers["Access-Control-Allow-Origin"] = "*";
-	} else {
-		res.headers["Access-Control-Allow-Origin"] = ", *";
-	}
-
-	if("Access-Control-Allow-Headers" !in res.headers) {
-		res.headers["Access-Control-Allow-Headers"] = "Authorization";
-	} else {
-		res.headers["Access-Control-Allow-Headers"] = ", Authorization";
-	}
+  res.addHeaderValue("Access-Control-Allow-Origin", ["*"]);
+  res.addHeaderValue("Access-Control-Allow-Headers", ["Authorization"]);
 }
