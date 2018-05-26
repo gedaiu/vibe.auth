@@ -207,6 +207,9 @@ class OAuth2: BaseAuthRouter {
 		this.clientCollection = clientCollection;
 	}
 
+
+	/// Handle the OAuth requests for creating tokens, authorization
+	/// authentication and revocation
 	void tokenHandlers(HTTPServerRequest req, HTTPServerResponse res) {
 		try {
 			setAccessControl(res);
@@ -253,7 +256,7 @@ class OAuth2: BaseAuthRouter {
 				version(unittest) {} else debug stderr.writeln(e);
 
 				if(!res.headerWritten) {
-					res.writeJsonBody([ "error": e.msg ], 500);
+					res.writeJsonBody([ "error": e.msg ], 400);
 				}
 			}
 		}
@@ -341,13 +344,25 @@ class OAuth2: BaseAuthRouter {
 
 		void createToken(HTTPServerRequest req, HTTPServerResponse res) {
 			auto grant = req.getAuthData;
-			grant.userCollection = collection;
 
+			grant.userCollection = collection;
 			res.statusCode = grant.isValid ? 200 : 401;
 			res.writeJsonBody(grant.get);
 		}
 
+		/// Revoke a previously created token using a POST request
 		void revoke(HTTPServerRequest req, HTTPServerResponse res) {
+			if(req.method != HTTPMethod.POST) {
+				return;
+			}
+
+			if("token" !in req.form) {
+				res.statusCode = 400;
+				res.writeJsonBody([ "error": "You must provide a `token` parameter." ]);
+
+				return;
+			}
+
 			auto const token = req.form["token"];
 			collection.revoke(token);
 		}
@@ -500,4 +515,30 @@ unittest {
 		.get("/path")
 		.expectStatusCode(404)
 		.end();
+}
+
+@("it should return 404 for GET on revocation path")
+unittest {
+	auto router = testRouter(false);
+
+	router
+		.request
+		.get("/auth/revoke")
+		.expectStatusCode(404)
+		.end();
+}
+
+@("it should return 400 for POST on revocation path with missing token")
+unittest {
+	auto router = testRouter(false);
+
+	router
+		.request
+		.post("/auth/revoke")
+		.expectStatusCode(400)
+		.end((Response response) => {
+			response.bodyJson.should.equal("{
+				\"error\": \"You must provide a `token` parameter.\"
+			}".parseJsonString);
+		});
 }

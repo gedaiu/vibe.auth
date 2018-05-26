@@ -15,7 +15,7 @@
 			"name": "trial",
 			"dependencies": {
 				"vibe-d": "*",
-				"fluent-asserts": "~>0.11.2",
+				"fluent-asserts": "~>0.11.4",
 				"trial:lifecycle": "~>0.7.0-alpha.5"
 			},
 			"versions": [
