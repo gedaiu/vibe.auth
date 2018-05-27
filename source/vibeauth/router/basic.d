@@ -24,9 +24,10 @@ class BasicAuth(string realm): BaseAuthRouter {
   }
 
   override {
-    /// Perform the authentication. If is succeded next handler will be executed,
-    /// otherwise an error respons will be sent
-    void checkLogin(HTTPServerRequest req, HTTPServerResponse res) {
+    /// Auth handler that will fail if a successfull auth was not performed.
+    /// This handler is usefull for routes that want to hide information to the
+    /// public.
+    void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
       auto pauth = "Authorization" in req.headers;
 
       setAccessControl(res);
@@ -42,6 +43,26 @@ class BasicAuth(string realm): BaseAuthRouter {
         }
       } else {
         respondUnauthorized(res);
+      }
+    }
+
+    /// Auth handler that fails only if the auth fields are present and are not valid.
+    /// This handler is usefull when a route should return different data when the user is 
+    /// logged in
+    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      auto pauth = "Authorization" in req.headers;
+
+      setAccessControl(res);
+
+      if(pauth && (*pauth).startsWith("Basic ")) {
+        auto auth = parseBasicAuth((*pauth)[6 .. $]);
+
+        if(auth.username in collection && collection[auth.username].isValidPassword(auth.password)) {
+          req.username = auth.username;
+          return;
+        } else {
+          respondUnauthorized(res);
+        }
       }
     }
   }
