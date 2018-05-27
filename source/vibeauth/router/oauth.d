@@ -418,12 +418,12 @@ version(unittest) {
 	}
 }
 
-@("it should return 401 on missing auth")
+/// it should return 401 on missing auth
 unittest {
 	testRouter.request.get("/sites").expectStatusCode(401).end();
 }
 
-@("it should return 401 on invalid credentials")
+/// it should return 401 on invalid credentials
 unittest {
 	testRouter
 		.request.post("/auth/token")
@@ -432,7 +432,7 @@ unittest {
 		.end;
 }
 
-@("it should return tokens on valid email and password")
+/// it should return tokens on valid email and password
 unittest {
 	testRouter
 		.request
@@ -450,7 +450,7 @@ unittest {
 		});
 }
 
-@("it should return tokens on valid username and password")
+/// it should return tokens on valid username and password
 unittest {
 	testRouter
 		.request
@@ -468,7 +468,7 @@ unittest {
 		});
 }
 
-@("it should set the scope tokens on valid credentials")
+/// it should set the scope tokens on valid credentials
 unittest {
 	testRouter
 		.request
@@ -485,7 +485,7 @@ unittest {
 		});
 }
 
-@("it should return a new access token on refresh token")
+/// it should return a new access token on refresh token
 unittest {
 	auto router = testRouter;
 
@@ -506,7 +506,7 @@ unittest {
 		});
 }
 
-@("it should be able to not block the requests without login")
+/// it should be able to not block the requests without login
 unittest {
 	auto router = testRouter(false);
 
@@ -517,7 +517,7 @@ unittest {
 		.end();
 }
 
-@("it should return 404 for GET on revocation path")
+/// it should return 404 for GET on revocation path
 unittest {
 	auto router = testRouter(false);
 
@@ -528,7 +528,7 @@ unittest {
 		.end();
 }
 
-@("it should return 400 for POST on revocation path with missing token")
+/// it should return 400 for POST on revocation path with missing token
 unittest {
 	auto router = testRouter(false);
 

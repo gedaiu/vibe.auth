@@ -136,7 +136,6 @@ const struct RequestUserData {
 	}
 }
 
-
 User user(HTTPServerRequest req, UserCollection collection) {
 	string token = req.cookies.get("auth-token");
 

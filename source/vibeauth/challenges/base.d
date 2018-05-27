@@ -3,13 +3,23 @@ module vibeauth.challenges.base;
 public import vibe.http.router;
 import std.datetime;
 
+/// Interface for user challenge definition
 interface IChallenge {
-	string generate(HTTPServerRequest req, HTTPServerResponse res);
-	string getTemplate(string challangeLocation);
-	bool validate(HTTPServerRequest req, HTTPServerResponse res, string response);
+  /// Generate a challenge. The request must be initiated from the challenge template
+  string generate(HTTPServerRequest req, HTTPServerResponse res);
+
+  /// Get a template for the current challenge
+  string getTemplate(string challangeLocation);
+
+  /// Validate the challenge
+  bool validate(HTTPServerRequest req, HTTPServerResponse res, string response);
 }
 
+/// Secret code used to validate a challenge
 struct CodeEntry {
-	SysTime time;
-	string result;
+  /// Time when the code was created
+  SysTime time;
+
+  /// The code value
+  string result;
 }
