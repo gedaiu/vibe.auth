@@ -34,7 +34,7 @@ version(unittest) {
   import fluent.asserts;
 }
 
-@("replace variables")
+/// replace variables
 unittest {
   Json data = Json.emptyObject;
   data["one"] = "1";
@@ -46,7 +46,7 @@ unittest {
 }
 
 
-@("should not replace variables on undefined data")
+/// should not replace variables on undefined data
 unittest {
   Json data;
 
