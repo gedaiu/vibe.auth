@@ -277,22 +277,11 @@ class OAuth2: BaseAuthRouter {
     /// This handler is usefull when a route should return different data when the user is 
     /// logged in
     void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
-      try {
-        setAccessControl(res);
-        if(req.method == HTTPMethod.OPTIONS) {
-          return;
-        }
-
-        if(!res.headerWritten && req.path != configuration.style && !isValidBearer(req)) {
-          respondUnauthorized(res);
-        }
-      } catch(Exception e) {
-        version(unittest) {} else debug stderr.writeln(e);
-
-        if(!res.headerWritten) {
-          res.writeJsonBody([ "error": e.msg ], 400);
-        }
+      if("Authorization" !in req.headers) {
+        return;
       }
+
+      mandatoryAuth(req, res);
     }
   }
 
