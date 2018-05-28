@@ -32,30 +32,47 @@ struct OAuth2Configuration {
   string style;
 }
 
-/// 
+/// Struct used for user authentication
 struct AuthData {
+  ///
   string username;
+  ///
   string password;
+  ///
   string refreshToken;
+  /// The authorization scopes
   string[] scopes;
 }
 
+///
 interface IGrantAccess {
+  /// setter for the authentication data
   void authData(AuthData authData);
+
+  /// setter for the user collection
   void userCollection(UserCollection userCollection);
 
+  /// validate the auth data
   bool isValid();
+
+  /// get a Json response
   Json get();
 }
 
-final class UnknownGrantAccess : IGrantAccess{
+/// Handle errors during token generation
+final class UnknownGrantAccess : IGrantAccess {
+  /// Ignores the auth data
   void authData(AuthData) {}
+
+  /// Ignore the user collection
   void userCollection(UserCollection) {};
 
+  /// All the requests are invalid
   bool isValid() {
     return false;
   }
 
+  /// Get an error Json response
   Json get() {
     auto response = Json.emptyObject;
     response["error"] = "Invalid `grant_type` value";
@@ -64,20 +81,24 @@ final class UnknownGrantAccess : IGrantAccess{
   }
 }
 
+/// Grant user access based on username and password strings
 final class PasswordGrantAccess : IGrantAccess {
   private {
     AuthData data;
     UserCollection collection;
   }
 
+  /// setter for the authentication data
   void authData(AuthData authData) {
     this.data = authData;
   }
 
+  /// setter for the user collection
   void userCollection(UserCollection userCollection) {
     this.collection = userCollection;
   }
 
+  /// validate the authentication data
   bool isValid() {
     if(!collection.contains(data.username)) {
       return false;
@@ -90,6 +111,7 @@ final class PasswordGrantAccess : IGrantAccess {
     return true;
   }
 
+  /// Get the token Json response object
   Json get() {
     auto response = Json.emptyObject;
 
@@ -110,6 +132,7 @@ final class PasswordGrantAccess : IGrantAccess {
   }
 }
 
+/// Grant user access based on a refresh token
 final class RefreshTokenGrantAccess : IGrantAccess {
   private {
     AuthData data;
@@ -117,11 +140,13 @@ final class RefreshTokenGrantAccess : IGrantAccess {
     User user;
   }
 
+  /// setter for the authentication data
   void authData(AuthData authData) {
     this.data = authData;
     cacheData;
   }
 
+  /// setter for the user collection
   void userCollection(UserCollection userCollection) {
     this.collection = userCollection;
     cacheData;
@@ -136,6 +161,7 @@ final class RefreshTokenGrantAccess : IGrantAccess {
     data.scopes = user.getScopes(data.refreshToken).filter!(a => a != "refresh").array;
   }
 
+  /// Validate the refresh token
   bool isValid() {
     if(data.refreshToken == "") {
       return false;
@@ -144,6 +170,7 @@ final class RefreshTokenGrantAccess : IGrantAccess {
     return user.isValidToken(data.refreshToken, "refresh");
   }
 
+  /// Get the token Json response object
   Json get() {
     auto response = Json.emptyObject;
 
@@ -164,6 +191,7 @@ final class RefreshTokenGrantAccess : IGrantAccess {
   }
 }
 
+/// Get the right access generator
 IGrantAccess getAuthData(HTTPServerRequest req) {
   AuthData data;
 
@@ -199,16 +227,17 @@ IGrantAccess getAuthData(HTTPServerRequest req) {
     }
   }
 
-
   return new UnknownGrantAccess;
 }
 
+/// OAuth2 autenticator
 class OAuth2: BaseAuthRouter {
   protected {
     const OAuth2Configuration configuration;
     ClientCollection clientCollection;
   }
 
+  ///
   this(UserCollection userCollection, ClientCollection clientCollection, const OAuth2Configuration configuration = OAuth2Configuration()) {
     super(userCollection);
 
@@ -274,7 +303,7 @@ class OAuth2: BaseAuthRouter {
     }
 
     /// Auth handler that fails only if the auth fields are present and are not valid.
-    /// This handler is usefull when a route should return different data when the user is 
+    /// This handler is usefull when a route should return different data when the user is
     /// logged in
     void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
       if("Authorization" !in req.headers) {
@@ -286,6 +315,8 @@ class OAuth2: BaseAuthRouter {
   }
 
   private {
+
+    /// Validate the authorization token
     bool isValidBearer(HTTPServerRequest req) {
       auto pauth = "Authorization" in req.headers;
 
@@ -305,6 +336,7 @@ class OAuth2: BaseAuthRouter {
       return false;
     }
 
+    /// Handle the authorization step
     void authorize(HTTPServerRequest req, HTTPServerResponse res) {
       if("redirect_uri" !in req.query) {
         showError(res, "Missing `redirect_uri` parameter");
@@ -336,6 +368,8 @@ class OAuth2: BaseAuthRouter {
       res.render!("loginForm.dt", appTitle, redirectUri, state, style);
     }
 
+
+    /// Show an HTML error
     void showError(HTTPServerResponse res, const string error) {
       auto const style = configuration.style;
       res.statusCode = 400;
@@ -365,6 +399,7 @@ class OAuth2: BaseAuthRouter {
       res.render!("redirect.dt", redirectUri);
     }
 
+    /// Create token for the requested user
     void createToken(HTTPServerRequest req, HTTPServerResponse res) {
       auto grant = req.getAuthData;
 
@@ -390,6 +425,8 @@ class OAuth2: BaseAuthRouter {
       collection.revoke(token);
     }
 
+
+    /// Write the unauthorized message to the server response
     void respondUnauthorized(HTTPServerResponse res, string message = "Authorization required") {
       res.statusCode = HTTPStatus.unauthorized;
       res.writeJsonBody([ "error": message ]);
@@ -474,8 +511,29 @@ unittest {
 
   router
     .request.get("/sites")
+    .expectStatusCode(200)
+    .end;
+}
+
+/// it should return 200 on valid auth when it's not mandatory
+unittest {
+  auto router = testRouter(false);
+
+  router
+    .request.get("/sites")
     .header("Authorization", "Bearer " ~ bearerToken.name)
     .expectStatusCode(200)
+    .end;
+}
+
+/// it should return 401 on invalid auth when it's not mandatory
+unittest {
+  auto router = testRouter(false);
+
+  router
+    .request.get("/sites")
+    .header("Authorization", "Bearer invalid")
+    .expectStatusCode(401)
     .end;
 }
 
