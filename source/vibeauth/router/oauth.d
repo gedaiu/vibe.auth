@@ -284,6 +284,9 @@ class OAuth2: BaseAuthRouter {
     /// This handler is usefull for routes that want to hide information to the
     /// public.
     void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      req.username = "";
+      req.password = "";
+
       try {
         setAccessControl(res);
         if(req.method == HTTPMethod.OPTIONS) {
@@ -306,6 +309,9 @@ class OAuth2: BaseAuthRouter {
     /// This handler is usefull when a route should return different data when the user is
     /// logged in
     void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      req.username = "";
+      req.password = "";
+
       if("Authorization" !in req.headers) {
         return;
       }
@@ -513,6 +519,32 @@ unittest {
     .request.get("/sites")
     .expectStatusCode(200)
     .end;
+}
+
+/// it should clear the username when auth it's not mandatory
+unittest {
+  auto router = testRouter(false);
+
+  void setUser(HTTPServerRequest req, HTTPServerResponse res) {
+    req.username = "some user";
+    req.password = "some password";
+  }
+
+  void showAuth(HTTPServerRequest req, HTTPServerResponse res) {
+    res.statusCode = 200;
+    res.writeBody(req.username ~ ":" ~ req.password);
+  }
+
+  router.any("*", &setUser);
+  router.any("*", &auth.permisiveAuth);
+  router.get("/misc", &showAuth);
+
+  router
+    .request.get("/misc")
+    .expectStatusCode(200)
+    .end((Response response) => {
+      response.bodyString.should.equal(":");
+    });
 }
 
 /// it should return 200 on valid auth when it's not mandatory
