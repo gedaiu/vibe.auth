@@ -331,7 +331,9 @@ class OAuth2: BaseAuthRouter {
 
         try {
           auto const user = collection.byToken(token);
-          req.username = user.email;
+          req.username = user.id;
+          req.context["email"] = user.email;
+
         } catch(UserNotFoundException exception) {
           return false;
         }
