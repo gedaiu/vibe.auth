@@ -284,8 +284,7 @@ class OAuth2: BaseAuthRouter {
     /// This handler is usefull for routes that want to hide information to the
     /// public.
     void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
-      req.username = "";
-      req.password = "";
+      cleanRequest(req);
 
       try {
         setAccessControl(res);
@@ -309,8 +308,7 @@ class OAuth2: BaseAuthRouter {
     /// This handler is usefull when a route should return different data when the user is
     /// logged in
     void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
-      req.username = "";
-      req.password = "";
+      cleanRequest(req);
 
       if("Authorization" !in req.headers) {
         return;
@@ -321,6 +319,14 @@ class OAuth2: BaseAuthRouter {
   }
 
   private {
+    /// Remove all dangerous fields from the request
+    void cleanRequest(HTTPServerRequest req) {
+      req.username = "";
+      req.password = "";
+      if("email" in req.context) {
+        req.context.remove("email");
+      }
+    }
 
     /// Validate the authorization token
     bool isValidBearer(HTTPServerRequest req) {
@@ -491,7 +497,13 @@ version(unittest) {
       res.writeBody("Hello, World!");
     }
 
+    void showEmail(HTTPServerRequest req, HTTPServerResponse res) {
+      res.statusCode = 200;
+      res.writeBody(req.context["email"].get!string);
+    }
+
     router.get("/sites", &handleRequest);
+    router.get("/email", &showEmail);
 
     return router;
   }
@@ -513,6 +525,19 @@ unittest {
     .end;
 }
 
+/// it should set the email on valid mandatory credentials
+unittest {
+  auto router = testRouter;
+
+  router
+    .request.get("/email")
+    .header("Authorization", "Bearer " ~ bearerToken.name)
+    .expectStatusCode(200)
+    .end((Response response) => {
+      response.bodyString.should.equal("user@gmail.com");
+    });
+}
+
 /// it should return 200 on missing auth when it's not mandatory
 unittest {
   auto router = testRouter(false);
@@ -523,18 +548,20 @@ unittest {
     .end;
 }
 
-/// it should clear the username when auth it's not mandatory
+/// it should clear the username and email when auth it's not mandatory
 unittest {
   auto router = testRouter(false);
 
   void setUser(HTTPServerRequest req, HTTPServerResponse res) {
     req.username = "some user";
     req.password = "some password";
+    req.context["email"] = "some random value";
   }
 
   void showAuth(HTTPServerRequest req, HTTPServerResponse res) {
     res.statusCode = 200;
-    res.writeBody(req.username ~ ":" ~ req.password);
+    string hasEmail = "email" in req.context ? "yes" : "no"; 
+    res.writeBody(req.username ~ ":" ~ req.password ~ ":" ~ hasEmail);
   }
 
   router.any("*", &setUser);
@@ -545,7 +572,7 @@ unittest {
     .request.get("/misc")
     .expectStatusCode(200)
     .end((Response response) => {
-      response.bodyString.should.equal(":");
+      response.bodyString.should.equal("::no");
     });
 }
 
@@ -558,6 +585,20 @@ unittest {
     .header("Authorization", "Bearer " ~ bearerToken.name)
     .expectStatusCode(200)
     .end;
+}
+
+
+/// it should set the email on valid credentials when they are not mandatory
+unittest {
+  auto router = testRouter(false);
+
+  router
+    .request.get("/email")
+    .header("Authorization", "Bearer " ~ bearerToken.name)
+    .expectStatusCode(200)
+    .end((Response response) => {
+      response.bodyString.should.equal("user@gmail.com");
+    });
 }
 
 /// it should return 401 on invalid auth when it's not mandatory
