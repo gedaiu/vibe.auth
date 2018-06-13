@@ -123,6 +123,10 @@ class User {
     /// Check the user active status
     void isActive(bool value) {
       userData.isActive = value;
+
+      if(onChange) {
+        onChange(this);
+      }
     }
 
     /// Get the user email

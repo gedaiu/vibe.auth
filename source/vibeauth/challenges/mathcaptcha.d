@@ -34,33 +34,33 @@ class MathCaptcha : IChallenge {
     this.settings = settings;
   }
 
-	string generate(HTTPServerRequest req, HTTPServerResponse res) {
+  string generate(HTTPServerRequest req, HTTPServerResponse res) {
     clearExpired();
-		auto generator = ImageGenerator(settings.maxWidth, settings.maxHeight, settings.bgColor);
+    auto generator = ImageGenerator(settings.maxWidth, settings.maxHeight, settings.bgColor);
 
-		auto number = uniform(0, 100);
-		auto result = number;
+    auto number = uniform(0, 100);
+    auto result = number;
 
-		string question = number.to!string;
-		uint sign = 0;
+    string question = number.to!string;
+    uint sign = 0;
 
-		if(uniform(0, 2) == 0) {
-			question ~= "+";
-			sign = 1;
-		} else {
-			question ~= "-";
-			sign = -1;
-		}
+    if(uniform(0, 2) == 0) {
+      question ~= "+";
+      sign = 1;
+    } else {
+      question ~= "-";
+      sign = -1;
+    }
 
-		number = uniform(0, 100);
-		result += number * sign;
+    number = uniform(0, 100);
+    result += number * sign;
 
-		question ~= number.to!string ~ "=";
+    question ~= number.to!string ~ "=";
 
     generator.setTextColor(settings.textColor);
     generator.setFontSize(settings.fontSize);
     generator.setFontName(settings.fontName);
-		generator.setText(question);
+    generator.setText(question);
 
     string key;
 
@@ -75,10 +75,10 @@ class MathCaptcha : IChallenge {
     res.cookies["mathcaptcha"].maxAge = 120;
 
     generator.flush(res);
-		return result.to!string;
-	}
+    return result.to!string;
+  }
 
-	bool validate(HTTPServerRequest req, HTTPServerResponse res, string response) {
+  bool validate(HTTPServerRequest req, HTTPServerResponse res, string response) {
     clearExpired();
 
     if("mathcaptcha" !in req.cookies) {
@@ -96,8 +96,8 @@ class MathCaptcha : IChallenge {
     codes.remove(key);
     res.setCookie("mathcaptcha", null);
 
-		return response == expected;
-	}
+    return response == expected;
+  }
 
   void clearExpired() {
     string[] keys;
@@ -113,12 +113,13 @@ class MathCaptcha : IChallenge {
     }
   }
 
-	string getTemplate(string challangeLocation) {
-		auto output = createMemoryOutputStream();
-    auto range = streamOutputRange(output);
+  string getTemplate(string challangeLocation) {
+    import std.array : appender;
+    auto output = appender!string();
 
-		range.compileHTMLDietFile!("challanges/math.dt", challangeLocation);
+    output
+      .compileHTMLDietFile!("challanges/math.dt", challangeLocation);
 
-    return output.data.assumeUTF;
-	}
+    return output.data;
+  }
 }

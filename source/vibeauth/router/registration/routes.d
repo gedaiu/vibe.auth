@@ -20,621 +20,630 @@ import vibeauth.router.request;
 import vibeauth.collection;
 import vibeauth.templatehelper;
 
+/// Handle the registration routes
 class RegistrationRoutes {
 
-	private {
-		UserCollection collection;
-		IChallenge challenge;
-		IMailQueue mailQueue;
-		RegistrationResponses responses;
+  private {
+    UserCollection collection;
+    IChallenge challenge;
+    IMailQueue mailQueue;
+    RegistrationResponses responses;
 
-		const {
-			RegistrationConfiguration configuration;
-			ServiceConfiguration serviceConfiguration;
-		}
-	}
+    const {
+      RegistrationConfiguration configuration;
+      ServiceConfiguration serviceConfiguration;
+    }
+  }
 
-	this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue,
-		const RegistrationConfiguration configuration = RegistrationConfiguration(),
-		const ServiceConfiguration serviceConfiguration = ServiceConfiguration()) {
-		this.collection = collection;
-		this.challenge = challenge;
-		this.mailQueue = mailQueue;
-		this.configuration = configuration;
-		this.serviceConfiguration = serviceConfiguration;
-		this.responses = new RegistrationResponses(challenge, configuration, serviceConfiguration);
-	}
+  ///
+  this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue,
+    const RegistrationConfiguration configuration = RegistrationConfiguration(),
+    const ServiceConfiguration serviceConfiguration = ServiceConfiguration()) {
+    this.collection = collection;
+    this.challenge = challenge;
+    this.mailQueue = mailQueue;
+    this.configuration = configuration;
+    this.serviceConfiguration = serviceConfiguration;
+    this.responses = new RegistrationResponses(challenge, configuration, serviceConfiguration);
+  }
 
-	void handler(HTTPServerRequest req, HTTPServerResponse res) {
-		try {
-			setAccessControl(res);
-			if(req.method == HTTPMethod.OPTIONS) {
-				return;
-			}
+  /// Handle the requests
+  void handler(HTTPServerRequest req, HTTPServerResponse res) {
+    try {
+      setAccessControl(res);
+      if(req.method == HTTPMethod.OPTIONS) {
+        return;
+      }
 
-			if(req.method == HTTPMethod.GET && req.path == configuration.paths.register) {
-				responses.registerForm(req, res);
-			}
+      if(req.method == HTTPMethod.GET && req.path == configuration.paths.register) {
+        responses.registerForm(req, res);
+      }
 
-			if(req.method == HTTPMethod.POST && req.path == configuration.paths.addUser) {
-				addUser(req, res);
-			}
+      if(req.method == HTTPMethod.POST && req.path == configuration.paths.addUser) {
+        addUser(req, res);
+      }
 
-			if(req.method == HTTPMethod.GET && req.path == configuration.paths.activation) {
-				activation(req, res);
-			}
+      if(req.method == HTTPMethod.GET && req.path == configuration.paths.activation) {
+        activation(req, res);
+      }
 
-			if(req.method == HTTPMethod.POST && req.path == configuration.paths.activation) {
-				newActivation(req, res);
-			}
+      if(req.method == HTTPMethod.POST && req.path == configuration.paths.activation) {
+        newActivation(req, res);
+      }
 
-			if(req.method == HTTPMethod.GET && req.path == configuration.paths.challange) {
-				challenge.generate(req, res);
-			}
+      if(req.method == HTTPMethod.GET && req.path == configuration.paths.challange) {
+        challenge.generate(req, res);
+      }
 
-			if(req.method == HTTPMethod.GET && req.path == configuration.paths.confirmation) {
-				responses.confirmationForm(req, res);
-			}
+      if(req.method == HTTPMethod.GET && req.path == configuration.paths.confirmation) {
+        responses.confirmationForm(req, res);
+      }
 
-		} catch(Exception e) {
-			version(unittest) {} else debug stderr.writeln(e);
+    } catch(Exception e) {
+      version(unittest) {} else debug stderr.writeln(e);
 
-			if(!res.headerWritten) {
-				res.writeJsonBody([ "error": ["message": e.msg] ], 500);
-			}
-		}
-	}
+      if(!res.headerWritten) {
+        res.writeJsonBody([ "error": ["message": e.msg] ], 500);
+      }
+    }
+  }
 
-	private {
-		void activation(HTTPServerRequest req, HTTPServerResponse res)
-		{
-			if("token" !in req.query || "email" !in req.query) {
-				res.statusCode = 400;
-				res.writeJsonBody(["error": ["message": "invalid request"]]);
+  private {
+    /// Activate an account
+    void activation(HTTPServerRequest req, HTTPServerResponse res)
+    {
+      if("token" !in req.query || "email" !in req.query) {
+        res.statusCode = 400;
+        res.writeJsonBody(["error": ["message": "invalid request"]]);
 
-				return;
-			}
+        return;
+      }
 
-			auto token = req.query["token"];
-			auto email = req.query["email"];
+      auto token = req.query["token"];
+      auto email = req.query["email"];
 
-			if(!collection.contains(email)) {
-				res.statusCode = 400;
-				res.writeJsonBody(["error": ["message": "invalid request"]]);
+      import std.stdio;
+      writeln("token:", token);
+      writeln("email:", email);
 
-				return;
-			}
+      if(!collection.contains(email)) {
+        res.statusCode = 400;
+        res.writeJsonBody(["error": ["message": "invalid request"]]);
 
-			auto user = collection[email];
+        return;
+      }
 
-			if(!user.isValidToken(token)) {
-				res.statusCode = 400;
-				res.writeJsonBody(["error": ["message": "invalid request"]]);
+      auto user = collection[email];
 
-				return;
-			}
+      if(!user.isValidToken(token)) {
+        res.statusCode = 400;
+        res.writeJsonBody(["error": ["message": "invalid request"]]);
 
-			user.isActive = true;
-			user.getTokensByType("activation").each!(a => user.revoke(a.name));
+        return;
+      }
 
-			res.redirect(configuration.paths.activationRedirect);
-		}
+      user.isActive = true;
+      user.getTokensByType("activation").each!(a => user.revoke(a.name));
+      writeln("user.isActive:", user.isActive);
 
-		string queryUserData(const RequestUserData userData, string error = "")
-		{
-			string query = "?error=" ~ encodeComponent(error);
+      res.redirect(configuration.paths.activationRedirect);
+    }
 
-			if(userData.name != "") {
-				query ~= "&name=" ~ encodeComponent(userData.name);
-			}
+    string queryUserData(const RequestUserData userData, string error = "")
+    {
+      string query = "?error=" ~ encodeComponent(error);
 
-			if(userData.username != "") {
-				query ~= "&username=" ~ encodeComponent(userData.username);
-			}
+      if(userData.name != "") {
+        query ~= "&name=" ~ encodeComponent(userData.name);
+      }
 
-			if(userData.email != "") {
-				query ~= "&email=" ~ encodeComponent(userData.email);
-			}
-			return query;
-		}
+      if(userData.username != "") {
+        query ~= "&username=" ~ encodeComponent(userData.username);
+      }
 
-		string[string] activationVariables()
-		{
-			string[string] variables;
+      if(userData.email != "") {
+        query ~= "&email=" ~ encodeComponent(userData.email);
+      }
+      return query;
+    }
 
-			variables["activation"] = configuration.paths.activation;
-			variables["serviceName"] = serviceConfiguration.name;
-			variables["location"] = serviceConfiguration.location;
+    string[string] activationVariables()
+    {
+      string[string] variables;
 
-			return variables;
-		}
+      variables["activation"] = configuration.paths.activation;
+      variables["serviceName"] = serviceConfiguration.name;
+      variables["location"] = serviceConfiguration.location;
 
-		void newActivation(HTTPServerRequest req, HTTPServerResponse res)
-		{
-			auto requestData = const RequestUserData(req);
+      return variables;
+    }
 
-			try {
-				auto user = collection[requestData.email];
+    void newActivation(HTTPServerRequest req, HTTPServerResponse res)
+    {
+      auto requestData = const RequestUserData(req);
 
-				if(!user.isActive) {
-					auto tokens = user.getTokensByType("activation");
-					if(!tokens.empty) {
-						user.revoke(tokens.front.name);
-					}
+      try {
+        auto user = collection[requestData.email];
 
-					auto token = collection.createToken(user.email, Clock.currTime + 3600.seconds, [], "activation");
-					mailQueue.addActivationMessage(user.email, token, activationVariables);
-				}
-			} catch (ItemNotFoundException e) {
-				version(unittest) {{}} else { debug e.writeln; }
-			}
+        if(!user.isActive) {
+          auto tokens = user.getTokensByType("activation");
+          if(!tokens.empty) {
+            user.revoke(tokens.front.name);
+          }
 
-			responses.success(req, res);
-		}
+          auto token = collection.createToken(user.email, Clock.currTime + 3600.seconds, [], "activation");
+          mailQueue.addActivationMessage(user.email, token, activationVariables);
+        }
+      } catch (ItemNotFoundException e) {
+        version(unittest) {{}} else { debug e.writeln; }
+      }
 
-		void addUser(HTTPServerRequest req, HTTPServerResponse res)
-		{
-			immutable bool isJson = req.contentType.toLower.indexOf("json") > -1;
-			auto requestData = const RequestUserData(req);
+      responses.success(req, res);
+    }
 
-			try {
-				requestData.validateUser;
+    void addUser(HTTPServerRequest req, HTTPServerResponse res)
+    {
+      immutable bool isJson = req.contentType.toLower.indexOf("json") > -1;
+      auto requestData = const RequestUserData(req);
 
-				if(!challenge.validate(req, res, requestData.response)) {
-					throw new Exception("Invalid challenge `response`");
-				}
+      try {
+        requestData.validateUser;
 
-				if(collection.contains(requestData.email)) {
-					throw new Exception("Email has already been taken");
-				}
+        if(!challenge.validate(req, res, requestData.response)) {
+          throw new Exception("Invalid challenge `response`");
+        }
 
-				if(collection.contains(requestData.username)) {
-					throw new Exception("Username has already been taken");
-				}
-			} catch (Exception e) {
-				if(isJson) {
-					res.statusCode = 400;
-					res.writeJsonBody(["error": ["message": e.msg ]]);
-				} else {
-					res.redirect(configuration.paths.register ~ queryUserData(requestData, e.msg));
-				}
+        if(collection.contains(requestData.email)) {
+          throw new Exception("Email has already been taken");
+        }
 
-				return;
-			}
+        if(collection.contains(requestData.username)) {
+          throw new Exception("Username has already been taken");
+        }
+      } catch (Exception e) {
+        if(isJson) {
+          res.statusCode = 400;
+          res.writeJsonBody(["error": ["message": e.msg ]]);
+        } else {
+          res.redirect(configuration.paths.register ~ queryUserData(requestData, e.msg));
+        }
 
-			UserData data;
-			data.name = requestData.name;
-			data.username = requestData.username;
-			data.email = requestData.email;
-			data.isActive = false;
+        return;
+      }
 
-			collection.createUser(data, requestData.password);
-			auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
-			mailQueue.addActivationMessage(requestData.email, token, activationVariables);
+      UserData data;
+      data.name = requestData.name;
+      data.username = requestData.username;
+      data.email = requestData.email;
+      data.isActive = false;
 
-			if(isJson) {
-				res.statusCode = 201;
-				res.writeVoidBody;
-			} else {
-				responses.success(req, res);
-			}
-		}
-	}
+      collection.createUser(data, requestData.password);
+      auto token = collection.createToken(data.email, Clock.currTime + 3600.seconds, [], "activation");
+      mailQueue.addActivationMessage(requestData.email, token, activationVariables);
+
+      if(isJson) {
+        res.statusCode = 201;
+        res.writeVoidBody;
+      } else {
+        responses.success(req, res);
+      }
+    }
+  }
 }
 
 version(unittest) {
-	import std.array;
-	import fluentasserts.vibe.request;
-	import fluentasserts.vibe.json;
-	import fluent.asserts;
-	import vibeauth.token;
+  import std.array;
+  import fluentasserts.vibe.request;
+  import fluentasserts.vibe.json;
+  import fluent.asserts;
+  import vibeauth.token;
 
-	UserMemmoryCollection collection;
-	User user;
-	RegistrationRoutes registration;
-	TestMailQueue mailQueue;
-	Token activationToken;
+  UserMemmoryCollection collection;
+  User user;
+  RegistrationRoutes registration;
+  TestMailQueue mailQueue;
+  Token activationToken;
 
-	alias MailMessage = vibeauth.mail.base.Message;
+  alias MailMessage = vibeauth.mail.base.Message;
 
-	class TestMailQueue : MailQueue
-	{
-		MailMessage[] messages;
+  class TestMailQueue : MailQueue
+  {
+    MailMessage[] messages;
 
-		this() {
-			super(EmailConfiguration());
-		}
+    this() {
+      super(EmailConfiguration());
+    }
 
-		override
-		void addMessage(MailMessage message) {
-			messages ~= message;
-		}
-	}
+    override
+    void addMessage(MailMessage message) {
+      messages ~= message;
+    }
+  }
 
-	class TestChallenge : IChallenge {
-		string generate(HTTPServerRequest, HTTPServerResponse) {
-			return "123";
-		}
+  class TestChallenge : IChallenge {
+    string generate(HTTPServerRequest, HTTPServerResponse) {
+      return "123";
+    }
 
-		bool validate(HTTPServerRequest, HTTPServerResponse, string response) {
-			return response == "123";
-		}
+    bool validate(HTTPServerRequest, HTTPServerResponse, string response) {
+      return response == "123";
+    }
 
-		string getTemplate(string challangeLocation) {
-			return "";
-		}
-	}
+    string getTemplate(string challangeLocation) {
+      return "";
+    }
+  }
 
-	auto testRouter() {
-		auto router = new URLRouter();
-		mailQueue = new TestMailQueue;
+  auto testRouter() {
+    auto router = new URLRouter();
+    mailQueue = new TestMailQueue;
 
-		collection = new UserMemmoryCollection(["doStuff"]);
-		user = new User("user@gmail.com", "password");
-		user.name = "John Doe";
-		user.username = "test";
-		user.id = 1;
+    collection = new UserMemmoryCollection(["doStuff"]);
+    user = new User("user@gmail.com", "password");
+    user.name = "John Doe";
+    user.username = "test";
+    user.id = 1;
 
-		collection.add(user);
-		activationToken = collection.createToken(user.email, Clock.currTime + 3600.seconds, [], "activation");
+    collection.add(user);
+    activationToken = collection.createToken(user.email, Clock.currTime + 3600.seconds, [], "activation");
 
-		registration = new RegistrationRoutes(collection, new TestChallenge, mailQueue);
+    registration = new RegistrationRoutes(collection, new TestChallenge, mailQueue);
 
-		router.any("*", &registration.handler);
-		return router;
-	}
+    router.any("*", &registration.handler);
+    return router;
+  }
 }
 
 @("POST valid data should create the user")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	auto data = `{
-		"name": "test",
-		"username": "test_user",
-		"email": "test@test.com",
-		"password": "testPassword",
-		"response": "123"
-	}`.parseJsonString;
+  auto data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "testPassword",
+    "response": "123"
+  }`.parseJsonString;
 
-	router
-		.request
-		.post("/register/user")
-		.send(data)
-		.expectStatusCode(200)
-		.end((Response response) => {
-			collection.contains("test@test.com").should.be.equal(true);
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(200)
+    .end((Response response) => {
+      collection.contains("test@test.com").should.be.equal(true);
 
-			collection["test@test.com"].name.should.equal("test");
-			collection["test@test.com"].username.should.equal("test_user");
-			collection["test@test.com"].email.should.equal("test@test.com");
-			collection["test@test.com"].isActive.should.equal(false);
-			collection["test@test.com"].isValidPassword("testPassword").should.equal(true);
+      collection["test@test.com"].name.should.equal("test");
+      collection["test@test.com"].username.should.equal("test_user");
+      collection["test@test.com"].email.should.equal("test@test.com");
+      collection["test@test.com"].isActive.should.equal(false);
+      collection["test@test.com"].isValidPassword("testPassword").should.equal(true);
 
-			auto tokens = collection["test@test.com"].getTokensByType("activation").array;
+      auto tokens = collection["test@test.com"].getTokensByType("activation").array;
 
-			tokens.length.should.equal(1);
-			collection["test@test.com"].isValidToken(tokens[0].name).should.equal(true);
-		});
+      tokens.length.should.equal(1);
+      collection["test@test.com"].isValidToken(tokens[0].name).should.equal(true);
+    });
 }
 
 @("POST empty password should not create the user")
 unittest {
-	auto router = testRouter;
-	auto data = `{
-		"name": "test",
-		"username": "test_user",
-		"email": "test@test.com",
-		"password": "",
-		"response": "123"
-	}`.parseJsonString;
+  auto router = testRouter;
+  auto data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "",
+    "response": "123"
+  }`.parseJsonString;
 
-	router
-		.request
-		.header("Content-Type", "application/json")
-		.post("/register/user")
-		.send(data)
-		.expectStatusCode(400)
-		.end((Response response) => {
-			response.bodyJson.keys.should.contain("error");
-			response.bodyJson["error"].keys.should.contain("message");
-		});
+  router
+    .request
+    .header("Content-Type", "application/json")
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
 }
 
 @("POST short password should not create the user")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	auto data = `{
-		"name": "test",
-		"username": "test_user",
-		"email": "test@test.com",
-		"password": "123456789",
-		"response": "123"
-	}`.parseJsonString;
+  auto data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "123456789",
+    "response": "123"
+  }`.parseJsonString;
 
-	router
-		.request
-		.header("Content-Type", "application/json")
-		.post("/register/user")
-		.send(data)
-		.expectStatusCode(400)
-		.end((Response response) => {
-			response.bodyJson.keys.should.contain("error");
-			response.bodyJson["error"].keys.should.contain("message");
-		});
+  router
+    .request
+    .header("Content-Type", "application/json")
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
 }
 
 @("POST with and existing email should fail")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	auto data = `{
-		"name": "test",
-		"username": "test",
-		"email": "test_user@gmail.com",
-		"password": "12345678910",
-		"response": "123"
-	}`.parseJsonString;
+  auto data = `{
+    "name": "test",
+    "username": "test",
+    "email": "test_user@gmail.com",
+    "password": "12345678910",
+    "response": "123"
+  }`.parseJsonString;
 
-	router
-		.request
-		.header("Content-Type", "application/json")
-		.post("/register/user")
-		.send(data)
-		.expectStatusCode(400)
-		.end((Response response) => {
-			response.bodyJson.keys.should.contain("error");
-			response.bodyJson["error"].keys.should.contain("message");
-		});
+  router
+    .request
+    .header("Content-Type", "application/json")
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
 }
 
 @("POST with and existing username should fail")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	auto data = `{
-		"name": "test",
-		"username": "test_user",
-		"email": "user@gmail.com",
-		"password": "12345678910",
-		"response": "123"
-	}`.parseJsonString;
+  auto data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "user@gmail.com",
+    "password": "12345678910",
+    "response": "123"
+  }`.parseJsonString;
 
-	router
-		.request
-		.header("Content-Type", "application/json")
-		.post("/register/user")
-		.send(data)
-		.expectStatusCode(400)
-		.end((Response response) => {
-			response.bodyJson.keys.should.contain("error");
-			response.bodyJson["error"].keys.should.contain("message");
-		});
+  router
+    .request
+    .header("Content-Type", "application/json")
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
 }
 
 @("POST valid data should send a validation email")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	auto data = `{
-		"name": "test",
-		"username": "test_user",
-		"email": "test@test.com",
-		"password": "testPassword",
-		"response": "123"
-	}`.parseJsonString;
+  auto data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "testPassword",
+    "response": "123"
+  }`.parseJsonString;
 
-	router
-		.request
-		.post("/register/user")
-		.send(data)
-		.expectStatusCode(200)
-		.end((Response response) => {
-			string activationLink = "http://localhost/register/activation?email=test@test.com&token="
-				~ collection["test@test.com"].getTokensByType("activation").front.name;
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .expectStatusCode(200)
+    .end((Response response) => {
+      string activationLink = "http://localhost/register/activation?email=test@test.com&token="
+        ~ collection["test@test.com"].getTokensByType("activation").front.name;
 
-			mailQueue.messages.length.should.equal(1);
-			mailQueue.messages[0].textMessage.should.contain(activationLink);
-			mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ activationLink ~ `">`);
-		});
+      mailQueue.messages.length.should.equal(1);
+      mailQueue.messages[0].textMessage.should.contain(activationLink);
+      mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ activationLink ~ `">`);
+    });
 }
 
 @("GET with valid token should validate the user")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	collection["user@gmail.com"].isActive.should.equal(false);
+  collection["user@gmail.com"].isActive.should.equal(false);
 
-	router
-		.request
-		.get("/register/activation?email=user@gmail.com&token=" ~ activationToken.name)
-		.expectStatusCode(302)
-		.end((Response response) => {
-			collection["user@gmail.com"].isValidToken(activationToken.name).should.equal(false);
-			collection["user@gmail.com"].isActive.should.equal(true);
-		});
+  router
+    .request
+    .get("/register/activation?email=user@gmail.com&token=" ~ activationToken.name)
+    .expectStatusCode(302)
+    .end((Response response) => {
+      collection["user@gmail.com"].isValidToken(activationToken.name).should.equal(false);
+      collection["user@gmail.com"].isActive.should.equal(true);
+    });
 }
 
 @("GET with invalid token should not validate the user")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	collection["user@gmail.com"].isActive.should.equal(false);
+  collection["user@gmail.com"].isActive.should.equal(false);
 
-	router
-		.request
-		.get("/register/activation?email=user@gmail.com&token=other")
-		.expectStatusCode(400)
-		.end((Response response) => {
-			collection["user@gmail.com"].isValidToken(activationToken.name).should.equal(true);
-			collection["user@gmail.com"].isActive.should.equal(false);
-		});
+  router
+    .request
+    .get("/register/activation?email=user@gmail.com&token=other")
+    .expectStatusCode(400)
+    .end((Response response) => {
+      collection["user@gmail.com"].isValidToken(activationToken.name).should.equal(true);
+      collection["user@gmail.com"].isActive.should.equal(false);
+    });
 }
 
 @("POST with valid email should send a new token to the inactive user")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	collection["user@gmail.com"].isActive.should.equal(false);
+  collection["user@gmail.com"].isActive.should.equal(false);
 
-	router
-		.request
-		.post("/register/activation?email=user@gmail.com")
-		.expectStatusCode(200)
-		.end((Response response) => {
-			string activationLink = "http://localhost/register/activation?email=user@gmail.com&token="
-				~ collection["user@gmail.com"].getTokensByType("activation").front.name;
+  router
+    .request
+    .post("/register/activation?email=user@gmail.com")
+    .expectStatusCode(200)
+    .end((Response response) => {
+      string activationLink = "http://localhost/register/activation?email=user@gmail.com&token="
+        ~ collection["user@gmail.com"].getTokensByType("activation").front.name;
 
-			mailQueue.messages.length.should.equal(1);
-			mailQueue.messages[0].textMessage.should.contain(activationLink);
-			mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ activationLink ~ `">`);
-		});
+      mailQueue.messages.length.should.equal(1);
+      mailQueue.messages[0].textMessage.should.contain(activationLink);
+      mailQueue.messages[0].htmlMessage.should.contain(`<a href="` ~ activationLink ~ `">`);
+    });
 }
 
 @("POST with valid email should not send a new token to the active user")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	collection["user@gmail.com"].isActive(true);
+  collection["user@gmail.com"].isActive(true);
 
-	router
-		.request
-		.post("/register/activation?email=user@gmail.com")
-		.expectStatusCode(200)
-		.end((Response response) => {
-			mailQueue.messages.length.should.equal(0);
-		});
+  router
+    .request
+    .post("/register/activation?email=user@gmail.com")
+    .expectStatusCode(200)
+    .end((Response response) => {
+      mailQueue.messages.length.should.equal(0);
+    });
 }
 
 @("POST with invalid email should respond with 200 page")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	router
-		.request
-		.post("/register/activation?email=ola.com")
-		.expectStatusCode(200)
-		.end((Response response) => {
-			mailQueue.messages.length.should.equal(0);
-		});
+  router
+    .request
+    .post("/register/activation?email=ola.com")
+    .expectStatusCode(200)
+    .end((Response response) => {
+      mailQueue.messages.length.should.equal(0);
+    });
 }
 
 @("POST with missing data should return an error")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	auto data = `{
-		"username": "test_user",
-		"email": "test@test.com",
-		"password": "testPassword",
-		"response": "123"
-	}`.parseJsonString;
+  auto data = `{
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "testPassword",
+    "response": "123"
+  }`.parseJsonString;
 
-	router
-		.request
-		.post("/register/user")
-		.send(data)
-		.header("Content-Type", "application/json")
-		.expectStatusCode(400)
-		.end((Response response) => {
-			response.bodyJson.keys.should.contain("error");
-			response.bodyJson["error"].keys.should.contain("message");
-		});
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .header("Content-Type", "application/json")
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
 
-	data = `{
-		"name": "test",
-		"email": "test@test.com",
-		"password": "testPassword",
-		"response": "123"
-	}`.parseJsonString;
+  data = `{
+    "name": "test",
+    "email": "test@test.com",
+    "password": "testPassword",
+    "response": "123"
+  }`.parseJsonString;
 
-	router
-		.request
-		.post("/register/user")
-		.send(data)
-		.header("Content-Type", "application/json")
-		.expectStatusCode(400)
-		.end((Response response) => {
-			response.bodyJson.keys.should.contain("error");
-			response.bodyJson["error"].keys.should.contain("message");
-		});
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .header("Content-Type", "application/json")
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
 
-	data = `{
-		"name": "test",
-		"username": "test_user",
-		"password": "testPassword",
-		"response": "123"
-	}`.parseJsonString;
+  data = `{
+    "name": "test",
+    "username": "test_user",
+    "password": "testPassword",
+    "response": "123"
+  }`.parseJsonString;
 
-	router
-		.request
-		.post("/register/user")
-		.send(data)
-		.header("Content-Type", "application/json")
-		.expectStatusCode(400)
-		.end((Response response) => {
-			response.bodyJson.keys.should.contain("error");
-			response.bodyJson["error"].keys.should.contain("message");
-		});
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .header("Content-Type", "application/json")
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
 
-	data = `{
-		"name": "test",
-		"username": "test_user",
-		"email": "test@test.com",
-		"response": "123"
-	}`.parseJsonString;
+  data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "response": "123"
+  }`.parseJsonString;
 
-	router
-		.request
-		.post("/register/user")
-		.send(data)
-		.header("Content-Type", "application/json")
-		.expectStatusCode(400)
-		.end((Response response) => {
-			response.bodyJson.keys.should.contain("error");
-			response.bodyJson["error"].keys.should.contain("message");
-		});
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .header("Content-Type", "application/json")
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
 
-	data = `{
-		"name": "test",
-		"username": "test_user",
-		"email": "test@test.com",
-		"password": "testPassword"
-	}`.parseJsonString;
+  data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "testPassword"
+  }`.parseJsonString;
 
-	router
-		.request
-		.post("/register/user")
-		.send(data)
-		.header("Content-Type", "application/json")
-		.expectStatusCode(400)
-		.end((Response response) => {
-			response.bodyJson.keys.should.contain("error");
-			response.bodyJson["error"].keys.should.contain("message");
-		});
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .header("Content-Type", "application/json")
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
 }
 
 @("POST with wrong response should return an error")
 unittest {
-	auto router = testRouter;
+  auto router = testRouter;
 
-	auto data = `{
-		"name": "test",
-		"username": "test_user",
-		"email": "test@test.com",
-		"password": "testPassword",
-		"response": "abc"
-	}`.parseJsonString;
+  auto data = `{
+    "name": "test",
+    "username": "test_user",
+    "email": "test@test.com",
+    "password": "testPassword",
+    "response": "abc"
+  }`.parseJsonString;
 
-	router
-		.request
-		.post("/register/user")
-		.send(data)
-		.header("Content-Type", "application/json")
-		.expectStatusCode(400)
-		.end((Response response) => {
-			response.bodyJson.keys.should.contain("error");
-			response.bodyJson["error"].keys.should.contain("message");
-		});
+  router
+    .request
+    .post("/register/user")
+    .send(data)
+    .header("Content-Type", "application/json")
+    .expectStatusCode(400)
+    .end((Response response) => {
+      response.bodyJson.keys.should.contain("error");
+      response.bodyJson["error"].keys.should.contain("message");
+    });
 }
