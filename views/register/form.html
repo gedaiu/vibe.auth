@@ -3,28 +3,51 @@
 
 <form method="post" action="#{paths.addUser}">
 	<div class="form-group">
-		<label>Name</label>
-		<input class="form-control" placeholder="What&#39;s your name?" value="#{userData.name}" type="text" name="name"/>
+		<label for="InputName">Name</label>
+		<input type="text"
+			class="form-control"
+			id="InputName"
+			aria-describedby="nameHelp"
+			placeholder="What&#39;s your name?"
+			name="name"
+			value="#{userData.name}">
 	</div>
 
 	<div class="form-group">
-		<label>Username</label>
-		<input class="form-control" placeholder="What&#39;s your public name?" value="#{userData.username}" type="text" name="username"/>
+		<label for="InputUsername">Username</label>
+		<input type="text"
+			class="form-control"
+			id="InputUsername"
+			aria-describedby="usernameHelp"
+			placeholder="What&#39;s your public name?"
+			name="username"
+			value="#{userData.username}">
 	</div>
 
 	<div class="form-group">
-		<label>Email</label>
-		<input class="form-control" placeholder="Where do you want to be contacted?" value="#{userData.email}" type="email" name="email"/>
+		<label for="InputEmail">Email</label>
+		<input type="email"
+			class="form-control"
+			id="InputEmail"
+			aria-describedby="emailHelp"
+			placeholder="Where do you want to be contacted?"
+			name="email"
+			value="#{userData.email}">
 	</div>
 
 	<div class="form-group">
-		<label>Password</label>
-		<input class="form-control" placeholder="Enter a new password" type="password" name="password"/>
+		<label for="InputPassword">Password</label>
+		<input type="text"
+			class="form-control"
+			id="InputPassword"
+			aria-describedby="passwordHelp"
+			placeholder="Enter a new password"
+			name="password">
 	</div>
 
 	<div class="form-group">
 		#{challenge}
 	</div>
 
-	<button class="btn btn-success" type="submit">Create an account</button>
+	<button class="btn btn-primary" type="submit">Create an account</button>
 </form>

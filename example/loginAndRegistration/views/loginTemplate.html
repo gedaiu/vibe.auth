@@ -6,47 +6,48 @@
 		<link rel="stylesheet" href="/assets/style.css" type="text/css"/>
 	</head>
 	<body>
-		<nav class="navbar navbar-default navbar-fixed-top">
-			<div class="container-fluid">
+		<nav class="navbar fixed-top navbar-light bg-light">
+			<a class="navbar-brand" href="#">
 				<img class="logo" src="/assets/logo.svg"/>
-			</div>
+			</a>
 		</nav>
 		<div class="container">
 			<div class="row">
-				<div class="col-sm-5">
-
-					<ul class="auth-tabs nav nav-tabs" role="tablist">
-						<li role="presentation" class="active">
-							<a href="/login" aria-controls="home" role="tab" data-toggle="tab">
+				<div class="col-5">
+					<ul class="nav nav-tabs">
+						<li class="nav-item">
+							<a class="nav-link active" href="/login" aria-controls="home" role="tab" data-toggle="tab">
 								Login
 							</a>
 						</li>
-						<li role="presentation">
-							<a href="/register" aria-controls="profile" role="tab" data-toggle="tab">
+						<li class="nav-item">
+							<a class="nav-link" href="/register" aria-controls="profile" role="tab" data-toggle="tab">
 								Register
 							</a>
 						</li>
 					</ul>
-
-					<div class="body-container">
-						#{body}
+					<div class="card card-login">
+						<div class="card-body">
+							#{body}
+						</div>
+						<ul class="list-group list-group-flush">
+							<li class="list-group-item">
+								<a href="/login/reset">Forgot your password?</a>
+							</li>
+							<li class="list-group-item">
+								<small class="text-muted">
+									Didn't receive a confirmation email?<br/>
+									<a href="/register/confirmation">Request a new one.</a>
+								</small>
+							</li>
+						</ul>
 					</div>
-
-					<p class="confirmation-question">
-						<a href="/login/reset">Forgot your password?</a>
-					</p>
-
-					<p class="confirmation-question">
-						Didn't receive a confirmation email?
-						<a href="/register/confirmation">Request a new one.</a>
-					</p>
 				</div>
 			</div>
 		</div>
-		<nav class="navbar navbar-default navbar-fixed-bottom">
-			<div class="container">
-				<p class="navbar-text">Some message or menu</p>
-			</div>
+				
+		<nav class="navbar fixed-bottom navbar-light bg-light">
+			<a class="navbar-brand" href="#">Some message or menu</a>
 		</nav>
 	</body>
 </html>

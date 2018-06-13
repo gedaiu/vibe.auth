@@ -6,6 +6,6 @@ head
 body
 	div.container
 		div.row
-			div.col-md-12
+			div.col-12
 				h1.text-muted Error
 				p.text-danger #{error}

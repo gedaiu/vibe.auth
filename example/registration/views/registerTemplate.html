@@ -6,38 +6,39 @@
 		<link rel="stylesheet" href="/assets/style.css" type="text/css"/>
 	</head>
 	<body>
-		<nav class="navbar navbar-default navbar-fixed-top">
-			<div class="container-fluid">
+		<nav class="navbar fixed-top navbar-light bg-light">
+			<a class="navbar-brand" href="#">
 				<img class="logo" src="/assets/logo.svg"/>
-			</div>
+			</a>
 		</nav>
 		<div class="container">
 			<div class="row">
-				<div class="col-sm-5">
-
-					<ul class="auth-tabs nav nav-tabs" role="tablist">
-						<li role="presentation">
-							<a href="/login" aria-controls="home" role="tab">
+				<div class="col-5">
+					<ul class="nav nav-tabs">
+						<li class="nav-item">
+							<a class="nav-link" href="/login" aria-controls="home" role="tab" data-toggle="tab">
 								Login
 							</a>
 						</li>
-						<li role="presentation" class="active">
-							<a href="/register" aria-controls="profile" role="tab">
+						<li class="nav-item">
+							<a class="nav-link active" href="/register" aria-controls="profile" role="tab" data-toggle="tab">
 								Register
 							</a>
 						</li>
 					</ul>
 
-					<div class="body-container">
-						#{body}
+					<div class="card card-login">
+						<div class="card-body">
+							<h5 class="card-title">Create a new account</h5>
+							#{body}
+						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-		<nav class="navbar navbar-default navbar-fixed-bottom">
-			<div class="container">
-				<p class="navbar-text">Some message or menu</p>
-			</div>
+		
+		<nav class="navbar fixed-bottom navbar-light bg-light">
+			<a class="navbar-brand" href="#">Some message or menu</a>
 		</nav>
 	</body>
 </html>

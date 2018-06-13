@@ -2,9 +2,14 @@
 <form method="post" action="#{paths.activation}">
 
 	<div class="form-group">
-		<label>Email</label>
-		<input class="form-control" placeholder="Where do you want to be contacted?" type="email" name="email"/>
+		<label for="InputEmail">Email</label>
+		<input type="email"
+			class="form-control"
+			id="InputEmail"
+			aria-describedby="emailHelp"
+			placeholder="Where do you want to be contacted?"
+			name="email">
 	</div>
 
-	<button class="btn btn-success" type="submit">Resend</button>
+	<button class="btn btn-primary" type="submit">Resend</button>
 </form>

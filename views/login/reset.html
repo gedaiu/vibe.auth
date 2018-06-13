@@ -1,7 +1,12 @@
 <form method="post" action="#{paths.reset}">
 	<div class="form-group">
-		<label>Email</label>
-		<input class="form-control" placeholder="Enter your email" type="text" name="username" value=""/>
+		<label for="InputEmail">Email address</label>
+		<input type="email"
+			class="form-control"
+			id="InputEmail"
+			aria-describedby="emailHelp"
+			placeholder="Enter email"
+			name="username">
 	</div>
 
 	<button class="btn btn-success" type="submit">Reset password</button>

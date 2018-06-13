@@ -6,7 +6,7 @@ head
 body
 	div.container
 		div.row
-			div.col-sm-4
+			div.col-5
 				h1 Authorize
 					span.text-primary #{appTitle}
 					to use your account?
