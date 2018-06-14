@@ -2,7 +2,7 @@
   "service": {
     "name": "Demo App",
     "location": "http://localhost:8888",
-    "style": "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+    "style": "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
   },
 
   "email": {

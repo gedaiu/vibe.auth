@@ -1,38 +1,13 @@
 body {
-  margin-top: 60px;
-}
-
-.navbar .container-fluid {
-  text-align: center;
-}
-
-.navbar-header {
-  width: 100%;
-}
-
-.navbar-default {
-  background-color: #fff;
+  margin-top: 90px;
+  margin-bottom: 120px;
 }
 
 .logo {
-  width: 49px;
+  height: 32px;
 }
 
-.body-container {
-  border: 1px solid #ddd;
+.card-login {
   border-top: 0;
-  padding: 20px;
-}
-
-.auth-tabs {
-  margin-top: 40px;
-}
-
-.reset-question {
-  margin-top: 10px;
-}
-
-.confirmation-question {
-  margin-top: 10px;
-  text-align: center;
+  border-radius: 0;
 }
