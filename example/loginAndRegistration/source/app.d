@@ -8,6 +8,7 @@ import vibeauth.users;
 import vibeauth.configuration;
 import vibeauth.router.registration.routes;
 import vibeauth.router.login.routes;
+import vibeauth.router.management.routes;
 import vibeauth.mail.sendmail;
 import vibeauth.mail.vibe;
 import vibeauth.token;
@@ -17,65 +18,78 @@ import vibeauth.mail.base;
 import vibe.d;
 
 const {
-	RegistrationConfiguration registerConfiguration;
-	LoginConfiguration loginConfiguration;
-	EmailConfiguration emailConfiguration;
-	ServiceConfiguration serviceConfiguration;
+  EmailConfiguration emailConfiguration;
+  ServiceConfiguration serviceConfiguration;
 }
 
 UserMemmoryCollection collection;
 
 void handler(HTTPServerRequest req, HTTPServerResponse res) {
-	const auto style = serviceConfiguration.style;
+  const auto style = serviceConfiguration.style;
 
-	User user = req.user(collection);
+  User user = req.user(collection);
 
-	res.render!("index.dt", style, user);
+  res.render!("index.dt", style, user);
 }
 
 shared static this()
 {
-	auto settings = new HTTPServerSettings;
-	settings.port = 8888;
+  /// Service setup
+  auto configurationJson = readText("configuration.json").parseJsonString;
+  configurationJson["email"]["activation"]["text"] = readText("emails/activation.txt");
+  configurationJson["email"]["activation"]["html"] = readText("emails/activation.html");
 
-	auto router = new URLRouter();
+  configurationJson["email"]["resetPassword"]["text"] = readText("emails/resetPassword.txt");
+  configurationJson["email"]["resetPassword"]["html"] = readText("emails/resetPassword.html");
 
-	collection = new UserMemmoryCollection(["doStuff"]);
+  configurationJson["email"]["resetPasswordConfirmation"]["text"] = readText("emails/resetPasswordConfirmation.txt");
+  configurationJson["email"]["resetPasswordConfirmation"]["html"] = readText("emails/resetPasswordConfirmation.html");
 
-	auto configurationJson = readText("configuration.json").parseJsonString;
-	configurationJson["email"]["activation"]["text"] = readText("emails/activation.txt");
-	configurationJson["email"]["activation"]["html"] = readText("emails/activation.html");
+  ServiceConfiguration serviceConfiguration;
+  serviceConfiguration.name = configurationJson["service"]["name"].to!string;
+  serviceConfiguration.style = configurationJson["service"]["style"].to!string;
+  serviceConfiguration.loginTimeoutSeconds = configurationJson["service"]["loginTimeoutSeconds"].to!ulong;
+  serviceConfiguration.paths.location = configurationJson["service"]["paths"]["location"].to!string;
 
-	configurationJson["email"]["resetPassword"]["text"] = readText("emails/resetPassword.txt");
-	configurationJson["email"]["resetPassword"]["html"] = readText("emails/resetPassword.html");
+  emailConfiguration = configurationJson["email"].deserializeJson!EmailConfiguration;
 
-	configurationJson["email"]["resetPasswordConfirmation"]["text"] = readText("emails/resetPasswordConfirmation.txt");
-	configurationJson["email"]["resetPasswordConfirmation"]["html"] = readText("emails/resetPasswordConfirmation.html");
+  ///
+  auto settings = new HTTPServerSettings;
+  settings.port = 8888;
 
-	serviceConfiguration = configurationJson["service"].deserializeJson!ServiceConfiguration;
-	emailConfiguration = configurationJson["email"].deserializeJson!EmailConfiguration;
-	registerConfiguration = configurationJson["registration"].deserializeJson!RegistrationConfiguration;
-	loginConfiguration = configurationJson["login"].deserializeJson!LoginConfiguration;
+  collection = new UserMemmoryCollection(["doStuff"]);
 
-	MathCaptchaSettings captchaSettings;
-	captchaSettings.fontName = buildNormalizedPath(getcwd, "fonts/warpstorm/WarpStorm.otf");
+  /// Generate some users
+  foreach(i; 1..100) {
+    auto user = new User("user" ~ i.to!string ~ "@gmail.com", "password");
+        user.name = "John Doe";
+        user.username = "user" ~ i.to!string;
+        user.id = i;
 
-	auto mailQueue = new VibeMailQueue(emailConfiguration);
+    collection.add(user);
+  }
 
-	auto registrationRoutes = new RegistrationRoutes(collection,
-		new MathCaptcha(captchaSettings),
-		mailQueue,
-		registerConfiguration,
-		serviceConfiguration);
+  MathCaptchaSettings captchaSettings;
+  captchaSettings.fontName = buildNormalizedPath(getcwd, "fonts/warpstorm/WarpStorm.otf");
 
+  auto mailQueue = new VibeMailQueue(emailConfiguration);
 
-	auto loginRoutes = new LoginRoutes(collection, mailQueue, loginConfiguration, serviceConfiguration);
+  auto registrationRoutes = new RegistrationRoutes(collection,
+    new MathCaptcha(captchaSettings),
+    mailQueue,
+    serviceConfiguration);
 
-	router
-		.get("*", serveStaticFiles("./public/"))
-		.any("*", &registrationRoutes.handler)
-		.any("*", &loginRoutes.handler)
-		.any("*", &handler);
+  auto loginRoutes = new LoginRoutes(collection, mailQueue, serviceConfiguration);
+  auto userManagement = new UserManagementRoutes(collection, mailQueue, serviceConfiguration);
 
-	listenHTTP(settings, router);
+  /// Vibe.d router setup
+  auto router = new URLRouter();
+  router
+    .get("*", serveStaticFiles("./public/"))
+    .any("*", &registrationRoutes.handler)
+    .any("*", &loginRoutes.handler)
+    .any("*", &userManagement.handler)
+    .any("*", &handler);
+
+  listenHTTP(settings, router);
 }

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>User administration</title>
+    <link rel="stylesheet" href="#{style}" type="text/css"/>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="col-3">
+          <div class="card">
+            <div class="card-header text-info">
+              Personal settings
+            </div>
+            <div class="list-group list-group-flush">
+              <a href="#{paths.userManagement.profile}" class="list-group-item list-group-item-action">Profile</a>
+              <a href="#{paths.userManagement.account}" class="list-group-item list-group-item-action">Account</a>
+              <a href="#{paths.userManagement.security}" class="list-group-item list-group-item-action">Security</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-9">
+          #{messages}
+          #{body}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+

@@ -1,0 +1,38 @@
+<h2>Change password</h2>
+
+<form method="post" action="#{paths.userManagement.updateProfile}">
+  <div class="form-group">
+    <label for="InputOldPassword">Old password</label>
+    <input type="password"
+      class="form-control"
+      id="InputOldPassword"
+      aria-describedby="oldPasswordHelp"
+      placeholder="What&#39;s your old password?"
+      name="name">
+  </div>
+
+  <div class="form-group">
+    <label for="InputNewPassword">New password</label>
+    <input type="password"
+      class="form-control"
+      id="InputNewPassword"
+      aria-describedby="inputPasswordHelp"
+      placeholder="What&#39;s your new password?"
+      name="username">
+  </div>
+
+  <div class="form-group">
+    <label for="InputConfirmPassword">Confirm new password</label>
+    <input type="password"
+      class="form-control"
+      id="InputConfirmPassword"
+      aria-describedby="emailHelp"
+      placeholder="Enter again your password">
+  </div>
+
+  <button class="btn btn-primary" type="submit">Update password</button>
+  <a href=#{paths.login.resetForm} class="btn btn-light">I forgot my password</a>
+</form>
+
+<h2 class="text-danger mt-5">Delete account</h2>
+<a href=#{paths.userManagement.deleteAccount} class="btn btn-danger">Delete your account</a>

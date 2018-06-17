@@ -12,14 +12,14 @@ import std.datetime;
 /// A user token used to authorize the requests
 struct Token {
   /// the token data
-	string name;
+  string name;
 
   /// when the token should be deleted
-	SysTime expire;
+  SysTime expire;
 
   /// the token scopes
-	string[] scopes;
+  string[] scopes;
 
   /// the token type
-	string type;
+  string type;
 }

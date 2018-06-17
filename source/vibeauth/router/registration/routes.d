@@ -18,7 +18,7 @@ import vibeauth.challenges.base;
 import vibeauth.router.accesscontrol;
 import vibeauth.router.request;
 import vibeauth.collection;
-import vibeauth.templatehelper;
+import vibeauth.templatedata;
 
 /// Handle the registration routes
 class RegistrationRoutes {
@@ -30,21 +30,19 @@ class RegistrationRoutes {
     RegistrationResponses responses;
 
     const {
-      RegistrationConfiguration configuration;
-      ServiceConfiguration serviceConfiguration;
+      ServiceConfiguration configuration;
     }
   }
 
   ///
   this(UserCollection collection, IChallenge challenge, IMailQueue mailQueue,
-    const RegistrationConfiguration configuration = RegistrationConfiguration(),
-    const ServiceConfiguration serviceConfiguration = ServiceConfiguration()) {
+    const ServiceConfiguration configuration = ServiceConfiguration.init) {
+
     this.collection = collection;
     this.challenge = challenge;
     this.mailQueue = mailQueue;
     this.configuration = configuration;
-    this.serviceConfiguration = serviceConfiguration;
-    this.responses = new RegistrationResponses(challenge, configuration, serviceConfiguration);
+    this.responses = new RegistrationResponses(challenge, configuration);
   }
 
   /// Handle the requests
@@ -55,27 +53,27 @@ class RegistrationRoutes {
         return;
       }
 
-      if(req.method == HTTPMethod.GET && req.path == configuration.paths.register) {
+      if(req.method == HTTPMethod.GET && req.path == configuration.paths.registration.register) {
         responses.registerForm(req, res);
       }
 
-      if(req.method == HTTPMethod.POST && req.path == configuration.paths.addUser) {
+      if(req.method == HTTPMethod.POST && req.path == configuration.paths.registration.addUser) {
         addUser(req, res);
       }
 
-      if(req.method == HTTPMethod.GET && req.path == configuration.paths.activation) {
+      if(req.method == HTTPMethod.GET && req.path == configuration.paths.registration.activation) {
         activation(req, res);
       }
 
-      if(req.method == HTTPMethod.POST && req.path == configuration.paths.activation) {
+      if(req.method == HTTPMethod.POST && req.path == configuration.paths.registration.activation) {
         newActivation(req, res);
       }
 
-      if(req.method == HTTPMethod.GET && req.path == configuration.paths.challange) {
+      if(req.method == HTTPMethod.GET && req.path == configuration.paths.registration.challange) {
         challenge.generate(req, res);
       }
 
-      if(req.method == HTTPMethod.GET && req.path == configuration.paths.confirmation) {
+      if(req.method == HTTPMethod.GET && req.path == configuration.paths.registration.confirmation) {
         responses.confirmationForm(req, res);
       }
 
@@ -102,10 +100,6 @@ class RegistrationRoutes {
       auto token = req.query["token"];
       auto email = req.query["email"];
 
-      import std.stdio;
-      writeln("token:", token);
-      writeln("email:", email);
-
       if(!collection.contains(email)) {
         res.statusCode = 400;
         res.writeJsonBody(["error": ["message": "invalid request"]]);
@@ -124,9 +118,8 @@ class RegistrationRoutes {
 
       user.isActive = true;
       user.getTokensByType("activation").each!(a => user.revoke(a.name));
-      writeln("user.isActive:", user.isActive);
 
-      res.redirect(configuration.paths.activationRedirect);
+      res.redirect(configuration.paths.registration.activationRedirect);
     }
 
     string queryUserData(const RequestUserData userData, string error = "")
@@ -151,9 +144,9 @@ class RegistrationRoutes {
     {
       string[string] variables;
 
-      variables["activation"] = configuration.paths.activation;
-      variables["serviceName"] = serviceConfiguration.name;
-      variables["location"] = serviceConfiguration.location;
+      variables["activation"] = configuration.paths.registration.activation;
+      variables["serviceName"] = configuration.name;
+      variables["location"] = configuration.paths.location;
 
       return variables;
     }
@@ -205,7 +198,7 @@ class RegistrationRoutes {
           res.statusCode = 400;
           res.writeJsonBody(["error": ["message": e.msg ]]);
         } else {
-          res.redirect(configuration.paths.register ~ queryUserData(requestData, e.msg));
+          res.redirect(configuration.paths.registration.register ~ queryUserData(requestData, e.msg));
         }
 
         return;

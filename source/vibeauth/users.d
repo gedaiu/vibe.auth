@@ -410,6 +410,9 @@ abstract class UserCollection : Collection!User {
     /// Get an user by an existing token
     User byToken(string token);
 
+    /// Get an user by id
+    User byId(string id);
+
     /// Check if the collection has an user by email
     bool contains(string email);
   }
@@ -472,9 +475,18 @@ class UserMemmoryCollection : UserCollection {
     User byToken(string token) {
       auto result = list.find!(a => a.isValidToken(token));
 
-      enforce!UserNotFoundException(result.count > 0, "User not found");
+      enforce!UserNotFoundException(!result.empty, "User not found");
 
-      return result[0];
+      return result.front;
+    }
+
+    /// Get an user by id
+    User byId(string id) {
+      auto result = list.find!(a => a.id == id);
+
+      enforce!UserNotFoundException(!result.empty, "User not found");
+
+      return result.front;
     }
     
     /// Check if the collection has an user by email or username
@@ -559,6 +571,18 @@ unittest {
 
   tokens.length.should.equal(1);
   tokens.should.contain(token);
+}
+
+/// Get user by id
+unittest {
+  auto collection = new UserMemmoryCollection([]);
+  auto user = new User("user", "password");
+  user.id = 1;
+
+  collection.add(user);
+  auto result = collection.byId("1");
+
+  result.id.should.equal("1");
 }
 
 /// Remove user by id

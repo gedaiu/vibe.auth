@@ -1,0 +1,38 @@
+<h2>Public profile</h2>
+
+<form method="post" action="#{paths.userManagement.updateProfile}">
+  <div class="form-group">
+    <label for="InputName">Name</label>
+    <input type="text"
+      class="form-control"
+      id="InputName"
+      aria-describedby="nameHelp"
+      placeholder="What&#39;s your name?"
+      name="name"
+      value="#{userData.name}">
+  </div>
+
+  <div class="form-group">
+    <label for="InputUsername">Username</label>
+    <input type="text"
+      class="form-control"
+      id="InputUsername"
+      aria-describedby="usernameHelp"
+      placeholder="What&#39;s your public name?"
+      name="username"
+      value="#{userData.username}">
+  </div>
+
+  <div class="form-group">
+    <label for="InputEmail">Email</label>
+    <input type="email"
+      class="form-control"
+      id="InputEmail"
+      aria-describedby="emailHelp"
+      placeholder="Where do you want to be contacted?"
+      value="#{userData.email}"
+      disabled>
+  </div>
+
+  <button class="btn btn-primary" type="submit">Update</button>
+</form>
