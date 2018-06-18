@@ -1,8 +1,30 @@
 {
   "service": {
     "name": "Demo App",
-    "location": "http://localhost:8888",
-    "style": "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+    "style": "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css",
+    "loginTimeoutSeconds": 86400,
+
+    "paths": {
+      "location": "http://localhost:8888"
+    },
+
+    "templates": {
+      "login": {
+        "formTemplate": "views/loginTemplate.html",
+        "resetTemplate": "views/resetTemplate.html"
+      },
+
+      "registration": {
+        "formTemplate": "views/registrationTemplate.html",
+        "confirmationTemplate": "views/confirmationTemplate.html",
+        "successTemplate": "views/successTemplate.html"
+      },
+
+      "userManagement": {
+        "listTemplate": "views/listTemplate.html",
+        "userTemplate": "views/userTemplate.html"
+      }
+    }
   },
 
   "email": {
@@ -34,43 +56,5 @@
       "text": "",
       "html": ""
     }
-  },
-
-  "registration": {
-    "paths": {
-      "register": "/register",
-      "addUser": "/register/user",
-      "activation": "/register/activation",
-      "challange": "/register/challenge",
-      "confirmation": "/register/confirmation",
-      "activationRedirect": "/"
-    },
-
-    "templates": {
-      "form": "views/registerTemplate.html",
-      "confirmation": "views/confirmationTemplate.html",
-      "success": "views/successTemplate.html"
-    },
-  },
-
-  "login": {
-    "paths": {
-      "form": "/login",
-      "login": "/login/check",
-
-      "resetForm": "/login/reset",
-      "reset": "/login/reset/send",
-
-      "changePassword": "/login/reset/change",
-
-      "redirect": "/"
-    },
-
-    "templates": {
-      "login": "views/loginTemplate.html",
-      "reset": "views/resetTemplate.html"
-    },
-
-    "loginTimeoutSeconds": 86400
   }
 }

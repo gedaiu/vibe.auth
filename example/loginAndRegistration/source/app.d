@@ -46,10 +46,7 @@ shared static this()
   configurationJson["email"]["resetPasswordConfirmation"]["html"] = readText("emails/resetPasswordConfirmation.html");
 
   ServiceConfiguration serviceConfiguration;
-  serviceConfiguration.name = configurationJson["service"]["name"].to!string;
-  serviceConfiguration.style = configurationJson["service"]["style"].to!string;
-  serviceConfiguration.loginTimeoutSeconds = configurationJson["service"]["loginTimeoutSeconds"].to!ulong;
-  serviceConfiguration.paths.location = configurationJson["service"]["paths"]["location"].to!string;
+  serviceConfiguration.load(configurationJson["service"]);
 
   emailConfiguration = configurationJson["email"].deserializeJson!EmailConfiguration;
 
