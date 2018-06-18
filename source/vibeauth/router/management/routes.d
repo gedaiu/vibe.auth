@@ -54,8 +54,12 @@ class UserManagementRoutes {
       updateProfile(req, res);
     }
 
-    if(req.method == HTTPMethod.GET && isUserPage(configuration.paths.userManagement.account, req.path)) {
+    if(req.method == HTTPMethod.GET &&  isUserPage(configuration.paths.userManagement.account, req.path)) {
       accountPage(req, res);
+    }
+
+    if(req.method == HTTPMethod.POST &&  isUserPage(configuration.paths.userManagement.updateAccount, req.path)) {
+      updateAccountPage(req, res);
     }
 
     if(req.method == HTTPMethod.GET && isUserPage(configuration.paths.userManagement.security, req.path)) {
@@ -133,10 +137,74 @@ class UserManagementRoutes {
     res.redirect(destinationPath ~ message, 302);
   }
 
+  void updateAccountPage(HTTPServerRequest req, HTTPServerResponse res) {
+    TemplateData data;
+    data.set(":id", configuration.paths.userManagement.updateAccount, req.path);
+    auto user = userCollection.byId(data.get(":id"));
+
+    auto path = req.fullURL;
+    auto destinationPath = configuration.paths.userManagement.account.replace(":id", user.id);
+    destinationPath = path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ destinationPath;
+    string message;
+
+    string[] missingFields;
+
+    if("oldPassword" !in req.form) {
+      missingFields ~= "oldPassword";
+    }
+
+    if("newPassword" !in req.form) {
+      missingFields ~= "newPassword";
+    }
+
+    if("confirmPassword" !in req.form) {
+      missingFields ~= "confirmPassword";
+    }
+
+    if(missingFields.length > 0) {
+      message = "?error=" ~ missingFields.join(",%20") ~ "%20fields%20are%20missing";
+      res.redirect(destinationPath ~ message, 302);
+      return;
+    }
+    
+    string oldPassword = req.form["oldPassword"];
+    string newPassword = req.form["newPassword"];
+    string confirmPassword = req.form["confirmPassword"];
+
+    if(confirmPassword != newPassword) {
+      message = "?error=Password%20confirmation%20doesn't%20match%20the%20password";
+      res.redirect(destinationPath ~ message, 302);
+      return;
+    }
+
+    if(newPassword.length < 10) {
+      message = "?error=The%20new%20password%20is%20less%20then%2010%20chars";
+      res.redirect(destinationPath ~ message, 302);
+      return;
+    }
+
+    if(user.isValidPassword(oldPassword)) {
+      user.setPassword(newPassword);
+      message = "?message=Password%20updated%20successfully";
+    } else {
+      message = "?error=Old%20password%20isn't%20valid";
+    }
+
+    res.redirect(destinationPath ~ message, 302);
+  }
+
   void accountPage(HTTPServerRequest req, HTTPServerResponse res) {
     scope auto view = new AccountView(configuration);
 
     view.data.set(":id", configuration.paths.userManagement.account, req.path);
+
+    if("message" in req.query) {
+      view.data.addMessage(req.query["message"]);
+    }
+    
+    if("error" in req.query) {
+      view.data.addError(req.query["error"]);
+    }
 
     res.writeBody(view.render, 200, "text/html; charset=UTF-8");
   }
@@ -299,5 +367,70 @@ unittest {
     .end((Response response) => {
       auto user = collection.byId("1");
       user.name.should.equal("&quot;&#039;&lt;&gt;");
+    });
+}
+
+/// It should change the user password
+unittest {
+  testRouter
+    .request
+    .post("/admin/users/1/account/update")
+    .send(["oldPassword": "password", "newPassword": "new-password", "confirmPassword": "new-password"])
+    .expectStatusCode(302)
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?message=Password%20updated%20successfully")
+    .end((Response response) => {
+      collection.byId("1").isValidPassword("new-password").should.equal(true);
+    });
+}
+
+/// It should not change the user password when the old is not valid
+unittest {
+  testRouter
+    .request
+    .post("/admin/users/1/account/update")
+    .send(["oldPassword": "wrong password", "newPassword": "new-password", "confirmPassword": "new-password"])
+    .expectStatusCode(302)
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Old%20password%20isn't%20valid")
+    .end((Response response) => {
+      collection.byId("1").isValidPassword("password").should.equal(true);
+    });
+}
+
+/// It should not change the user password when newPassword does not match confirmation
+unittest {
+  testRouter
+    .request
+    .post("/admin/users/1/account/update")
+    .send(["oldPassword": "password", "newPassword": "new-password", "confirmPassword": "some-password"])
+    .expectStatusCode(302)
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Password%20confirmation%20doesn't%20match%20the%20password")
+    .end((Response response) => {
+      collection.byId("1").isValidPassword("password").should.equal(true);
+    });
+}
+
+/// It should not change the user password when there are missing form data
+unittest {
+  testRouter
+    .request
+    .post("/admin/users/1/account/update")
+    .send(["":""])
+    .expectStatusCode(302)
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=oldPassword,%20newPassword,%20confirmPassword%20fields%20are%20missing")
+    .end((Response response) => {
+      collection.byId("1").isValidPassword("password").should.equal(true);
+    });
+}
+
+/// It should not change the user password when newPassword is less than 10 chars
+unittest {
+  testRouter
+    .request
+    .post("/admin/users/1/account/update")
+    .send(["oldPassword": "password", "newPassword": "new", "confirmPassword": "new"])
+    .expectStatusCode(302)
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=The%20new%20password%20is%20less%20then%2010%20chars")
+    .end((Response response) => {
+      collection.byId("1").isValidPassword("password").should.equal(true);
     });
 }

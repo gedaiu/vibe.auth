@@ -219,12 +219,12 @@ struct UserManagementPaths {
   ///
   string account = "/admin/users/:id/account";
   ///
-  string accountProfile = "/admin/users/:id/account/update";
+  string updateAccount = "/admin/users/:id/account/update";
 
   ///
   string security = "/admin/users/:id/security";
   ///
-  string securityProfile = "/admin/users/:id/security/update";
+  string updateSecurity = "/admin/users/:id/security/update";
 }
 
 struct UserManagementTemplates {

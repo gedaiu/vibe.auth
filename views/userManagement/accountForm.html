@@ -1,6 +1,6 @@
 <h2>Change password</h2>
 
-<form method="post" action="#{paths.userManagement.updateProfile}">
+<form method="post" action="#{paths.userManagement.updateAccount}">
   <div class="form-group">
     <label for="InputOldPassword">Old password</label>
     <input type="password"
@@ -8,7 +8,7 @@
       id="InputOldPassword"
       aria-describedby="oldPasswordHelp"
       placeholder="What&#39;s your old password?"
-      name="name">
+      name="oldPassword">
   </div>
 
   <div class="form-group">
@@ -18,7 +18,7 @@
       id="InputNewPassword"
       aria-describedby="inputPasswordHelp"
       placeholder="What&#39;s your new password?"
-      name="username">
+      name="newPassword">
   </div>
 
   <div class="form-group">
@@ -27,7 +27,8 @@
       class="form-control"
       id="InputConfirmPassword"
       aria-describedby="emailHelp"
-      placeholder="Enter again your password">
+      placeholder="Enter again your password"
+      name="confirmPassword">
   </div>
 
   <button class="btn btn-primary" type="submit">Update password</button>
