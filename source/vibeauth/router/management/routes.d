@@ -119,6 +119,12 @@ class UserManagementRoutes {
       return;
     }
 
+    if(userCollection.contains(username)) {
+      string error = `?error=The%20new%20username%20is%20already%20taken`;
+      res.redirect(destinationPath ~ error, 302);
+      return;
+    }
+
     auto ctr = ctRegex!(`[a-zA-Z][a-zA-Z0-9_\-]*`);
     auto result = matchFirst(username, ctr);
 
@@ -308,6 +314,33 @@ unittest {
       auto user = collection.byId("1");
       user.name.should.equal("some name");
       user.username.should.equal("some-user-name");
+    });
+}
+
+/// It should not be able to update the username to an existing one
+unittest {
+  auto router = testRouter;
+
+  auto user = new User("user2@gmail.com", "password");
+  user.name = "John Doe";
+  user.username = "other test";
+  user.id = 2;
+
+  import std.stdio;
+  writeln("collection:", collection);
+
+  collection.add(user);
+
+  router
+    .request
+    .post("/admin/users/2/update")
+    .send(["name": " some name ", "username": "test"])
+    .expectStatusCode(302)
+    .expectHeader("Location", "http://localhost:0/admin/users/2?error=The%20new%20username%20is%20already%20taken")
+    .end((Response response) => {
+      auto user = collection.byId("2");
+      user.name.should.equal("John Doe");
+      user.username.should.equal("other test");
     });
 }
 

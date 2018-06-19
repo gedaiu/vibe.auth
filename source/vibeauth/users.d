@@ -488,7 +488,7 @@ class UserMemmoryCollection : UserCollection {
 
       return result.front;
     }
-    
+
     /// Check if the collection has an user by email or username
     bool contains(string identification) {
       return !list.filter!(a => a.email == identification || a.username == identification).empty;
