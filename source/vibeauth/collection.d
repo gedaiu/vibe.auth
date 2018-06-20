@@ -11,112 +11,142 @@ import std.uuid;
 import std.conv;
 import std.datetime;
 import std.array;
+import std.functional;
 
 import std.range.interfaces;
 import std.range.primitives;
 
 class ItemNotFoundException : Exception {
-	this(string msg = null, Throwable next = null) { super(msg, next); }
-	this(string msg, string file, size_t line, Throwable next = null) {
-		super(msg, file, line, next);
-	}
+  this(string msg = null, Throwable next = null) { super(msg, next); }
+  this(string msg, string file, size_t line, Throwable next = null) {
+    super(msg, file, line, next);
+  }
 }
 
 interface ICollection(T) {
-	alias idType = typeof(T.id);
+  alias idType = typeof(T.id);
 
-	void add(T item);
-	void remove(const idType id);
-	size_t length();
-	T opIndex(string index);
-	auto opBinaryRight(string op)(idType id);
-	int opApply(int delegate(T) dg);
-	int opApply(int delegate(ulong, T) dg);
-	@property bool empty();
-	ICollection!T save();
+  void add(T item);
+
+  void remove(const idType id);
+  void onRemove(void function(T));
+  void onRemove(void delegate(T));
+
+  size_t length();
+  T opIndex(string index);
+  auto opBinaryRight(string op)(idType id);
+  int opApply(int delegate(T) dg);
+  int opApply(int delegate(ulong, T) dg);
+  @property bool empty();
+  ICollection!T save();
 }
 
 class Collection(T) : ICollection!T {
-	alias idType = typeof(T.id);
+  alias idType = typeof(T.id);
 
-	protected T[] list;
+  protected T[] list;
 
-	this(T[] list = []) {
-		this.list = list;
-	}
+  private void delegate(T) _onRemove;
 
-	void add(T item) {
-		enforce(!list.map!(a => a.id).canFind(item.id), "An item with the same id `" ~ item.id.to!string ~ "` already exists");
-		list ~= item;
-	}
+  this(T[] list = []) {
+    this.list = list;
+  }
 
-	void remove(const idType id) {
-		list = list.filter!(a => a.id != id).array;
-	}
+  void add(T item) {
+    enforce(!list.map!(a => a.id).canFind(item.id), "An item with the same id `" ~ item.id.to!string ~ "` already exists");
+    list ~= item;
+  }
 
-	size_t length() {
-		return list.length;
-	}
+  void remove(const idType id) {
+    auto item = list.filter!(a => a.id == id).front;
 
-	T opIndex(string index) {
-		static if(is(string == idType)) {
-			auto list = list.find!(a => a.id == index);
+    raiseOnRemove(item);
 
-			enforce!ItemNotFoundException(list.count > 0, "Item not found");
+    list = list.filter!(a => a.id != id).array;
+  }
 
-			return list[0];
-		} else {
-			throw new Exception("not implemented");
-		}
-	}
 
-	auto opBinaryRight(string op)(idType id) {
-		static if (op == "in") {
-			return !list.filter!(a => a.id == id).empty;
-		} else {
-			static assert(false, op ~ " not implemented for `ItemCollection`");
-		}
-	}
+  void onRemove(void function(T) handler) {
+    onRemove(handler.toDelegate);
+  }
 
-	int opApply(int delegate(T) dg) {
-		int result = 0;
+  void onRemove(void delegate(T) handler) {
+    _onRemove = handler;
+  }
 
-		foreach(item; list) {
-				result = dg(item);
-				if (result)
-					break;
-		}
+  size_t length() {
+    return list.length;
+  }
 
-		return result;
-	}
+  T opIndex(string index) {
+    static if(is(string == idType)) {
+      auto list = list.find!(a => a.id == index);
 
-	int opApply(int delegate(ulong, T) dg) {
-		int result = 0;
-		ulong idx = 0;
+      enforce!ItemNotFoundException(list.count > 0, "Item not found");
 
-		foreach(item; list) {
-			static if(is(size_t == idType)) {
-				idx = item.id;
-			}
+      return list[0];
+    } else {
+      throw new Exception("not implemented");
+    }
+  }
 
-			result = dg(idx, item);
+  auto opBinaryRight(string op)(idType id) {
+    static if (op == "in") {
+      return !list.filter!(a => a.id == id).empty;
+    } else {
+      static assert(false, op ~ " not implemented for `ItemCollection`");
+    }
+  }
 
-			static if(!is(size_t == idType)) {
-				idx++;
-			}
+  int opApply(int delegate(T) dg) {
+    int result = 0;
 
-			if (result)
-				break;
-		}
+    foreach(item; list) {
+        result = dg(item);
+        if (result)
+          break;
+    }
 
-		return result;
-	}
+    return result;
+  }
 
-	@property bool empty() {
-		return list.empty;
-	}
+  int opApply(int delegate(ulong, T) dg) {
+    int result = 0;
+    ulong idx = 0;
 
-	ICollection!T save() {
-		return new Collection!T(list.dup);
-	}
+    foreach(item; list) {
+      static if(is(size_t == idType)) {
+        idx = item.id;
+      }
+
+      result = dg(idx, item);
+
+      static if(!is(size_t == idType)) {
+        idx++;
+      }
+
+      if (result)
+        break;
+    }
+
+    return result;
+  }
+
+  @property bool empty() {
+    return list.empty;
+  }
+
+  ICollection!T save() {
+    return new Collection!T(list.dup);
+  }
+
+  private {
+    void raiseOnRemove(T item) {
+      if(_onRemove is null) {
+        return;
+      }
+
+      _onRemove(item);
+    }
+  }
 }

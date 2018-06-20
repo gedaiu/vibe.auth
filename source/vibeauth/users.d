@@ -420,7 +420,6 @@ abstract class UserCollection : Collection!User {
 
 /// Create an user collection stored in memmory
 class UserMemmoryCollection : UserCollection {
-
   private {
     long index = 0;
     immutable(string[]) accessList;
@@ -587,12 +586,21 @@ unittest {
 
 /// Remove user by id
 unittest {
+  bool wasRemoved;
+
+  void onRemove(User user) {
+    wasRemoved = user.id == "1";
+  }
+
   auto collection = new UserMemmoryCollection([]);
+  collection.onRemove = &onRemove;
+
   auto user = new User("user", "password");
   user.id = 1;
 
   collection.add(user);
   collection.remove("1");
 
-  assert(collection.length == 0, "It should remove user by id");
+  collection.length.should.equal(0);
+  wasRemoved.should.equal(true);
 }

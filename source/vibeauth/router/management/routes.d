@@ -31,64 +31,71 @@ class UserManagementRoutes {
     ServiceConfiguration configuration;
 
     IMailQueue mailQueue;
+
+    ProfileController  profileController;
+    AccountController  accountController;
+    DeleteController   deleteController;
+    SecurityController securityController;
   }
 
   /// Initalize the object
-  this(UserCollection userCollection, IMailQueue mailQueue,  ServiceConfiguration configuration = ServiceConfiguration.init) {
+  this(UserCollection userCollection, IMailQueue mailQueue, ServiceConfiguration configuration = ServiceConfiguration.init) {
     this.configuration = configuration;
     this.userCollection = userCollection;
     this.mailQueue = mailQueue;
+
+    this.profileController  = new ProfileController(userCollection, configuration);
+    this.accountController  = new AccountController(userCollection, configuration);
+    this.deleteController   = new DeleteController(userCollection, configuration);
+    this.securityController = new SecurityController(userCollection, configuration);
   }
 
   /// Generic handler for all user management routes
   void handler(HTTPServerRequest req, HTTPServerResponse res) {
     if(req.method == HTTPMethod.GET && req.path == configuration.paths.userManagement.list) {
       list(req, res);
+      return;
     }
 
-    if(req.method == HTTPMethod.GET && isUserPage(configuration.paths.userManagement.profile, req.path)) {
-      profilePage(req, res);
+    if(profileController.canHandle(req)) {
+      profileController.handle(req, res);
+      return;
+    }
+
+    if(accountController.canHandle(req)) {
+      accountController.handle(req, res);
+      return;
+    }
+
+    if(deleteController.canHandle(req)) {
+      deleteController.handle(req, res);
+      return;
+    }
+
+    if(securityController.canHandle(req)) {
+      securityController.handle(req, res);
+      return;
     }
     
     if(req.method == HTTPMethod.POST && isUserPage(configuration.paths.userManagement.updateProfile, req.path)) {
       updateProfile(req, res);
+      return;
     }
 
-    if(req.method == HTTPMethod.GET &&  isUserPage(configuration.paths.userManagement.account, req.path)) {
-      accountPage(req, res);
-    }
-
-    if(req.method == HTTPMethod.POST &&  isUserPage(configuration.paths.userManagement.updateAccount, req.path)) {
+    if(req.method == HTTPMethod.POST && isUserPage(configuration.paths.userManagement.updateAccount, req.path)) {
       updateAccountPage(req, res);
+      return;
     }
 
-    if(req.method == HTTPMethod.GET && isUserPage(configuration.paths.userManagement.security, req.path)) {
-      securityPage(req, res);
+    if(req.method == HTTPMethod.POST && isUserPage(configuration.paths.userManagement.deleteAccount, req.path)) {
+      deleteAccount(req, res);
+      return;
     }
   }
 
   /// Render the user list
   void list(HTTPServerRequest req, HTTPServerResponse res) {
     scope auto view = new UserManagementListView(configuration, userCollection);
-
-    res.writeBody(view.render, 200, "text/html; charset=UTF-8");
-  }
-
-  void profilePage(HTTPServerRequest req, HTTPServerResponse res) {
-    scope auto view = new ProfileView(configuration);
-
-    view.data.set(":id", configuration.paths.userManagement.profile, req.path);
-
-    if("message" in req.query) {
-      view.data.addMessage(req.query["message"]);
-    }
-    
-    if("error" in req.query) {
-      view.data.addError(req.query["error"]);
-    }
-
-    auto user = userCollection.byId(view.data.get(":id"));
-    view.data.add("userData", user.toJson);
 
     res.writeBody(view.render, 200, "text/html; charset=UTF-8");
   }
@@ -207,12 +214,39 @@ class UserManagementRoutes {
     if("message" in req.query) {
       view.data.addMessage(req.query["message"]);
     }
-    
+
     if("error" in req.query) {
       view.data.addError(req.query["error"]);
     }
 
     res.writeBody(view.render, 200, "text/html; charset=UTF-8");
+  }
+
+  void deleteAccount(HTTPServerRequest req, HTTPServerResponse res) {
+    TemplateData data;
+    data.set(":id", configuration.paths.userManagement.deleteAccount, req.path);
+    auto user = userCollection.byId(data.get(":id"));
+
+    auto path = req.fullURL;
+    auto destinationPath = configuration.paths.userManagement.account.replace(":id", user.id);
+    destinationPath = path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ destinationPath;
+
+    if("password" !in req.form) {
+      auto message = "?error=Can%20not%20remove%20user.%20The%20pasword%20was%20missing";
+      res.redirect(destinationPath ~ message, 302);
+      return;
+    }
+
+    auto password = req.form["password"];
+    
+    if(!user.isValidPassword(password)) {
+      auto message = "?error=Can%20not%20remove%20user.%20The%20pasword%20was%20invalid";
+      res.redirect(destinationPath ~ message, 302);
+      return;
+    }
+
+    userCollection.remove(user.id);
+    res.redirect(configuration.paths.location, 302);
   }
 
   void securityPage(HTTPServerRequest req, HTTPServerResponse res) {
@@ -302,6 +336,15 @@ unittest {
     });
 }
 
+/// It should render 404 when the user does not exist
+unittest {
+  testRouter
+    .request
+    .get("/admin/users/3")
+    .expectStatusCode(404)
+    .end();
+}
+
 /// It should update the user data
 unittest {
   testRouter
@@ -325,9 +368,6 @@ unittest {
   user.name = "John Doe";
   user.username = "other test";
   user.id = 2;
-
-  import std.stdio;
-  writeln("collection:", collection);
 
   collection.add(user);
 
@@ -465,5 +505,44 @@ unittest {
     .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=The%20new%20password%20is%20less%20then%2010%20chars")
     .end((Response response) => {
       collection.byId("1").isValidPassword("password").should.equal(true);
+    });
+}
+
+/// It should remove an user
+unittest {
+  testRouter
+    .request
+    .post("/admin/users/1/delete")
+    .send(["password": "password"])
+    .expectStatusCode(302)
+    .expectHeader("Location", "http://localhost")
+    .end((Response response) => {
+      collection.contains("user@gmail.com").should.equal(false);
+    });
+}
+
+/// It should not remove an user if the password is invalid
+unittest {
+  testRouter
+    .request
+    .post("/admin/users/1/delete")
+    .send(["password": "invalid"])
+    .expectStatusCode(302)
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Can%20not%20remove%20user.%20The%20pasword%20was%20invalid")
+    .end((Response response) => {
+      collection.contains("user@gmail.com").should.equal(true);
+    });
+}
+
+/// It should not remove an user if the password is missing
+unittest {
+  testRouter
+    .request
+    .post("/admin/users/1/delete")
+    .send(["": "password"])
+    .expectStatusCode(302)
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Can%20not%20remove%20user.%20The%20pasword%20was%20missing")
+    .end((Response response) => {
+      collection.contains("user@gmail.com").should.equal(true);
     });
 }

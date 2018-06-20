@@ -207,8 +207,6 @@ struct UserManagementPaths {
   mixin StringLoader;
 
   ///
-  string deleteAccount = "/admin/users/:id/delete";
-  ///
   string list = "/admin/users";
 
   ///
@@ -220,6 +218,8 @@ struct UserManagementPaths {
   string account = "/admin/users/:id/account";
   ///
   string updateAccount = "/admin/users/:id/account/update";
+  ///
+  string deleteAccount = "/admin/users/:id/delete";
 
   ///
   string security = "/admin/users/:id/security";
@@ -241,6 +241,9 @@ struct UserManagementTemplates {
 
   ///
   string accountForm = import("userManagement/accountForm.html");
+
+  ///
+  string deleteQuestion = import("userManagement/deleteQuestion.html");
 
   ///
   string securityForm = import("userManagement/securityForm.html");
