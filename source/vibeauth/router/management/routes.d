@@ -32,10 +32,7 @@ class UserManagementRoutes {
 
     IMailQueue mailQueue;
 
-    ProfileController  profileController;
-    AccountController  accountController;
-    DeleteController   deleteController;
-    SecurityController securityController;
+    IController[] controllers;
   }
 
   /// Initalize the object
@@ -44,10 +41,18 @@ class UserManagementRoutes {
     this.userCollection = userCollection;
     this.mailQueue = mailQueue;
 
-    this.profileController  = new ProfileController(userCollection, configuration);
-    this.accountController  = new AccountController(userCollection, configuration);
-    this.deleteController   = new DeleteController(userCollection, configuration);
-    this.securityController = new SecurityController(userCollection, configuration);
+    controllers = cast(IController[]) [
+      new ProfileController(userCollection, configuration),
+      new UpdateProfileController(userCollection, configuration),
+
+      new AccountController(userCollection, configuration),
+      new UpdateAccountController(userCollection, configuration),
+
+      new DeleteController(userCollection, configuration),
+      new DeleteAccountController(userCollection, configuration),
+
+      new SecurityController(userCollection, configuration)
+    ];
   }
 
   /// Generic handler for all user management routes
@@ -57,202 +62,17 @@ class UserManagementRoutes {
       return;
     }
 
-    if(profileController.canHandle(req)) {
-      profileController.handle(req, res);
-      return;
-    }
-
-    if(accountController.canHandle(req)) {
-      accountController.handle(req, res);
-      return;
-    }
-
-    if(deleteController.canHandle(req)) {
-      deleteController.handle(req, res);
-      return;
-    }
-
-    if(securityController.canHandle(req)) {
-      securityController.handle(req, res);
-      return;
-    }
-    
-    if(req.method == HTTPMethod.POST && isUserPage(configuration.paths.userManagement.updateProfile, req.path)) {
-      updateProfile(req, res);
-      return;
-    }
-
-    if(req.method == HTTPMethod.POST && isUserPage(configuration.paths.userManagement.updateAccount, req.path)) {
-      updateAccountPage(req, res);
-      return;
-    }
-
-    if(req.method == HTTPMethod.POST && isUserPage(configuration.paths.userManagement.deleteAccount, req.path)) {
-      deleteAccount(req, res);
-      return;
+    foreach(controller; controllers) {
+      if(controller.canHandle(req)) {
+        controller.handle(req, res);
+        return;
+      }
     }
   }
 
   /// Render the user list
   void list(HTTPServerRequest req, HTTPServerResponse res) {
     scope auto view = new UserManagementListView(configuration, userCollection);
-
-    res.writeBody(view.render, 200, "text/html; charset=UTF-8");
-  }
-
-  void updateProfile(HTTPServerRequest req, HTTPServerResponse res) {
-    TemplateData data;
-    data.set(":id", configuration.paths.userManagement.updateProfile, req.path);
-    auto user = userCollection.byId(data.get(":id"));
-
-    auto path = req.fullURL;
-    auto destinationPath = configuration.paths.userManagement.profile.replace(":id", user.id);
-    destinationPath = path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ destinationPath;
-
-    if("name" !in req.form || "username" !in req.form) {
-      string error = `?error=Missing%20data.The%20request%20can%20not%20be%20processed.`;
-
-      res.redirect(destinationPath ~ error, 302);
-      return;
-    }
-
-    string name = req.form["name"].strip.escapeHtmlString;
-    string username = req.form["username"].strip.escapeHtmlString;
-
-    if(username == "") {
-      string error = `?error=The%20username%20is%20mandatory.`;
-
-      res.redirect(destinationPath ~ error, 302);
-      return;
-    }
-
-    if(userCollection.contains(username)) {
-      string error = `?error=The%20new%20username%20is%20already%20taken`;
-      res.redirect(destinationPath ~ error, 302);
-      return;
-    }
-
-    auto ctr = ctRegex!(`[a-zA-Z][a-zA-Z0-9_\-]*`);
-    auto result = matchFirst(username, ctr);
-
-    if(result.empty || result.front != username) {
-      string error = "?error=Username may only contain alphanumeric characters or single hyphens, and it must start with an alphanumeric character.";
-    
-      res.redirect(destinationPath ~ error.replace(" ", "%20"), 302);
-      return;
-    }
-
-    user.name = name;
-    user.username = username;
-
-    string message = "?message=Profile%20updated%20successfully";
-
-    res.redirect(destinationPath ~ message, 302);
-  }
-
-  void updateAccountPage(HTTPServerRequest req, HTTPServerResponse res) {
-    TemplateData data;
-    data.set(":id", configuration.paths.userManagement.updateAccount, req.path);
-    auto user = userCollection.byId(data.get(":id"));
-
-    auto path = req.fullURL;
-    auto destinationPath = configuration.paths.userManagement.account.replace(":id", user.id);
-    destinationPath = path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ destinationPath;
-    string message;
-
-    string[] missingFields;
-
-    if("oldPassword" !in req.form) {
-      missingFields ~= "oldPassword";
-    }
-
-    if("newPassword" !in req.form) {
-      missingFields ~= "newPassword";
-    }
-
-    if("confirmPassword" !in req.form) {
-      missingFields ~= "confirmPassword";
-    }
-
-    if(missingFields.length > 0) {
-      message = "?error=" ~ missingFields.join(",%20") ~ "%20fields%20are%20missing";
-      res.redirect(destinationPath ~ message, 302);
-      return;
-    }
-    
-    string oldPassword = req.form["oldPassword"];
-    string newPassword = req.form["newPassword"];
-    string confirmPassword = req.form["confirmPassword"];
-
-    if(confirmPassword != newPassword) {
-      message = "?error=Password%20confirmation%20doesn't%20match%20the%20password";
-      res.redirect(destinationPath ~ message, 302);
-      return;
-    }
-
-    if(newPassword.length < 10) {
-      message = "?error=The%20new%20password%20is%20less%20then%2010%20chars";
-      res.redirect(destinationPath ~ message, 302);
-      return;
-    }
-
-    if(user.isValidPassword(oldPassword)) {
-      user.setPassword(newPassword);
-      message = "?message=Password%20updated%20successfully";
-    } else {
-      message = "?error=Old%20password%20isn't%20valid";
-    }
-
-    res.redirect(destinationPath ~ message, 302);
-  }
-
-  void accountPage(HTTPServerRequest req, HTTPServerResponse res) {
-    scope auto view = new AccountView(configuration);
-
-    view.data.set(":id", configuration.paths.userManagement.account, req.path);
-
-    if("message" in req.query) {
-      view.data.addMessage(req.query["message"]);
-    }
-
-    if("error" in req.query) {
-      view.data.addError(req.query["error"]);
-    }
-
-    res.writeBody(view.render, 200, "text/html; charset=UTF-8");
-  }
-
-  void deleteAccount(HTTPServerRequest req, HTTPServerResponse res) {
-    TemplateData data;
-    data.set(":id", configuration.paths.userManagement.deleteAccount, req.path);
-    auto user = userCollection.byId(data.get(":id"));
-
-    auto path = req.fullURL;
-    auto destinationPath = configuration.paths.userManagement.account.replace(":id", user.id);
-    destinationPath = path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ destinationPath;
-
-    if("password" !in req.form) {
-      auto message = "?error=Can%20not%20remove%20user.%20The%20pasword%20was%20missing";
-      res.redirect(destinationPath ~ message, 302);
-      return;
-    }
-
-    auto password = req.form["password"];
-    
-    if(!user.isValidPassword(password)) {
-      auto message = "?error=Can%20not%20remove%20user.%20The%20pasword%20was%20invalid";
-      res.redirect(destinationPath ~ message, 302);
-      return;
-    }
-
-    userCollection.remove(user.id);
-    res.redirect(configuration.paths.location, 302);
-  }
-
-  void securityPage(HTTPServerRequest req, HTTPServerResponse res) {
-    scope auto view = new SecurityView(configuration);
-
-    view.data.set(":id", configuration.paths.userManagement.security, req.path);
 
     res.writeBody(view.render, 200, "text/html; charset=UTF-8");
   }
@@ -352,7 +172,7 @@ unittest {
     .post("/admin/users/1/update")
     .send(["name": " some name ", "username": " some-user-name "])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1?message=Profile%20updated%20successfully")
+    .expectHeader("Location", "http://localhost:0/admin/users/1?message=Profile%20updated%20successfully.")
     .end((Response response) => {
       auto user = collection.byId("1");
       user.name.should.equal("some name");
@@ -376,7 +196,7 @@ unittest {
     .post("/admin/users/2/update")
     .send(["name": " some name ", "username": "test"])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/2?error=The%20new%20username%20is%20already%20taken")
+    .expectHeader("Location", "http://localhost:0/admin/users/2?error=The%20new%20username%20is%20already%20taken.")
     .end((Response response) => {
       auto user = collection.byId("2");
       user.name.should.equal("John Doe");
@@ -391,7 +211,7 @@ unittest {
     .post("/admin/users/1/update")
     .send(["username": "some user name"])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1?error=Missing%20data.The%20request%20can%20not%20be%20processed.")
+    .expectHeader("Location", "http://localhost:0/admin/users/1?error=Missing%20data.%20The%20request%20can%20not%20be%20processed.")
     .end((Response response) => {
       auto user = collection.byId("1");
       user.name.should.equal("John Doe");
@@ -406,7 +226,7 @@ unittest {
     .post("/admin/users/1/update")
     .send(["name": "name"])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1?error=Missing%20data.The%20request%20can%20not%20be%20processed.")
+    .expectHeader("Location", "http://localhost:0/admin/users/1?error=Missing%20data.%20The%20request%20can%20not%20be%20processed.")
     .end((Response response) => {
       auto user = collection.byId("1");
       user.name.should.equal("John Doe");
@@ -436,7 +256,7 @@ unittest {
     .post("/admin/users/1/update")
     .send(["name": "\"'<>", "username": "Asd"])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1?message=Profile%20updated%20successfully")
+    .expectHeader("Location", "http://localhost:0/admin/users/1?message=Profile%20updated%20successfully.")
     .end((Response response) => {
       auto user = collection.byId("1");
       user.name.should.equal("&quot;&#039;&lt;&gt;");
@@ -450,7 +270,7 @@ unittest {
     .post("/admin/users/1/account/update")
     .send(["oldPassword": "password", "newPassword": "new-password", "confirmPassword": "new-password"])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1/account?message=Password%20updated%20successfully")
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?message=Password%20updated%20successfully.")
     .end((Response response) => {
       collection.byId("1").isValidPassword("new-password").should.equal(true);
     });
@@ -463,7 +283,7 @@ unittest {
     .post("/admin/users/1/account/update")
     .send(["oldPassword": "wrong password", "newPassword": "new-password", "confirmPassword": "new-password"])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Old%20password%20isn't%20valid")
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=The%20old%20password%20is%20not%20valid.")
     .end((Response response) => {
       collection.byId("1").isValidPassword("password").should.equal(true);
     });
@@ -476,7 +296,7 @@ unittest {
     .post("/admin/users/1/account/update")
     .send(["oldPassword": "password", "newPassword": "new-password", "confirmPassword": "some-password"])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Password%20confirmation%20doesn't%20match%20the%20password")
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Password%20confirmation%20doesn't%20match%20the%20password.")
     .end((Response response) => {
       collection.byId("1").isValidPassword("password").should.equal(true);
     });
@@ -489,7 +309,7 @@ unittest {
     .post("/admin/users/1/account/update")
     .send(["":""])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=oldPassword,%20newPassword,%20confirmPassword%20fields%20are%20missing")
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=oldPassword%20newPassword%20confirmPassword%20fields%20are%20missing.")
     .end((Response response) => {
       collection.byId("1").isValidPassword("password").should.equal(true);
     });
@@ -502,7 +322,7 @@ unittest {
     .post("/admin/users/1/account/update")
     .send(["oldPassword": "password", "newPassword": "new", "confirmPassword": "new"])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=The%20new%20password%20is%20less%20then%2010%20chars")
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=The%20new%20password%20is%20less%20then%2010%20chars.")
     .end((Response response) => {
       collection.byId("1").isValidPassword("password").should.equal(true);
     });
@@ -528,7 +348,7 @@ unittest {
     .post("/admin/users/1/delete")
     .send(["password": "invalid"])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Can%20not%20remove%20user.%20The%20pasword%20was%20invalid")
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Can%20not%20remove%20user.%20The%20password%20was%20invalid.")
     .end((Response response) => {
       collection.contains("user@gmail.com").should.equal(true);
     });
@@ -541,7 +361,7 @@ unittest {
     .post("/admin/users/1/delete")
     .send(["": "password"])
     .expectStatusCode(302)
-    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Can%20not%20remove%20user.%20The%20pasword%20was%20missing")
+    .expectHeader("Location", "http://localhost:0/admin/users/1/account?error=Can%20not%20remove%20user.%20The%20password%20was%20missing.")
     .end((Response response) => {
       collection.contains("user@gmail.com").should.equal(true);
     });

@@ -1,6 +1,8 @@
 module vibeauth.router.management.responses;
 
 import std.string;
+import std.regex;
+import std.conv;
 
 import vibe.data.json;
 import vibe.http.router;
@@ -46,8 +48,13 @@ alias AccountView  = UserView!"configuration.templates.userManagement.accountFor
 alias SecurityView = UserView!"configuration.templates.userManagement.securityForm";
 alias DeleteView   = UserView!"configuration.templates.userManagement.deleteQuestion";
 
-class UserController(string configurattionPath, View) {
-  private {
+interface IController {
+  bool canHandle(HTTPServerRequest);
+  void handle(HTTPServerRequest req, HTTPServerResponse res);
+}
+
+abstract class PathController(string method, string configurationPath) : IController {
+  protected {
     UserCollection userCollection;
     ServiceConfiguration configuration;
     string path;
@@ -57,11 +64,12 @@ class UserController(string configurattionPath, View) {
     this.userCollection = userCollection;
     this.configuration = configuration;
 
-    mixin("path = configuration." ~ configurattionPath ~ ";");
+    mixin("path = configuration." ~ configurationPath ~ ";");
   }
 
   bool canHandle(HTTPServerRequest req) {
-    if(req.method != HTTPMethod.GET) {
+    mixin("auto method = HTTPMethod." ~ method ~ ";");
+    if(req.method != method) {
       return false;
     }
     
@@ -81,6 +89,13 @@ class UserController(string configurattionPath, View) {
     req.context["userId"] = data.get(":id");
 
     return true;
+  }
+}
+
+class UserController(string configurationPath, View) : PathController!("GET", configurationPath) {
+
+  this(UserCollection userCollection, ServiceConfiguration configuration) {
+    super(userCollection, configuration);
   }
 
   void handle(HTTPServerRequest req, HTTPServerResponse res) {
@@ -107,3 +122,168 @@ alias ProfileController  = UserController!("paths.userManagement.profile", Profi
 alias AccountController  = UserController!("paths.userManagement.account", AccountView);
 alias DeleteController   = UserController!("paths.userManagement.deleteAccount", DeleteView);
 alias SecurityController = UserController!("paths.userManagement.security", SecurityView);
+
+class RedirectView {
+  private {
+    HTTPServerRequest req;
+    HTTPServerResponse res;
+    string path;
+  }
+
+  this(HTTPServerRequest req, HTTPServerResponse res, string path) {
+    this.req = req;
+    this.res = res;
+    this.path = path;
+  }
+
+  string destinationPath() {
+    auto requestPath = req.fullURL;
+    auto destinationPath = path.replace(":id", req.context["userId"].to!string);
+
+    return requestPath.schema ~ "://" ~ requestPath.host ~ ":" ~ requestPath.port.to!string ~ destinationPath;
+  }
+
+  void respondError(string value) {
+    string message = `?error=` ~ value.replace(" ", "%20");
+
+    res.redirect(destinationPath ~ message, 302);
+  }
+
+  void respondMessage(string value) {
+    string message = `?message=` ~ value.replace(" ", "%20");
+
+    res.redirect(destinationPath ~ message, 302);
+  }
+}
+
+class UpdateProfileController : PathController!("POST", "paths.userManagement.updateProfile") {
+  this(UserCollection userCollection, ServiceConfiguration configuration) {
+    super(userCollection, configuration);
+  }
+
+  void handle(HTTPServerRequest req, HTTPServerResponse res) {
+    auto view = new RedirectView(req, res, configuration.paths.userManagement.profile);
+
+    string id = req.context["userId"].to!string;
+    auto user = userCollection.byId(id);
+
+    if("name" !in req.form || "username" !in req.form) {
+      view.respondError("Missing data. The request can not be processed.");
+      return;
+    }
+
+    string name = req.form["name"].strip.escapeHtmlString;
+    string username = req.form["username"].strip.escapeHtmlString;
+
+    if(username == "") {
+      view.respondError("The username is mandatory.");
+      return;
+    }
+
+    if(username != user.username && userCollection.contains(username)) {
+      view.respondError("The new username is already taken.");
+      return;
+    }
+
+    auto ctr = ctRegex!(`[a-zA-Z][a-zA-Z0-9_\-]*`);
+    auto result = matchFirst(username, ctr);
+
+    if(result.empty || result.front != username) {
+      view.respondError("Username may only contain alphanumeric characters or single hyphens, and it must start with an alphanumeric character.");
+      return;
+    }
+
+    user.name = name;
+    user.username = username;
+
+    view.respondMessage("Profile updated successfully.");
+  }
+}
+
+class UpdateAccountController : PathController!("POST", "paths.userManagement.updateAccount") {
+  this(UserCollection userCollection, ServiceConfiguration configuration) {
+    super(userCollection, configuration);
+  }
+
+  void handle(HTTPServerRequest req, HTTPServerResponse res) {
+    auto view = new RedirectView(req, res, configuration.paths.userManagement.account);
+
+    string id = req.context["userId"].to!string;
+    auto user = userCollection.byId(id);
+
+    string[] missingFields;
+
+    if("oldPassword" !in req.form) {
+      missingFields ~= "oldPassword";
+    }
+
+    if("newPassword" !in req.form) {
+      missingFields ~= "newPassword";
+    }
+
+    if("confirmPassword" !in req.form) {
+      missingFields ~= "confirmPassword";
+    }
+
+    if(missingFields.length > 0) {
+      view.respondError(missingFields.join(" ") ~ " fields are missing.");
+      return;
+    }
+    
+    string oldPassword = req.form["oldPassword"];
+    string newPassword = req.form["newPassword"];
+    string confirmPassword = req.form["confirmPassword"];
+
+    if(confirmPassword != newPassword) {
+      view.respondError("Password confirmation doesn't match the password.");
+      return;
+    }
+
+    if(newPassword.length < 10) {
+      view.respondError("The new password is less then 10 chars.");
+      return;
+    }
+
+    if(user.isValidPassword(oldPassword)) {
+      user.setPassword(newPassword);
+      view.respondMessage("Password updated successfully.");
+    } else {
+      view.respondError("The old password is not valid.");
+    }
+  }
+}
+
+class DeleteAccountController : PathController!("POST", "paths.userManagement.deleteAccount") {
+    this(UserCollection userCollection, ServiceConfiguration configuration) {
+    super(userCollection, configuration);
+  }
+
+  void handle(HTTPServerRequest req, HTTPServerResponse res) {
+    auto view = new RedirectView(req, res, configuration.paths.userManagement.account);
+
+    TemplateData data;
+    data.set(":id", configuration.paths.userManagement.deleteAccount, req.path);
+    auto user = userCollection.byId(data.get(":id"));
+
+    auto path = req.fullURL;
+    auto destinationPath = configuration.paths.userManagement.account.replace(":id", user.id);
+    destinationPath = path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ destinationPath;
+
+    if("password" !in req.form) {
+      view.respondError("Can not remove user. The password was missing.");
+      return;
+    }
+
+    auto password = req.form["password"];
+    
+    if(!user.isValidPassword(password)) {
+      view.respondError("Can not remove user. The password was invalid.");
+      return;
+    }
+
+    userCollection.remove(user.id);
+    res.redirect(configuration.paths.location, 302);
+  }
+
+
+}
