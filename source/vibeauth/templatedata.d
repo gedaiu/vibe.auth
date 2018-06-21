@@ -58,6 +58,14 @@ struct TemplateData {
     this.options ~= obj;
   }
 
+  /// ditto
+  void add(string key, string value) {
+    Json obj = Json.emptyObject;
+    obj[key] = value;
+
+    this.options ~= obj;
+  }
+
   /// Add a notification to the user
   void addMessage(string message) {
     messages ~= message;

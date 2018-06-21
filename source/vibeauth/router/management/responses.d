@@ -3,6 +3,7 @@ module vibeauth.router.management.responses;
 import std.string;
 import std.regex;
 import std.conv;
+import std.algorithm;
 
 import vibe.data.json;
 import vibe.http.router;
@@ -10,6 +11,7 @@ import vibe.http.router;
 import vibeauth.users;
 import vibeauth.configuration;
 import vibeauth.templatedata;
+import vibeauth.router.request;
 
 class UserManagementListView : View {
   private {
@@ -93,12 +95,33 @@ abstract class PathController(string method, string configurationPath) : IContro
 }
 
 class UserController(string configurationPath, View) : PathController!("GET", configurationPath) {
+  protected {
+    User logedUser;
+  }
 
   this(UserCollection userCollection, ServiceConfiguration configuration) {
     super(userCollection, configuration);
   }
 
+  void handle(ref View view, User user) {
+  }
+
   void handle(HTTPServerRequest req, HTTPServerResponse res) {
+    logedUser = req.getUser(userCollection);
+
+    if(logedUser is null) {
+      auto requestPath = req.fullURL;
+      auto destinationPath = requestPath.schema ~ "://" ~ requestPath.host ~ ":" ~ requestPath.port.to!string ~
+        configuration.paths.login.form;
+
+      res.redirect(destinationPath, 302);
+      return;
+    }
+  
+    scope(exit) {
+      logedUser = null;
+    }
+
     scope auto view = new View(configuration);
 
     view.data.set(":id", path, req.path);
@@ -114,6 +137,8 @@ class UserController(string configurationPath, View) : PathController!("GET", co
     auto user = userCollection.byId(view.data.get(":id"));
     view.data.add("userData", user.toJson);
 
+    handle(view, user);
+
     res.writeBody(view.render, 200, "text/html; charset=UTF-8");
   }
 }
@@ -121,7 +146,46 @@ class UserController(string configurationPath, View) : PathController!("GET", co
 alias ProfileController  = UserController!("paths.userManagement.profile", ProfileView);
 alias AccountController  = UserController!("paths.userManagement.account", AccountView);
 alias DeleteController   = UserController!("paths.userManagement.deleteAccount", DeleteView);
-alias SecurityController = UserController!("paths.userManagement.security", SecurityView);
+
+class SecurityController : UserController!("paths.userManagement.security", SecurityView) {
+  this(UserCollection userCollection, ServiceConfiguration configuration) {
+    super(userCollection, configuration);
+  }
+
+  override void handle(ref SecurityView view, User user) {
+    auto isAdmin = user.getScopes.canFind("admin");
+    auto isLogedUser = logedUser.id == user.id;
+    auto isLogedAdmin = logedUser.getScopes.canFind("admin");
+
+    if(!isLogedAdmin) {
+      view.data.add("rights", "");
+      return;
+    }
+
+    scope View rightsView;
+
+    if(isLogedUser) {
+      rightsView = new View(configuration.templates.userManagement.adminRights, configuration.serializeToJson);
+    } else {
+      rightsView = new View(configuration.templates.userManagement.otherRights, configuration.serializeToJson);
+    }
+
+    Json roleData = Json.emptyObject;
+    roleData["type"] = isAdmin ? "an administrator" : "not an administrator";
+    roleData["class"] = isAdmin ? "info" : "secondary";
+    roleData["action"] = isAdmin ? "revoke admin" : "make admin";
+
+    auto link = isAdmin ?
+      configuration.paths.userManagement.securityRevokeAdmin :
+      configuration.paths.userManagement.securityMakeAdmin;
+
+    roleData["link"] = link.replace(":id", view.data.get(":id"));
+
+    rightsView.data.add("role", roleData);
+
+    view.data.add("rights", rightsView.render);
+  }
+}
 
 class RedirectView {
   private {

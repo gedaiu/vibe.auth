@@ -224,6 +224,10 @@ struct UserManagementPaths {
   ///
   string security = "/admin/users/:id/security";
   ///
+  string securityMakeAdmin = "/admin/users/:id/security/make-admin";
+  ///
+  string securityRevokeAdmin = "/admin/users/:id/security/revoke-admin";
+  ///
   string updateSecurity = "/admin/users/:id/security/update";
 }
 
@@ -247,6 +251,10 @@ struct UserManagementTemplates {
 
   ///
   string securityForm = import("userManagement/securityForm.html");
+  ///
+  string adminRights = import("userManagement/adminRights.html");
+  ///
+  string otherRights = import("userManagement/otherRights.html");
 }
 
 mixin template FileLoader() {

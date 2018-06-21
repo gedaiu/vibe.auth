@@ -237,6 +237,10 @@ class User {
   /// Add a scope to the user
   void addScope(string access) {
     userData.scopes ~= access;
+
+    if(onChange) {
+      onChange(this);
+    }
   }
 
   /// Create an user token

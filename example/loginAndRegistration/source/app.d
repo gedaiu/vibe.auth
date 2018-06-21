@@ -27,7 +27,7 @@ UserMemmoryCollection collection;
 void handler(HTTPServerRequest req, HTTPServerResponse res) {
   const auto style = serviceConfiguration.style;
 
-  User user = req.user(collection);
+  User user = req.getUser(collection);
 
   res.render!("index.dt", style, user);
 }
@@ -57,11 +57,19 @@ shared static this()
   collection = new UserMemmoryCollection(["doStuff"]);
 
   /// Generate some users
-  foreach(i; 1..100) {
+  foreach(i; 1..1_000) {
     auto user = new User("user" ~ i.to!string ~ "@gmail.com", "password");
         user.name = "John Doe";
         user.username = "user" ~ i.to!string;
         user.id = i;
+
+    if(i < 100) {
+      user.isActive = true;
+    }
+
+    if(i < 10) {
+      user.addScope("admin");
+    }
 
     collection.add(user);
   }
