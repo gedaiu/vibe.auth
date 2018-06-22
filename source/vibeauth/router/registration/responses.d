@@ -16,7 +16,8 @@ import vibeauth.mail.base;
 import vibeauth.router.accesscontrol;
 import vibeauth.router.registration.routes;
 import vibeauth.router.request;
-import vibeauth.templatedata;
+import vibeauth.mvc.templatedata;
+import vibeauth.mvc.view;
 
 class RegistrationResponses {
 
@@ -64,16 +65,16 @@ class RegistrationResponses {
 }
 
 alias RegisterView = BasicView!(
-  "configuration.templates.registration.formTemplate",
-  "configuration.templates.registration.form"
+  "templates.registration.formTemplate",
+  "templates.registration.form"
 );
 
 alias ConfirmationView = BasicView!(
-  "configuration.templates.registration.confirmationTemplate",
-  "configuration.templates.registration.confirmation"
+  "templates.registration.confirmationTemplate",
+  "templates.registration.confirmation"
 );
 
 alias SuccessView = BasicView!(
-  "configuration.templates.registration.successTemplate",
-  "configuration.templates.registration.success"
+  "templates.registration.successTemplate",
+  "templates.registration.success"
 );

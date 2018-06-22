@@ -20,7 +20,6 @@ import vibe.core.core;
 import vibeauth.users;
 import vibeauth.client;
 import vibeauth.collection;
-import vibeauth.templatedata;
 import vibeauth.configuration;
 import vibeauth.router.accesscontrol;
 import vibeauth.router.baseAuthRouter;

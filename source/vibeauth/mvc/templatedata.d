@@ -5,7 +5,7 @@
   License: Subject to the terms of the MIT license, as written in the included LICENSE.txt file.
   Authors: Szabo Bogdan
 +/
-module vibeauth.templatedata;
+module vibeauth.mvc.templatedata;
 
 import std.string;
 import std.algorithm;
@@ -14,7 +14,6 @@ import std.stdio;
 
 import vibe.data.json;
 
-import vibeauth.configuration;
 
 version(unittest) {
   import fluent.asserts;
@@ -267,44 +266,4 @@ unittest {
   isUserPage("/users/:id", "/users").should.equal(false);
   isUserPage("/users/:id", "/other/some").should.equal(false);
   isUserPage("/users/:id", "/other").should.equal(false);
-}
-
-class View {
-  protected {
-    const string stringTemplate;
-  }
-
-  TemplateData data;
-
-  alias data this;
-
-  this(const string stringTemplate, Json configuration) {
-    this.stringTemplate = stringTemplate;
-    data.add(configuration);
-  }
-
-  string generateBody() {
-    return "";
-  }
-
-  string render() {
-    return data.render(stringTemplate.replace("#{body}", generateBody()));
-  }
-}
-
-
-class BasicView(string tpl, string property) : View {
-  private {
-    const ServiceConfiguration configuration;
-  }
-
-  this(const ServiceConfiguration configuration) {
-    this.configuration = configuration;
-
-    mixin(`super(` ~ tpl ~ `, configuration.serializeToJson);`);
-  }
-
-  override string generateBody() {
-    mixin(`return ` ~ property ~ `;`);
-  }
 }

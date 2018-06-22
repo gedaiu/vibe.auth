@@ -16,8 +16,8 @@ import vibeauth.collection;
 import vibeauth.configuration;
 import vibeauth.mail.base;
 import vibeauth.router.management.responses;
-import vibeauth.templatedata;
-import vibeauth.templatedata;
+import vibeauth.mvc.view;
+import vibeauth.mvc.controller;
 
 import std.string;
 import std.algorithm;

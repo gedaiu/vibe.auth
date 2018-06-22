@@ -14,7 +14,8 @@ import vibeauth.configuration;
 import vibeauth.mail.base;
 import vibeauth.router.login.routes;
 import vibeauth.router.request;
-import vibeauth.templatedata;
+import vibeauth.mvc.templatedata;
+import vibeauth.mvc.view;
 
 /// User
 class LoginResponses {
@@ -74,16 +75,16 @@ class LoginResponses {
 }
 
 alias LoginView = BasicView!(
-  "configuration.templates.login.formTemplate",
-  "configuration.templates.login.form"
+  "templates.login.formTemplate",
+  "templates.login.form"
 );
 
 alias ResetView = BasicView!(
-  "configuration.templates.login.resetTemplate",
-  "configuration.templates.login.reset"
+  "templates.login.resetTemplate",
+  "templates.login.reset"
 );
 
 alias ChangePasswordView = BasicView!(
-  "configuration.templates.login.resetTemplate",
-  "configuration.templates.login.resetPassword"
+  "templates.login.resetTemplate",
+  "templates.login.resetPassword"
 );

@@ -10,50 +10,11 @@ import vibe.http.router;
 
 import vibeauth.users;
 import vibeauth.configuration;
-import vibeauth.templatedata;
+import vibeauth.mvc.templatedata;
+import vibeauth.mvc.view;
+import vibeauth.mvc.controller;
 import vibeauth.router.request;
-
-class UserManagementListView : View {
-  private {
-    const ServiceConfiguration configuration;
-    UserCollection userCollection;
-  }
-
-  this(const ServiceConfiguration configuration, UserCollection userCollection) {
-    this.configuration = configuration;
-    this.userCollection = userCollection;
-
-    super(configuration.templates.userManagement.listTemplate, configuration.serializeToJson);
-  }
-
-  override string generateBody() {
-    string listPage = `<table class="table"><tbody>`;
-
-    foreach(user; userCollection) {
-      listPage ~= `<tr>` ~ 
-      `<th>` ~ user.username ~ `</th>` ~ 
-      `<td>` ~ user.email ~ `</td>` ~
-       `<td><a href="` ~ configuration.paths.userManagement.profile.replace(":id", user.id) ~ `">Edit</a></td>`~ 
-       `</tr>`;
-    }
-
-    listPage ~= `</tbody></table>`;
-
-    return listPage;
-  }
-}
-
-alias UserView(string T) = BasicView!("configuration.templates.userManagement.userTemplate", T);
-
-alias ProfileView  = UserView!"configuration.templates.userManagement.profileForm";
-alias AccountView  = UserView!"configuration.templates.userManagement.accountForm";
-alias SecurityView = UserView!"configuration.templates.userManagement.securityForm";
-alias QuestionView = UserView!"configuration.templates.userManagement.question";
-
-interface IController {
-  bool canHandle(HTTPServerRequest);
-  void handle(HTTPServerRequest req, HTTPServerResponse res);
-}
+import vibeauth.router.management.views;
 
 bool validateRights(HTTPServerRequest req, HTTPServerResponse res, ServiceConfiguration configuration, UserCollection userCollection) {
   auto logedUser = req.getUser(userCollection);
@@ -74,50 +35,6 @@ bool validateRights(HTTPServerRequest req, HTTPServerResponse res, ServiceConfig
   }
 
   return true;
-}
-
-abstract class PathController(string method, string configurationPath) : IController {
-  protected {
-    UserCollection userCollection;
-    ServiceConfiguration configuration;
-    string path;
-  }
-
-  this(UserCollection userCollection, ServiceConfiguration configuration) {
-    this.userCollection = userCollection;
-    this.configuration = configuration;
-
-    mixin("path = configuration." ~ configurationPath ~ ";");
-  }
-
-  bool canHandle(HTTPServerRequest req) {
-    mixin("auto method = HTTPMethod." ~ method ~ ";");
-    if(req.method != method) {
-      return false;
-    }
-    
-    if(path.canFind(":id")) {
-      if(!isUserPage(path, req.path)) {
-        return false;
-      }
-
-      TemplateData data;
-      data.set(":id", path, req.path);
-
-      try {
-        userCollection.byId(data.get(":id"));
-      } catch(UserNotFoundException) {
-        return false;
-      }
-
-      req.context["userId"] = data.get(":id");
-    } else if(path != req.path) {
-      return false;
-    }
-
-
-    return true;
-  }
 }
 
 class UserController(string configurationPath, View) : PathController!("GET", configurationPath) {
@@ -164,6 +81,106 @@ class UserController(string configurationPath, View) : PathController!("GET", co
   }
 }
 
+abstract class QuestionController(string configurationPath) : IController {
+  protected {
+    UserCollection userCollection;
+    ServiceConfiguration configuration;
+    string path;
+  }
+
+  this(UserCollection userCollection, ServiceConfiguration configuration) {
+    this.userCollection = userCollection;
+    this.configuration = configuration;
+
+    mixin("path = configuration." ~ configurationPath ~ ";");
+  }
+
+  bool canHandle(HTTPServerRequest req) {
+    if(req.method != HTTPMethod.GET && req.method != HTTPMethod.POST) {
+      return false;
+    }
+
+    if(!isUserPage(path, req.path)) {
+      return false;
+    }
+
+    TemplateData data;
+    data.set(":id", path, req.path);
+
+    try {
+      userCollection.byId(data.get(":id"));
+    } catch(UserNotFoundException) {
+      return false;
+    }
+
+    req.context["userId"] = data.get(":id");
+
+    return true;
+  }
+
+  abstract {
+    string title();
+    string question();
+    string action();
+    string backPath();
+    string backPath(HTTPServerRequest);
+  }
+
+  void handleQuestion(HTTPServerRequest req, HTTPServerResponse res) {
+    auto view = new QuestionView(configuration  );
+    view.data.set(":id", path, req.path);
+
+    view.data.add("title", title());
+    view.data.add("question", question());
+    view.data.add("action", action());
+    view.data.add("path", req.fullURL.toString);
+    view.data.add("path-back", backPath(req));
+
+    res.writeBody(view.render, 200, "text/html; charset=UTF-8");
+  }
+
+  abstract void handleAction(HTTPServerRequest req, HTTPServerResponse res);
+
+  void handle(HTTPServerRequest req, HTTPServerResponse res) {
+    if(!validateRights(req, res, configuration, userCollection)) {
+      return;
+    }
+
+    if(req.method == HTTPMethod.GET) {
+      handleQuestion(req, res);
+    }
+    
+    if(req.method == HTTPMethod.POST && isValidPassword(req, res)) {
+      handleAction(req, res);
+    }
+  }
+
+  bool isValidPassword(HTTPServerRequest req, HTTPServerResponse res) {
+    auto logedUser = req.getUser(userCollection);
+
+    if(logedUser is null) {
+      res.redirect(backPath(req), 302);
+      return false;
+    }
+
+    auto view = new RedirectView(req, res, backPath);
+
+    if("password" !in req.form) {
+      view.respondError("Can not " ~ title.toLower ~ ". The password was missing.");
+      return false;
+    }
+
+    auto password = req.form["password"];
+    
+    if(!logedUser.isValidPassword(password)) {
+      view.respondError("Can not " ~ title.toLower ~ ". The password was invalid.");
+      return false;
+    }
+
+    return true;
+  }
+}
+
 alias ProfileController  = UserController!("paths.userManagement.profile", ProfileView);
 alias AccountController  = UserController!("paths.userManagement.account", AccountView);
 
@@ -204,39 +221,6 @@ class SecurityController : UserController!("paths.userManagement.security", Secu
     rightsView.data.add("role", roleData);
 
     view.data.add("rights", rightsView.render);
-  }
-}
-
-class RedirectView {
-  private {
-    HTTPServerRequest req;
-    HTTPServerResponse res;
-    string path;
-  }
-
-  this(HTTPServerRequest req, HTTPServerResponse res, string path) {
-    this.req = req;
-    this.res = res;
-    this.path = path;
-  }
-
-  string destinationPath() {
-    auto requestPath = req.fullURL;
-    auto destinationPath = path.replace(":id", req.context["userId"].to!string);
-
-    return requestPath.schema ~ "://" ~ requestPath.host ~ ":" ~ requestPath.port.to!string ~ destinationPath;
-  }
-
-  void respondError(string value) {
-    string message = `?error=` ~ value.replace(" ", "%20");
-
-    res.redirect(destinationPath ~ message, 302);
-  }
-
-  void respondMessage(string value) {
-    string message = `?message=` ~ value.replace(" ", "%20");
-
-    res.redirect(destinationPath ~ message, 302);
   }
 }
 
@@ -359,107 +343,6 @@ class UpdateAccountController : PathController!("POST", "paths.userManagement.up
     }
   }
 }
-
-abstract class QuestionController(string configurationPath) : IController {
-  protected {
-    UserCollection userCollection;
-    ServiceConfiguration configuration;
-    string path;
-  }
-
-  this(UserCollection userCollection, ServiceConfiguration configuration) {
-    this.userCollection = userCollection;
-    this.configuration = configuration;
-
-    mixin("path = configuration." ~ configurationPath ~ ";");
-  }
-
-  bool canHandle(HTTPServerRequest req) {
-    if(req.method != HTTPMethod.GET && req.method != HTTPMethod.POST) {
-      return false;
-    }
-
-    if(!isUserPage(path, req.path)) {
-      return false;
-    }
-
-    TemplateData data;
-    data.set(":id", path, req.path);
-
-    try {
-      userCollection.byId(data.get(":id"));
-    } catch(UserNotFoundException) {
-      return false;
-    }
-
-    req.context["userId"] = data.get(":id");
-
-    return true;
-  }
-
-  abstract {
-    string title();
-    string question();
-    string action();
-    string backPath();
-    string backPath(HTTPServerRequest);
-  }
-
-  void handleQuestion(HTTPServerRequest req, HTTPServerResponse res) {
-    auto view = new QuestionView(configuration  );
-    view.data.set(":id", path, req.path);
-
-    view.data.add("title", title());
-    view.data.add("question", question());
-    view.data.add("action", action());
-    view.data.add("path", req.fullURL.toString);
-    view.data.add("path-back", backPath(req));
-
-    res.writeBody(view.render, 200, "text/html; charset=UTF-8");
-  }
-
-  abstract void handleAction(HTTPServerRequest req, HTTPServerResponse res);
-
-  void handle(HTTPServerRequest req, HTTPServerResponse res) {
-    if(!validateRights(req, res, configuration, userCollection)) {
-      return;
-    }
-
-    if(req.method == HTTPMethod.GET) {
-      handleQuestion(req, res);
-    }
-    
-    if(req.method == HTTPMethod.POST && isValidPassword(req, res)) {
-      handleAction(req, res);
-    }
-  }
-
-  bool isValidPassword(HTTPServerRequest req, HTTPServerResponse res) {
-    auto logedUser = req.getUser(userCollection);
-
-    if(logedUser is null) {
-      res.redirect(backPath(req), 302);
-      return false;
-    }
-
-    auto view = new RedirectView(req, res, backPath);
-
-    if("password" !in req.form) {
-      view.respondError("Can not " ~ title.toLower ~ ". The password was missing.");
-      return false;
-    }
-
-    auto password = req.form["password"];
-    
-    if(!logedUser.isValidPassword(password)) {
-      view.respondError("Can not " ~ title.toLower ~ ". The password was invalid.");
-      return false;
-    }
-
-    return true;
-  }
-}
-
 
 class DeleteAccountController : QuestionController!("paths.userManagement.deleteAccount") {
 
