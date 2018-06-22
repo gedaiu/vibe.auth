@@ -18,10 +18,27 @@ import vibeauth.configuration;
 enum bootstrapStyleUrl = "https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css";
 enum localBootstrapStyle = "tmp/assets/bootstrap.min.css";
 
+enum bootstrapJsUrl = "https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js";
+enum localBootstrapJs = "tmp/assets/bootstrap.min.js";
+
+enum jqueryUrl = "https://code.jquery.com/jquery-3.2.1.slim.min.js";
+enum localJquery = "tmp/assets/jquery.min.js";
+
 shared static this() {
   if(!localBootstrapStyle.exists) {
     mkdirRecurse(localBootstrapStyle.dirName);
     download(bootstrapStyleUrl, localBootstrapStyle);
+  }
+
+
+  if(!localBootstrapJs.exists) {
+    mkdirRecurse(localBootstrapJs.dirName);
+    download(bootstrapJsUrl, localBootstrapJs);
+  }
+
+  if(!localJquery.exists) {
+    mkdirRecurse(localJquery.dirName);
+    download(jqueryUrl, localJquery);
   }
 }
 
@@ -50,6 +67,8 @@ class ResourceRoutes {
 
     immutable {
       Resource!localBootstrapStyle _bootstrapStyle;
+      Resource!localBootstrapJs _bootstrapJs;
+      Resource!localJquery _jquery;
     }
   }
 
@@ -57,12 +76,22 @@ class ResourceRoutes {
   this(const ServiceConfiguration configuration) {
     this.configuration = configuration;
     _bootstrapStyle = Resource!localBootstrapStyle();
+    _bootstrapJs = Resource!localBootstrapJs();
+    _jquery = Resource!localJquery();
   }
 
   /// Handle the requests
   void handler(HTTPServerRequest req, HTTPServerResponse res) {
     if(req.method == HTTPMethod.GET && req.path == configuration.paths.resources.bootstrapStyle) {
       bootstrapStyle(req, res);
+    }
+
+    if(req.method == HTTPMethod.GET && req.path == configuration.paths.resources.bootstrapJs) {
+      bootstrapJs(req, res);
+    }
+
+    if(req.method == HTTPMethod.GET && req.path == configuration.paths.resources.jquery) {
+      jquery(req, res);
     }
   }
 
@@ -76,6 +105,30 @@ class ResourceRoutes {
     response.headers["Cache-Control"] = "max-age=3600";
     response.headers["ETag"] = _bootstrapStyle.etag;
     response.writeBody(_bootstrapStyle.data, "text/css");
+  }
+
+  void bootstrapJs(HTTPServerRequest req, HTTPServerResponse response) {
+    if("If-None-Match" in req.headers && req.headers["If-None-Match"] == _bootstrapJs.etag) {
+      response.statusCode = 304;
+      response.writeVoidBody;
+      return;
+    }
+
+    response.headers["Cache-Control"] = "max-age=3600";
+    response.headers["ETag"] = _bootstrapJs.etag;
+    response.writeBody(_bootstrapJs.data, "text/javascript");
+  }
+
+  void jquery(HTTPServerRequest req, HTTPServerResponse response) {
+    if("If-None-Match" in req.headers && req.headers["If-None-Match"] == _jquery.etag) {
+      response.statusCode = 304;
+      response.writeVoidBody;
+      return;
+    }
+
+    response.headers["Cache-Control"] = "max-age=3600";
+    response.headers["ETag"] = _jquery.etag;
+    response.writeBody(_jquery.data, "text/javascript");
   }
 }
 

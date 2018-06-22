@@ -128,7 +128,11 @@ struct Templates {
 
 struct ResourcePaths {
   ///
-  string bootstrapStyle = "/assets/bootstrap.css";
+  string bootstrapStyle = "/assets/bootstrap.min.css";
+  ///
+  string bootstrapJs = "/assets/bootstrap.min.js";
+  ///
+  string jquery = "/assets/jquery.min.js";
 }
 
 /// Registration process url paths
