@@ -1,7 +1,7 @@
 {
   "service": {
     "name": "Demo App",
-    "style": "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css",
+    "style": "/assets/style.css",
     "loginTimeoutSeconds": 86400,
 
     "paths": {

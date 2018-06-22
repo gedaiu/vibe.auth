@@ -14,6 +14,7 @@ import vibeauth.mail.vibe;
 import vibeauth.token;
 import vibeauth.router.request;
 import vibeauth.mail.base;
+import vibeauth.router.resources.routes;
 
 import vibe.d;
 
@@ -86,11 +87,13 @@ shared static this()
 
   auto loginRoutes = new LoginRoutes(collection, mailQueue, serviceConfiguration);
   auto userManagement = new UserManagementRoutes(collection, mailQueue, serviceConfiguration);
+  auto resourceRoutes = new ResourceRoutes(serviceConfiguration);
 
   /// Vibe.d router setup
   auto router = new URLRouter();
   router
     .get("*", serveStaticFiles("./public/"))
+    .any("*", &resourceRoutes.handler)
     .any("*", &registrationRoutes.handler)
     .any("*", &loginRoutes.handler)
     .any("*", &userManagement.handler)

@@ -18,3 +18,4 @@ coverage
 trial-root
 trial_root.d
 .trial
+example/loginAndRegistration/tmp/

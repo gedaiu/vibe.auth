@@ -89,6 +89,8 @@ struct Paths {
   ///
   UserManagementPaths userManagement;
 
+  ///
+  ResourcePaths resources;
 
   /// Load configuration from a Json object
   void load(Json data) {
@@ -122,6 +124,11 @@ struct Templates {
 
   ///
   UserManagementTemplates userManagement;
+}
+
+struct ResourcePaths {
+  ///
+  string bootstrapStyle = "/assets/bootstrap.css";
 }
 
 /// Registration process url paths
