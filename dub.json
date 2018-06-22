@@ -13,6 +13,10 @@
 	"configurations": [
 		{
 			"name": "trial",
+
+			"sourcePaths": ["source/", "tests"],
+			"importPaths": ["source/", "tests"],
+
 			"dependencies": {
 				"vibe-d": "*",
 				"fluent-asserts": "~>0.11.4",

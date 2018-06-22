@@ -1,6 +1,7 @@
 module vibeauth.router.management.views;
 
 import std.string;
+import std.conv;
 
 import vibeauth.mvc.view;
 import vibeauth.configuration;
