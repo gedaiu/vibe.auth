@@ -48,11 +48,32 @@ alias UserView(string T) = BasicView!("configuration.templates.userManagement.us
 alias ProfileView  = UserView!"configuration.templates.userManagement.profileForm";
 alias AccountView  = UserView!"configuration.templates.userManagement.accountForm";
 alias SecurityView = UserView!"configuration.templates.userManagement.securityForm";
-alias DeleteView   = UserView!"configuration.templates.userManagement.deleteQuestion";
+alias QuestionView = UserView!"configuration.templates.userManagement.question";
 
 interface IController {
   bool canHandle(HTTPServerRequest);
   void handle(HTTPServerRequest req, HTTPServerResponse res);
+}
+
+bool validateRights(HTTPServerRequest req, HTTPServerResponse res, ServiceConfiguration configuration, UserCollection userCollection) {
+  auto logedUser = req.getUser(userCollection);
+
+  auto path = req.fullURL;
+
+  if(logedUser is null) {
+    res.redirect(path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ configuration.paths.login.form, 302);
+    return false;
+  }
+
+  if("userId" !in req.context && !logedUser.can!("admin")) {
+    return false;
+  }
+
+  if("userId" in req.context && logedUser.id != req.context["userId"].to!string && !logedUser.can!("admin")) {
+    return false;
+  }
+
+  return true;
 }
 
 abstract class PathController(string method, string configurationPath) : IController {
@@ -75,20 +96,25 @@ abstract class PathController(string method, string configurationPath) : IContro
       return false;
     }
     
-    if(!isUserPage(path, req.path)) {
+    if(path.canFind(":id")) {
+      if(!isUserPage(path, req.path)) {
+        return false;
+      }
+
+      TemplateData data;
+      data.set(":id", path, req.path);
+
+      try {
+        userCollection.byId(data.get(":id"));
+      } catch(UserNotFoundException) {
+        return false;
+      }
+
+      req.context["userId"] = data.get(":id");
+    } else if(path != req.path) {
       return false;
     }
 
-    TemplateData data;
-    data.set(":id", path, req.path);
-
-    try {
-      userCollection.byId(data.get(":id"));
-    } catch(UserNotFoundException) {
-      return false;
-    }
-
-    req.context["userId"] = data.get(":id");
 
     return true;
   }
@@ -107,16 +133,11 @@ class UserController(string configurationPath, View) : PathController!("GET", co
   }
 
   void handle(HTTPServerRequest req, HTTPServerResponse res) {
-    logedUser = req.getUser(userCollection);
-
-    if(logedUser is null) {
-      auto requestPath = req.fullURL;
-      auto destinationPath = requestPath.schema ~ "://" ~ requestPath.host ~ ":" ~ requestPath.port.to!string ~
-        configuration.paths.login.form;
-
-      res.redirect(destinationPath, 302);
+    if(!validateRights(req, res, configuration, userCollection)) {
       return;
     }
+
+    logedUser = req.getUser(userCollection);
   
     scope(exit) {
       logedUser = null;
@@ -145,7 +166,6 @@ class UserController(string configurationPath, View) : PathController!("GET", co
 
 alias ProfileController  = UserController!("paths.userManagement.profile", ProfileView);
 alias AccountController  = UserController!("paths.userManagement.account", AccountView);
-alias DeleteController   = UserController!("paths.userManagement.deleteAccount", DeleteView);
 
 class SecurityController : UserController!("paths.userManagement.security", SecurityView) {
   this(UserCollection userCollection, ServiceConfiguration configuration) {
@@ -220,12 +240,31 @@ class RedirectView {
   }
 }
 
+class ListController : PathController!("GET", "paths.userManagement.list") {
+  this(UserCollection userCollection, ServiceConfiguration configuration) {
+    super(userCollection, configuration);
+  }
+
+  void handle(HTTPServerRequest req, HTTPServerResponse res) {
+    if(!validateRights(req, res, configuration, userCollection)) {
+      return;
+    }
+
+    scope auto view = new UserManagementListView(configuration, userCollection);
+    res.writeBody(view.render, 200, "text/html; charset=UTF-8");
+  }
+}
+
 class UpdateProfileController : PathController!("POST", "paths.userManagement.updateProfile") {
   this(UserCollection userCollection, ServiceConfiguration configuration) {
     super(userCollection, configuration);
   }
 
   void handle(HTTPServerRequest req, HTTPServerResponse res) {
+    if(!validateRights(req, res, configuration, userCollection)) {
+      return;
+    }
+
     auto view = new RedirectView(req, res, configuration.paths.userManagement.profile);
 
     string id = req.context["userId"].to!string;
@@ -270,6 +309,10 @@ class UpdateAccountController : PathController!("POST", "paths.userManagement.up
   }
 
   void handle(HTTPServerRequest req, HTTPServerResponse res) {
+    if(!validateRights(req, res, configuration, userCollection)) {
+      return;
+    }
+
     auto view = new RedirectView(req, res, configuration.paths.userManagement.account);
 
     string id = req.context["userId"].to!string;
@@ -317,37 +360,221 @@ class UpdateAccountController : PathController!("POST", "paths.userManagement.up
   }
 }
 
-class DeleteAccountController : PathController!("POST", "paths.userManagement.deleteAccount") {
-    this(UserCollection userCollection, ServiceConfiguration configuration) {
-    super(userCollection, configuration);
+abstract class QuestionController(string configurationPath) : IController {
+  protected {
+    UserCollection userCollection;
+    ServiceConfiguration configuration;
+    string path;
   }
 
-  void handle(HTTPServerRequest req, HTTPServerResponse res) {
-    auto view = new RedirectView(req, res, configuration.paths.userManagement.account);
+  this(UserCollection userCollection, ServiceConfiguration configuration) {
+    this.userCollection = userCollection;
+    this.configuration = configuration;
+
+    mixin("path = configuration." ~ configurationPath ~ ";");
+  }
+
+  bool canHandle(HTTPServerRequest req) {
+    if(req.method != HTTPMethod.GET && req.method != HTTPMethod.POST) {
+      return false;
+    }
+
+    if(!isUserPage(path, req.path)) {
+      return false;
+    }
 
     TemplateData data;
-    data.set(":id", configuration.paths.userManagement.deleteAccount, req.path);
-    auto user = userCollection.byId(data.get(":id"));
+    data.set(":id", path, req.path);
 
-    auto path = req.fullURL;
-    auto destinationPath = configuration.paths.userManagement.account.replace(":id", user.id);
-    destinationPath = path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ destinationPath;
+    try {
+      userCollection.byId(data.get(":id"));
+    } catch(UserNotFoundException) {
+      return false;
+    }
+
+    req.context["userId"] = data.get(":id");
+
+    return true;
+  }
+
+  abstract {
+    string title();
+    string question();
+    string action();
+    string backPath();
+    string backPath(HTTPServerRequest);
+  }
+
+  void handleQuestion(HTTPServerRequest req, HTTPServerResponse res) {
+    auto view = new QuestionView(configuration  );
+    view.data.set(":id", path, req.path);
+
+    view.data.add("title", title());
+    view.data.add("question", question());
+    view.data.add("action", action());
+    view.data.add("path", req.fullURL.toString);
+    view.data.add("path-back", backPath(req));
+
+    res.writeBody(view.render, 200, "text/html; charset=UTF-8");
+  }
+
+  abstract void handleAction(HTTPServerRequest req, HTTPServerResponse res);
+
+  void handle(HTTPServerRequest req, HTTPServerResponse res) {
+    if(!validateRights(req, res, configuration, userCollection)) {
+      return;
+    }
+
+    if(req.method == HTTPMethod.GET) {
+      handleQuestion(req, res);
+    }
+    
+    if(req.method == HTTPMethod.POST && isValidPassword(req, res)) {
+      handleAction(req, res);
+    }
+  }
+
+  bool isValidPassword(HTTPServerRequest req, HTTPServerResponse res) {
+    auto logedUser = req.getUser(userCollection);
+
+    if(logedUser is null) {
+      res.redirect(backPath(req), 302);
+      return false;
+    }
+
+    auto view = new RedirectView(req, res, backPath);
 
     if("password" !in req.form) {
-      view.respondError("Can not remove user. The password was missing.");
-      return;
+      view.respondError("Can not " ~ title.toLower ~ ". The password was missing.");
+      return false;
     }
 
     auto password = req.form["password"];
     
-    if(!user.isValidPassword(password)) {
-      view.respondError("Can not remove user. The password was invalid.");
-      return;
+    if(!logedUser.isValidPassword(password)) {
+      view.respondError("Can not " ~ title.toLower ~ ". The password was invalid.");
+      return false;
     }
 
-    userCollection.remove(user.id);
-    res.redirect(configuration.paths.location, 302);
+    return true;
+  }
+}
+
+
+class DeleteAccountController : QuestionController!("paths.userManagement.deleteAccount") {
+
+  this(UserCollection userCollection, ServiceConfiguration configuration) {
+    super(userCollection, configuration);
   }
 
+  override {
+    string title() {
+      return "Delete account";
+    }
 
+    string question() {
+      return "Are you sure you want to delete this account?";
+    }
+
+    string action() {
+      return "Delete";
+    }
+
+    string backPath() {
+      return configuration.paths.userManagement.account;
+    }
+
+    string backPath(HTTPServerRequest req) {
+      auto path = req.fullURL;
+      auto destinationPath = backPath.replace(":id", req.context["userId"].to!string);
+      return path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ destinationPath;
+    }
+  }
+
+  override void handleAction(HTTPServerRequest req, HTTPServerResponse res) {
+    userCollection.remove(req.context["userId"].to!string);
+    res.redirect(configuration.paths.location, 302);
+  }
+}
+
+class RevokeAdminController : QuestionController!("paths.userManagement.securityRevokeAdmin") {
+
+  this(UserCollection userCollection, ServiceConfiguration configuration) {
+    super(userCollection, configuration);
+  }
+
+  override {
+    string title() {
+      return "Revoke admin";
+    }
+
+    string question() {
+      return "Are you sure you want to revoke the admin rights of this user?";
+    }
+
+    string action() {
+      return "Revoke";
+    }
+
+    string backPath() {
+      return configuration.paths.userManagement.security;
+    }
+
+    string backPath(HTTPServerRequest req) {
+      auto path = req.fullURL;
+      auto destinationPath = backPath.replace(":id", req.context["userId"].to!string);
+      return path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ destinationPath;
+    }
+  }
+
+  override void handleAction(HTTPServerRequest req, HTTPServerResponse res) {
+    auto view = new RedirectView(req, res, configuration.paths.userManagement.account);
+
+    TemplateData data;
+    data.set(":id", path, req.path);
+    userCollection.byId(data.get(":id")).removeScope("admin");
+
+    res.redirect(backPath(req), 302);
+  }
+}
+
+class MakeAdminController : QuestionController!("paths.userManagement.securityMakeAdmin") {
+
+  this(UserCollection userCollection, ServiceConfiguration configuration) {
+    super(userCollection, configuration);
+  }
+
+  override {
+    string title() {
+      return "Make admin";
+    }
+
+    string question() {
+      return "Are you sure you want to add admin rights to this user?";
+    }
+
+    string action() {
+      return "Approve";
+    }
+
+    string backPath() {
+      return configuration.paths.userManagement.security;
+    }
+
+    string backPath(HTTPServerRequest req) {
+      auto path = req.fullURL;
+      auto destinationPath = backPath.replace(":id", req.context["userId"].to!string);
+      return path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ destinationPath;
+    }
+  }
+
+  override void handleAction(HTTPServerRequest req, HTTPServerResponse res) {
+    auto view = new RedirectView(req, res, configuration.paths.userManagement.account);
+
+    TemplateData data;
+    data.set(":id", path, req.path);
+    userCollection.byId(data.get(":id")).addScope("admin");
+
+    res.redirect(backPath(req), 302);
+  }
 }

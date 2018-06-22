@@ -247,7 +247,7 @@ struct UserManagementTemplates {
   string accountForm = import("userManagement/accountForm.html");
 
   ///
-  string deleteQuestion = import("userManagement/deleteQuestion.html");
+  string question = import("userManagement/question.html");
 
   ///
   string securityForm = import("userManagement/securityForm.html");

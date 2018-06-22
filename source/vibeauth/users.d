@@ -243,6 +243,16 @@ class User {
     }
   }
 
+  /// Remove a scope from user
+  void removeScope(string access) {
+    userData.scopes = userData.scopes
+      .filter!(a => a != access).array;
+
+    if(onChange) {
+      onChange(this);
+    }
+  }
+
   /// Create an user token
   Token createToken(SysTime expire, string[] scopes = [], string type = "Bearer") {
     auto token = Token(randomUUID.to!string, expire, scopes, type);

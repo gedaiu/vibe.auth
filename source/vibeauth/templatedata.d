@@ -104,10 +104,6 @@ struct TemplateData {
   void set(string variable, string route, string path) {
     auto pathValue = getValue(variable, route, path);
     variables[variable] = pathValue;
-
-    foreach(ref item; options) {
-      replaceJson(item, variable, pathValue);
-    }
   }
 
   ///
@@ -130,6 +126,12 @@ struct TemplateData {
 
   /// Render a template
   string render(string page) {
+    foreach(key, value; variables) {
+      foreach(ref item; options) {
+        replaceJson(item, key, value);
+      }
+    }
+
     foreach(item; options) {
       page = page.replaceVariables(item);
     }
