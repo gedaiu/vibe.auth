@@ -18,9 +18,8 @@ import vibeauth.router.management.views;
 
 bool validateRights(HTTPServerRequest req, HTTPServerResponse res, ServiceConfiguration configuration, UserCollection userCollection) {
   auto logedUser = req.getUser(userCollection);
-
   auto path = req.fullURL;
-
+  
   if(logedUser is null) {
     res.redirect(path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ configuration.paths.login.form, 302);
     return false;
