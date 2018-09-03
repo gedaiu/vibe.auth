@@ -66,7 +66,7 @@ class UserController(string configurationPath, View) : PathController!("GET", co
     if("message" in req.query) {
       view.data.addMessage(req.query["message"]);
     }
-    
+
     if("error" in req.query) {
       view.data.addError(req.query["error"]);
     }

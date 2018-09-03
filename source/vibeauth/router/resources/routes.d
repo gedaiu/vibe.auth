@@ -23,13 +23,13 @@ version(unittest) {
   import fluent.asserts;
 }
 
-enum bootstrapStyleUrl = "https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css";
+enum bootstrapStyleUrl = "https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css";
 enum localBootstrapStyle = "tmp/assets/bootstrap.min.css";
 
-enum bootstrapJsUrl = "https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js";
+enum bootstrapJsUrl = "https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.bundle.min.js";
 enum localBootstrapJs = "tmp/assets/bootstrap.min.js";
 
-enum jqueryUrl = "https://code.jquery.com/jquery-3.2.1.slim.min.js";
+enum jqueryUrl = "https://code.jquery.com/jquery-3.3.1.slim.min.js";
 enum localJquery = "tmp/assets/jquery.min.js";
 
 shared static this() {
