@@ -44,8 +44,6 @@ class ReCaptcha : IChallenge {
 
   /// Validate the challenge
   bool validate(HTTPServerRequest req, HTTPServerResponse res, string response) {
-    import std.stdio;
-    writeln("response:", response);
     Json result;
 
     requestHTTP("https://www.google.com/recaptcha/api/siteverify?secret=" ~ secretKey ~ "&response=" ~ response,
@@ -58,14 +56,9 @@ class ReCaptcha : IChallenge {
       }
     );
 
-
-    writeln(result);
-
     if("success" !in result) {
       return false;
     }
-
-    writeln(result["success"].to!bool == true);
 
     return result["success"].to!bool == true;
   }
