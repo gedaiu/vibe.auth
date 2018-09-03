@@ -3,6 +3,7 @@ import std.path;
 import std.file;
 
 import vibeauth.challenges.mathcaptcha;
+import vibeauth.challenges.recaptcha;
 import vibeauth.client;
 import vibeauth.users;
 import vibeauth.configuration;
@@ -81,6 +82,7 @@ shared static this()
   auto mailQueue = new VibeMailQueue(emailConfiguration);
 
   auto registrationRoutes = new RegistrationRoutes(collection,
+    //new ReCaptcha("siteKey", "secretKey"),
     new MathCaptcha(captchaSettings),
     mailQueue,
     serviceConfiguration);
