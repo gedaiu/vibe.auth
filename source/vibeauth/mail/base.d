@@ -110,18 +110,18 @@ struct Message {
 
 		string message = "This is a multi-part message in MIME format\r\n\r\n";
 		message ~= "--" ~ boundary ~ "\r\n";
-		message ~= `Content-Type: text/plain; charset="utf-8"; format="fixed"` ~ "\r\n\r\n";
+		message ~= `Content-Type: text/plain; charset="utf-8"` ~ "\r\n\r\n";
 		message ~= textMessage ~ "\r\n";
 		message ~= "--" ~ boundary ~ "\r\n";
 		message ~= `Content-Type: text/html; charset="utf-8"` ~ "\r\n\r\n";
 		message ~= htmlMessage ~ "\r\n";
-		message ~= "--" ~ boundary;
+		message ~= "--" ~ boundary ~ "--";
 
 		return message;
 	}
 }
 
-@("it should add the multipart header if text and html message is present")
+/// it should add the multipart header if text and html message is present
 unittest {
 	auto message = Message();
 	message.textMessage = "text";
@@ -131,7 +131,7 @@ unittest {
 	message.headers[1].should.equal(`Content-Type: multipart/alternative; boundary="` ~ message.boundary ~ `"`);
 }
 
-@("it should not add the multipart header if the html message is missing")
+/// it should not add the multipart header if the html message is missing
 unittest {
 	auto message = Message();
 	message.textMessage = "text";
@@ -139,7 +139,7 @@ unittest {
 	message.headers.length.should.be.equal(0);
 }
 
-@("it should generate an unique boundary")
+/// it should generate an unique boundary
 unittest {
 	auto message1 = Message();
 	auto message2 = Message();
@@ -150,7 +150,7 @@ unittest {
 	message2.boundary.should.not.startWith(message1.boundary);
 }
 
-@("body should contain only the text message when html is missing")
+/// body should contain only the text message when html is missing
 unittest {
 	auto message = Message();
 	message.textMessage = "text";
@@ -158,7 +158,7 @@ unittest {
 	message.mailBody.should.equal("text");
 }
 
-@("body should contain a mime body")
+/// body should contain a mime body
 unittest {
 	auto message = Message();
 	message.textMessage = "text";
@@ -166,12 +166,12 @@ unittest {
 
 	string expected = "This is a multi-part message in MIME format\r\n\r\n";
 	expected ~= "--" ~ message.boundary ~ "\r\n";
-	expected ~= `Content-Type: text/plain; charset="utf-8"; format="fixed"` ~ "\r\n\r\n";
+	expected ~= `Content-Type: text/plain; charset="utf-8"` ~ "\r\n\r\n";
 	expected ~= "text\r\n";
 	expected ~= "--" ~ message.boundary ~ "\r\n";
 	expected ~= `Content-Type: text/html; charset="utf-8"` ~ "\r\n\r\n";
 	expected ~= "html\r\n";
-	expected ~= "--" ~ message.boundary;
+	expected ~= "--" ~ message.boundary ~ "--";
 
 	message.mailBody.should.equal(expected);
 }
