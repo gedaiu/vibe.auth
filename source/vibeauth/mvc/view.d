@@ -1,6 +1,7 @@
 module vibeauth.mvc.view;
 
 import std.string;
+import std.algorithm;
 
 import vibeauth.mvc.templatedata;
 import vibeauth.configuration;
@@ -37,7 +38,15 @@ class View {
 
   /// Replace all the variables with the provided options
   string render() {
-    return data.render(stringTemplate.replace("#{body}", generateBody()));
+    auto result = data.render(stringTemplate.replace("#{body}", generateBody()));
+
+    int count;
+    while(count < 5 && result.canFind("#{")) {
+      count++;
+      result = data.render(result);
+    }
+
+    return result;
   }
 }
 
@@ -47,7 +56,7 @@ class BasicView(string tplProperty, string bodyProperty) : View {
     const ServiceConfiguration configuration;
   }
 
-  /// 
+  ///
   this(const ServiceConfiguration configuration) {
     this.configuration = configuration;
 

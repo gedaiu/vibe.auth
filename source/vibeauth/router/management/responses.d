@@ -16,10 +16,11 @@ import vibeauth.mvc.controller;
 import vibeauth.router.request;
 import vibeauth.router.management.views;
 
+
 bool validateRights(HTTPServerRequest req, HTTPServerResponse res, ServiceConfiguration configuration, UserCollection userCollection) {
   auto logedUser = req.getUser(userCollection);
   auto path = req.fullURL;
-  
+
   if(logedUser is null) {
     res.redirect(path.schema ~ "://" ~ path.host ~ ":" ~ path.port.to!string ~ configuration.paths.login.form, 302);
     return false;
@@ -41,8 +42,22 @@ class UserController(string configurationPath, View) : PathController!("GET", co
     User logedUser;
   }
 
+  ///
   this(UserCollection userCollection, ServiceConfiguration configuration) {
     super(userCollection, configuration);
+  }
+
+  private string breadcrumbs() {
+    return `<nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="#{paths.userManagement.list}">User List</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+          #{userData.name}
+        </li>
+      </ol>
+    </nav>`;
   }
 
   void handle(ref View view, User user) {
@@ -54,13 +69,12 @@ class UserController(string configurationPath, View) : PathController!("GET", co
     }
 
     logedUser = req.getUser(userCollection);
-  
+
     scope(exit) {
       logedUser = null;
     }
 
     scope auto view = new View(configuration);
-
     view.data.set(":id", path, req.path);
 
     if("message" in req.query) {
@@ -73,6 +87,12 @@ class UserController(string configurationPath, View) : PathController!("GET", co
 
     auto user = userCollection.byId(view.data.get(":id"));
     view.data.add("userData", user.toJson);
+
+    if(user.getScopes.canFind("admin")) {
+      view.data.add("breadcrumbs", this.breadcrumbs);
+    } else {
+      view.data.add("breadcrumbs", "");
+    }
 
     handle(view, user);
 
@@ -148,7 +168,7 @@ abstract class QuestionController(string configurationPath) : IController {
     if(req.method == HTTPMethod.GET) {
       handleQuestion(req, res);
     }
-    
+
     if(req.method == HTTPMethod.POST && isValidPassword(req, res)) {
       handleAction(req, res);
     }
@@ -170,7 +190,7 @@ abstract class QuestionController(string configurationPath) : IController {
     }
 
     auto password = req.form["password"];
-    
+
     if(!logedUser.isValidPassword(password)) {
       view.respondError("Can not " ~ title.toLower ~ ". The password was invalid.");
       return false;
@@ -180,8 +200,8 @@ abstract class QuestionController(string configurationPath) : IController {
   }
 }
 
-alias ProfileController  = UserController!("paths.userManagement.profile", ProfileView);
-alias AccountController  = UserController!("paths.userManagement.account", AccountView);
+alias ProfileController = UserController!("paths.userManagement.profile", ProfileView);
+alias AccountController = UserController!("paths.userManagement.account", AccountView);
 
 class SecurityController : UserController!("paths.userManagement.security", SecurityView) {
   this(UserCollection userCollection, ServiceConfiguration configuration) {
@@ -319,7 +339,7 @@ class UpdateAccountController : PathController!("POST", "paths.userManagement.up
       view.respondError(missingFields.join(" ") ~ " fields are missing.");
       return;
     }
-    
+
     string oldPassword = req.form["oldPassword"];
     string newPassword = req.form["newPassword"];
     string confirmPassword = req.form["confirmPassword"];

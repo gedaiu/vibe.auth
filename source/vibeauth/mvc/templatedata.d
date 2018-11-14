@@ -34,7 +34,7 @@ struct TemplateData {
     string.
 
     eg. for this data set:
-    
+
     {
       "key": "value"
       "level1": {
@@ -48,7 +48,7 @@ struct TemplateData {
   void add(Json options) {
     this.options ~= options;
   }
-  
+
   /// ditto
   void add(string key, Json options) {
     Json obj = Json.emptyObject;
@@ -81,7 +81,7 @@ struct TemplateData {
     Set a variable that will be replaced inside the options.
 
     eg. for this data set:
-    
+
     {
       "key": "value :id"
       "level1": {
