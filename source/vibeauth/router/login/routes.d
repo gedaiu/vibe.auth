@@ -1,5 +1,5 @@
 /++
-  A module that handles the user login. It binds the routes, renders the templates and 
+  A module that handles the user login. It binds the routes, renders the templates and
   updates the collections.
 
   Copyright: © 2018 Szabo Bogdan
@@ -107,6 +107,7 @@ class LoginRoutes {
       "&message=" ~ message.encodeComponent);
   }
 
+  ///
   void changePassword(HTTPServerRequest req, HTTPServerResponse res) {
     auto requestData = const RequestUserData(req);
     auto user = userCollection[requestData.email];
@@ -129,7 +130,7 @@ class LoginRoutes {
       return;
     }
 
-    if(user.getTokensByType("passwordReset").front.name != requestData.token) {
+    if(!user.getTokensByType("passwordReset").map!(a => a.name).canFind(requestData.token)) {
       sleep(uniform(0, 1000).msecs);
       string message = "Invalid reset password token";
 
@@ -325,6 +326,30 @@ unittest {
 unittest {
   string expectedMessage = "Your password has been changed successfully.";
   auto router = testRouter;
+  auto token = collection.createToken(user.email, Clock.currTime + 10.seconds, [], "passwordReset");
+
+  router
+    .request.post("/login/reset/change?email=user%40gmail.com&token=" ~ token.name)
+    .send(["password": "MyNewPassword", "passwordConfirm": "MyNewPassword"])
+    .expectStatusCode(302)
+    .expectHeader("Location", "/login?username=user%40gmail.com&message=" ~ expectedMessage.encodeComponent)
+    .end((Response res) => {
+      collection["user@gmail.com"].isValidPassword("MyNewPassword").should.equal(true);
+
+      mailQueue.messages.length.should.equal(1);
+      mailQueue.messages[0].textMessage.should.contain("has successfully been changed");
+      mailQueue.messages[0].htmlMessage.should.contain("has successfully been changed");
+
+      user.isValidToken(token.name).should.equal(false);
+    });
+}
+
+
+@("Change password route should set a new password when there is a old reset password token")
+unittest {
+  string expectedMessage = "Your password has been changed successfully.";
+  auto router = testRouter;
+  collection.createToken(user.email, Clock.currTime - 10.seconds, [], "passwordReset");
   auto token = collection.createToken(user.email, Clock.currTime + 10.seconds, [], "passwordReset");
 
   router
