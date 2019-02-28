@@ -249,6 +249,7 @@ class OAuth2: BaseAuthRouter {
   /// Handle the OAuth requests. Handles token creation, authorization
   /// authentication and revocation
   void tokenHandlers(HTTPServerRequest req, HTTPServerResponse res) {
+
     try {
       setAccessControl(res);
       if(req.method == HTTPMethod.OPTIONS) {
@@ -437,6 +438,9 @@ class OAuth2: BaseAuthRouter {
 
       auto const token = req.form["token"];
       collection.revoke(token);
+
+      res.statusCode = 200;
+      res.writeBody("");
     }
 
 
@@ -560,7 +564,7 @@ unittest {
 
   void showAuth(HTTPServerRequest req, HTTPServerResponse res) {
     res.statusCode = 200;
-    string hasEmail = "email" in req.context ? "yes" : "no"; 
+    string hasEmail = "email" in req.context ? "yes" : "no";
     res.writeBody(req.username ~ ":" ~ req.password ~ ":" ~ hasEmail);
   }
 
