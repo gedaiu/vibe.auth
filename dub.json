@@ -22,12 +22,10 @@
 				"fluent-asserts": "~>0.12.1"
 			},
 			"versions": [
+				"VibeUseOpenSSL11",
 				"JsonLineNumbers",
 				"VibeJsonFieldNames"
 			]
 		}
-	],
-	"libs": [
-		"MagickWand"
 	]
 }
