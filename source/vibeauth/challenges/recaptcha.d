@@ -42,6 +42,15 @@ class ReCaptcha : IChallenge {
     return tpl;
   }
 
+  /// Returns the site key
+  Json getConfig() {
+    auto result = Json.emptyObject;
+
+    result["siteKey"] = siteKey;
+
+    return result;
+  }
+
   /// Validate the challenge
   bool validate(HTTPServerRequest req, HTTPServerResponse res, string response) {
     Json result;

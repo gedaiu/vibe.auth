@@ -19,6 +19,7 @@ class VibeMailQueue : MailQueue {
 	private {
 		SMTPClientSettings smtpSettings;
 	}
+
 	this(EmailConfiguration settings) {
 		super(settings);
 
