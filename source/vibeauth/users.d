@@ -48,14 +48,14 @@ struct UserData {
 
   ///
   string username;
-  
+
   ///
   string email;
 
   ///
   string password;
-  
-  /// 
+
+  ///
   string salt;
 
   /// Flag used to determine if the user can perform any actions
@@ -88,8 +88,8 @@ class User {
   this(UserData userData) {
     this.userData = userData;
   }
- 
-  /// 
+
+  ///
   this(string email, string password) {
     this.userData.email = email;
     setPassword(password);
@@ -175,6 +175,10 @@ class User {
   /// Revoke a token
   void revoke(string token) {
     userData.tokens = userData.tokens.filter!(a => a.name != token).array;
+
+    if(onChange) {
+      onChange(this);
+    }
   }
 
   const {
@@ -305,7 +309,6 @@ unittest {
   assert(!user.isValidPassword("other passowrd"), "It should return false for an invalid password");
 }
 
-
 /// Converting a user to a public json
 unittest {
   auto user = new User("user", "password");
@@ -320,7 +323,6 @@ unittest {
   assert("scopes" in json, "It should contain the scope");
   assert("tokens" !in json, "It should not contain the tokens");
 }
-
 
 /// User serialization
 unittest {
@@ -414,7 +416,7 @@ abstract class UserCollection : Collection!User {
 
     /// Create a token for an user
     Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer");
-    
+
     /// Revoke a token
     void revoke(string token);
 

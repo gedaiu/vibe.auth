@@ -19,7 +19,7 @@
 
 			"dependencies": {
 				"vibe-d": "*",
-				"fluent-asserts": "~>0.12.1"
+				"fluent-asserts": "~>0.12.4"
 			},
 			"versions": [
 				"VibeUseOpenSSL11",

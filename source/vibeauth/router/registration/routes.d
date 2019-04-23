@@ -264,6 +264,10 @@ version(unittest) {
     string getTemplate(string challangeLocation) {
       return "";
     }
+
+    Json getConfig() {
+      return Json();
+    }
   }
 
   auto testRouter() {
