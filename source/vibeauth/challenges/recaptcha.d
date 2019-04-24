@@ -52,7 +52,7 @@ class ReCaptcha : IChallenge {
   }
 
   /// Validate the challenge
-  bool validate(HTTPServerRequest req, HTTPServerResponse res, string response) {
+  bool validate(string response) {
     Json result;
 
     requestHTTP("https://www.google.com/recaptcha/api/siteverify?secret=" ~ secretKey ~ "&response=" ~ response,

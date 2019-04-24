@@ -17,7 +17,7 @@ interface IChallenge {
   Json getConfig();
 
   /// Validate the challenge
-  bool validate(HTTPServerRequest req, HTTPServerResponse res, string response);
+  bool validate(string response);
 }
 
 /// Secret code used to validate a challenge

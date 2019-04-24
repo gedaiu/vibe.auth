@@ -181,7 +181,7 @@ class RegistrationRoutes {
       try {
         requestData.validateUser;
 
-        if(!challenge.validate(req, res, requestData.response)) {
+        if(!challenge.validate(requestData.response)) {
           throw new Exception("Invalid challenge `response`");
         }
 
@@ -257,7 +257,7 @@ version(unittest) {
       return "123";
     }
 
-    bool validate(HTTPServerRequest, HTTPServerResponse, string response) {
+    bool validate(string response) {
       return response == "123";
     }
 
