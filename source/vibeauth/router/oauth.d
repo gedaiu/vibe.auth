@@ -120,6 +120,22 @@ final class PasswordGrantAccess : IGrantAccess {
       return response;
     }
 
+    auto now = Clock.currTime;
+
+    auto user = collection[data.username];
+    foreach(token; user.getTokensByType("Bearer").array) {
+      if(token.expire < now) {
+        user.revoke(token.name);
+      }
+    }
+
+    foreach(token; user.getTokensByType("Refresh").array) {
+      if(token.expire < now) {
+        user.revoke(token.name);
+      }
+    }
+
+
     auto accessToken = collection.createToken(data.username, Clock.currTime + 3601.seconds, data.scopes, "Bearer");
     auto refreshToken = collection.createToken(data.username, Clock.currTime + 30.weeks, data.scopes ~ [ "refresh" ], "Refresh");
 
