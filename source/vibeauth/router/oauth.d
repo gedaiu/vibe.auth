@@ -3,6 +3,7 @@ module vibeauth.router.oauth;
 import vibe.http.router;
 import vibe.data.json;
 import vibe.inet.url;
+import vibe.core.log;
 
 import std.algorithm, std.base64, std.string, std.stdio, std.conv, std.array;
 import std.datetime;
@@ -313,7 +314,7 @@ class OAuth2: BaseAuthRouter {
           respondUnauthorized(res);
         }
       } catch(Exception e) {
-        version(unittest) {} else debug stderr.writeln(e);
+        logError(e.toString);
 
         if(!res.headerWritten) {
           res.writeJsonBody([ "error": e.msg ], 400);
