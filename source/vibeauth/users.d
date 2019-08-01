@@ -199,7 +199,8 @@ class User {
 
     /// Get a range of tokens of a certain type
     auto getTokensByType(string type) {
-      return userData.tokens.filter!(a => a.type == type);
+      auto now = Clock.currTime;
+      return userData.tokens.filter!(a => a.type == type && a.expire > now);
     }
 
     /// Validate a password
@@ -209,12 +210,14 @@ class User {
 
     /// Validate a token
     bool isValidToken(string token) {
-      return userData.tokens.map!(a => a.name).canFind(token);
+      auto now = Clock.currTime;
+      return userData.tokens.filter!(a => a.expire > now).map!(a => a.name).canFind(token);
     }
 
     /// Validate a token against a scope
     bool isValidToken(string token, string requiredScope) {
-      return userData.tokens.filter!(a => a.scopes.canFind(requiredScope)).map!(a => a.name).canFind(token);
+      auto now = Clock.currTime;
+      return userData.tokens.filter!(a => a.scopes.canFind(requiredScope) && a.expire > now).map!(a => a.name).canFind(token);
     }
   }
 
@@ -575,6 +578,19 @@ unittest {
   }).should.throwAnyException;
 }
 
+/// Ignore expired tokens
+unittest {
+  auto collection = new UserMemmoryCollection([]);
+  auto user = new User("user", "password");
+
+  collection.add(user);
+  auto token = user.createToken(Clock.currTime - 1.seconds);
+
+  ({
+    collection.byToken(token.name);
+  }).should.throwAnyException;
+}
+
 /// Get tokens by type
 unittest {
   auto collection = new UserMemmoryCollection([]);
@@ -586,6 +602,18 @@ unittest {
 
   tokens.length.should.equal(1);
   tokens.should.contain(token);
+}
+
+/// Ignore expired tokens when searching by type
+unittest {
+  auto collection = new UserMemmoryCollection([]);
+  auto user = new User("user", "password");
+
+  collection.add(user);
+  user.createToken(Clock.currTime - 1.seconds, [], "activation");
+  auto tokens = collection["user"].getTokensByType("activation").map!(a => a.name).array;
+
+  tokens.length.should.equal(0);
 }
 
 /// Get user by id
