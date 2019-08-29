@@ -13,6 +13,7 @@ import vibeauth.router.baseAuthRouter;
 import vibeauth.client;
 import vibeauth.collection;
 
+import vibeauth.router.responses;
 import vibeauth.router.accesscontrol;
 
 /// OAuth2 comfiguration
@@ -266,7 +267,6 @@ class OAuth2: BaseAuthRouter {
   /// Handle the OAuth requests. Handles token creation, authorization
   /// authentication and revocation
   void tokenHandlers(HTTPServerRequest req, HTTPServerResponse res) {
-
     try {
       setAccessControl(res);
       if(req.method == HTTPMethod.OPTIONS) {
@@ -459,13 +459,6 @@ class OAuth2: BaseAuthRouter {
       res.statusCode = 200;
       res.writeBody("");
     }
-
-
-    /// Write the unauthorized message to the server response
-    void respondUnauthorized(HTTPServerResponse res, string message = "Authorization required") {
-      res.statusCode = HTTPStatus.unauthorized;
-      res.writeJsonBody([ "error": message ]);
-    }
   }
 }
 
@@ -608,7 +601,6 @@ unittest {
     .end;
 }
 
-
 /// it should set the email on valid credentials when they are not mandatory
 unittest {
   auto router = testRouter(false);
@@ -643,7 +635,6 @@ unittest {
       response.bodyJson.should.equal(`{ "error": "Invalid password or username" }`.parseJsonString);
     });
 }
-
 
 /// it should return tokens on valid email and password
 unittest {
