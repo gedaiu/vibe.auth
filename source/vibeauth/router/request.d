@@ -151,3 +151,13 @@ User getUser(HTTPServerRequest req, UserCollection collection) {
 
   return user;
 }
+
+/// Remove all user data fields from the request
+void cleanRequest(HTTPServerRequest req) {
+  req.username = "";
+  req.password = "";
+
+  if("email" in req.context) {
+    req.context.remove("email");
+  }
+}

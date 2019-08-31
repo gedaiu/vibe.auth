@@ -18,7 +18,7 @@ class EmberSimpleAuth : BaseAuthRouter {
     super(userCollection);
   }
 
-  void updateContext(HTTPServerRequest req, HTTPServerResponse res, string bearer) {
+  AuthResult updateContext(HTTPServerRequest req, string bearer) {
     User user;
 
     try {
@@ -27,52 +27,66 @@ class EmberSimpleAuth : BaseAuthRouter {
       req.username = user.id;
       req.context["email"] = user.email;
     } catch(Exception) {
-      respondUnauthorized(res);
+      return AuthResult.invalidToken;
     }
+
+    return AuthResult.success;
   }
 
   override {
     void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      super.mandatoryAuth(req, res);
+    }
+
+    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      super.permisiveAuth(req, res);
+    }
+
+    AuthResult mandatoryAuth(HTTPServerRequest req) {
       if(!req.hasValidEmberSession) {
-        respondUnauthorized(res);
-        return;
+        return AuthResult.unauthorized;
       }
 
       Json data = req.sessionData;
 
       if(data.type != Json.Type.object || "authenticated" !in data || "access_token" !in data["authenticated"]) {
-        respondUnauthorized(res);
-        return;
+        return AuthResult.unauthorized;
       }
 
       string bearer = data["authenticated"]["access_token"].to!string;
 
-      updateContext(req, res, bearer);
+      return updateContext(req, bearer);
     }
 
-    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+    AuthResult permisiveAuth(HTTPServerRequest req) {
       if("ember_simple_auth-session" !in req.cookies && "User-Agent" !in req.headers) {
-        return;
+        return AuthResult.unauthorized;
       }
 
       if(!req.hasValidEmberSession) {
-        respondUnauthorized(res);
-        return;
+        return AuthResult.unauthorized;
       }
 
       Json data = req.sessionData;
 
       if(data.type != Json.Type.object) {
-        respondUnauthorized(res);
-        return;
+        return AuthResult.unauthorized;
       }
 
       if("authenticated" !in data || "access_token" !in data["authenticated"]) {
-        return;
+        return AuthResult.unauthorized;
       }
 
       string bearer = data["authenticated"]["access_token"].to!string;
-      updateContext(req, res, bearer);
+      return updateContext(req, bearer);
+    }
+
+    void respondUnauthorized(HTTPServerResponse res) {
+      vibeauth.router.responses.respondUnauthorized(res);
+    }
+
+    void respondInvalidToken(HTTPServerResponse res) {
+      vibeauth.router.responses.respondUnauthorized(res, "Invalid token.");
     }
   }
 }

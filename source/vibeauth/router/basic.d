@@ -10,7 +10,7 @@ import vibeauth.router.baseAuthRouter;
 struct BasicAuthCredentials {
   ///
   string username;
-  
+
   ///
   string password;
 }
@@ -27,7 +27,7 @@ class BasicAuth(string realm): BaseAuthRouter {
     /// Auth handler that will fail if a successfull auth was not performed.
     /// This handler is usefull for routes that want to hide information to the
     /// public.
-    void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
+    bool mandatoryAuth(HTTPServerRequest req) {
       auto pauth = "Authorization" in req.headers;
 
       setAccessControl(res);
@@ -37,19 +37,17 @@ class BasicAuth(string realm): BaseAuthRouter {
 
         if(auth.username in collection && collection[auth.username].isValidPassword(auth.password)) {
           req.username = auth.username;
-          return;
-        } else {
-          respondUnauthorized(res);
+          return true;
         }
-      } else {
-        respondUnauthorized(res);
       }
+
+      return false;
     }
 
     /// Auth handler that fails only if the auth fields are present and are not valid.
-    /// This handler is usefull when a route should return different data when the user is 
+    /// This handler is usefull when a route should return different data when the user is
     /// logged in
-    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+    bool permisiveAuth(HTTPServerRequest req) {
       auto pauth = "Authorization" in req.headers;
 
       setAccessControl(res);
@@ -59,12 +57,24 @@ class BasicAuth(string realm): BaseAuthRouter {
 
         if(auth.username in collection && collection[auth.username].isValidPassword(auth.password)) {
           req.username = auth.username;
-          return;
-        } else {
-          respondUnauthorized(res);
+          return true;
         }
       }
+
+      return false;
     }
+  }
+
+  /// Respond with auth error
+  void respondUnauthorized(HTTPServerResponse res) {
+    res.statusCode = HTTPStatus.unauthorized;
+    res.contentType = "text/plain";
+    res.headers["WWW-Authenticate"] = "Basic realm=\""~realm~"\"";
+    res.bodyWriter.write("Authorization required");
+  }
+
+  void respondInvalidToken(HTTPServerResponse res) {
+    respondUnauthorized(res);
   }
 
   private {
@@ -75,14 +85,6 @@ class BasicAuth(string realm): BaseAuthRouter {
       enforceBadRequest(idx >= 0, "Invalid auth string format!");
 
       return BasicAuthCredentials(decodedData[0 .. idx], decodedData[idx+1 .. $]);
-    }
-
-    /// Respond with auth error
-    void respondUnauthorized(HTTPServerResponse res, string message = "Authorization required") {
-      res.statusCode = HTTPStatus.unauthorized;
-      res.contentType = "text/plain";
-      res.headers["WWW-Authenticate"] = "Basic realm=\""~realm~"\"";
-      res.bodyWriter.write(message);
     }
   }
 }

@@ -10,6 +10,7 @@ import std.datetime;
 
 import vibeauth.users;
 import vibeauth.router.baseAuthRouter;
+import vibeauth.router.request;
 import vibeauth.client;
 import vibeauth.collection;
 
@@ -298,56 +299,57 @@ class OAuth2: BaseAuthRouter {
   }
 
   override {
+
+    void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      super.mandatoryAuth(req, res);
+    }
+
+    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      super.permisiveAuth(req, res);
+    }
+
     /// Auth handler that will fail if a successfull auth was not performed.
     /// This handler is usefull for routes that want to hide information to the
     /// public.
-    void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
-      cleanRequest(req);
+    AuthResult mandatoryAuth(HTTPServerRequest req) {
+      auto result = AuthResult.success;
 
-      try {
-        setAccessControl(res);
-        if(req.method == HTTPMethod.OPTIONS) {
-          return;
-        }
-
-        if(!res.headerWritten && req.path != configuration.style && !isValidBearer(req)) {
-          respondUnauthorized(res);
-        }
-      } catch(Exception e) {
-        logError(e.toString);
-
-        if(!res.headerWritten) {
-          res.writeJsonBody([ "error": e.msg ], 400);
-        }
+      if(req.method == HTTPMethod.OPTIONS) {
+        return AuthResult.success;
       }
+
+      result = isValidBearer(req);
+
+      if(req.path == configuration.style) {
+        result = AuthResult.success;
+      }
+
+      return result;
     }
 
     /// Auth handler that fails only if the auth fields are present and are not valid.
     /// This handler is usefull when a route should return different data when the user is
     /// logged in
-    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
-      cleanRequest(req);
-
+    AuthResult permisiveAuth(HTTPServerRequest req) {
       if("Authorization" !in req.headers) {
-        return;
+        return AuthResult.success;
       }
 
-      mandatoryAuth(req, res);
+      return mandatoryAuth(req);
+    }
+
+    void respondUnauthorized(HTTPServerResponse res) {
+      vibeauth.router.responses.respondUnauthorized(res);
+    }
+
+    void respondInvalidToken(HTTPServerResponse res) {
+      vibeauth.router.responses.respondUnauthorized(res, "Invalid token.", 400);
     }
   }
 
   private {
-    /// Remove all dangerous fields from the request
-    void cleanRequest(HTTPServerRequest req) {
-      req.username = "";
-      req.password = "";
-      if("email" in req.context) {
-        req.context.remove("email");
-      }
-    }
-
     /// Validate the authorization token
-    bool isValidBearer(HTTPServerRequest req) {
+    AuthResult isValidBearer(HTTPServerRequest req) {
       auto pauth = "Authorization" in req.headers;
 
       if(pauth && (*pauth).startsWith("Bearer ")) {
@@ -357,15 +359,14 @@ class OAuth2: BaseAuthRouter {
           auto const user = collection.byToken(token);
           req.username = user.id;
           req.context["email"] = user.email;
-
-        } catch(UserNotFoundException exception) {
-          return false;
+        } catch(Exception e) {
+          return AuthResult.invalidToken;
         }
 
-        return true;
+        return AuthResult.success;
       }
 
-      return false;
+      return AuthResult.unauthorized;
     }
 
     /// Handle the authorization step
