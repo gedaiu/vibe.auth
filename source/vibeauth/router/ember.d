@@ -59,22 +59,18 @@ class EmberSimpleAuth : BaseAuthRouter {
     }
 
     AuthResult permisiveAuth(HTTPServerRequest req) {
-      if("ember_simple_auth-session" !in req.cookies && "User-Agent" !in req.headers) {
-        return AuthResult.unauthorized;
-      }
-
-      if(!req.hasValidEmberSession) {
-        return AuthResult.unauthorized;
+      if("ember_simple_auth-session" !in req.cookies) {
+        return AuthResult.success;
       }
 
       Json data = req.sessionData;
 
       if(data.type != Json.Type.object) {
-        return AuthResult.unauthorized;
+        return AuthResult.invalidToken;
       }
 
-      if("authenticated" !in data || "access_token" !in data["authenticated"]) {
-        return AuthResult.unauthorized;
+      if("authenticated" in data && "access_token" !in data["authenticated"]) {
+        return AuthResult.success;
       }
 
       string bearer = data["authenticated"]["access_token"].to!string;
@@ -244,21 +240,30 @@ unittest {
     .end;
 }
 
-/// with permisive auth it should return 401 on missing user agent
+/// with permisive auth it should return 200 on missing user agent
 unittest {
   testRouter(false)
     .request.get("/sites")
     .header("Cookie", "ember_simple_auth-session=%7B%22authenticated%22%3A%7B%22access_token%22%3A%22" ~ bearerToken.name ~ "%22%7D%7D")
-    .expectStatusCode(401)
+    .expectStatusCode(200)
     .end;
 }
 
-/// with permisive auth it should return 401 on missing ember_simple_auth-session cookie
+/// with permisive auth it should return 200 on missing token
+unittest {
+  testRouter(false)
+    .request.get("/sites")
+    .header("Cookie", "ember_simple_auth-session%3D%7B%22authenticated%22%3A%7B%7D%7D")
+    .expectStatusCode(200)
+    .end;
+}
+
+/// with permisive auth it should return 200 on missing ember_simple_auth-session cookie
 unittest {
   testRouter(false)
     .request.get("/sites")
     .header("User-Agent", "something")
-    .expectStatusCode(401)
+    .expectStatusCode(200)
     .end;
 }
 

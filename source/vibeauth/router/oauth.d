@@ -457,6 +457,7 @@ class OAuth2: BaseAuthRouter {
       auto const token = req.form["token"];
       collection.revoke(token);
 
+      res.setCookie("ember_simple_auth-session", null);
       res.statusCode = 200;
       res.writeBody("");
     }
@@ -563,34 +564,6 @@ unittest {
     .end;
 }
 
-/// it should clear the username and email when auth it's not mandatory
-unittest {
-  auto router = testRouter(false);
-
-  void setUser(HTTPServerRequest req, HTTPServerResponse res) {
-    req.username = "some user";
-    req.password = "some password";
-    req.context["email"] = "some random value";
-  }
-
-  void showAuth(HTTPServerRequest req, HTTPServerResponse res) {
-    res.statusCode = 200;
-    string hasEmail = "email" in req.context ? "yes" : "no";
-    res.writeBody(req.username ~ ":" ~ req.password ~ ":" ~ hasEmail);
-  }
-
-  router.any("*", &setUser);
-  router.any("*", &auth.permisiveAuth);
-  router.get("/misc", &showAuth);
-
-  router
-    .request.get("/misc")
-    .expectStatusCode(200)
-    .end((Response response) => {
-      response.bodyString.should.equal("::no");
-    });
-}
-
 /// it should return 200 on valid auth when it's not mandatory
 unittest {
   auto router = testRouter(false);
@@ -622,7 +595,7 @@ unittest {
   router
     .request.get("/sites")
     .header("Authorization", "Bearer invalid")
-    .expectStatusCode(401)
+    .expectStatusCode(400)
     .end;
 }
 
