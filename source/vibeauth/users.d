@@ -261,8 +261,8 @@ class User {
   }
 
   /// Create an user token
-  Token createToken(SysTime expire, string[] scopes = [], string type = "Bearer") {
-    auto token = Token(randomUUID.to!string, expire, scopes, type);
+  Token createToken(SysTime expire, string[] scopes = [], string type = "Bearer", string[string] meta = null) {
+    auto token = Token(randomUUID.to!string, expire, scopes, type, meta);
     userData.tokens ~= token;
 
     if(onChange) {
@@ -418,7 +418,7 @@ abstract class UserCollection : Collection!User {
     bool createUser(UserData data, string password);
 
     /// Create a token for an user
-    Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer");
+    Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer", string[string] meta = null);
 
     /// Revoke a token
     void revoke(string token);
@@ -471,8 +471,8 @@ class UserMemmoryCollection : UserCollection {
     }
 
     /// Create a token for an user
-    Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer") {
-      return opIndex(email).createToken(expire, scopes, type);
+    Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer", string[string] meta = null) {
+      return opIndex(email).createToken(expire, scopes, type, meta);
     }
 
     /// Revoke a token

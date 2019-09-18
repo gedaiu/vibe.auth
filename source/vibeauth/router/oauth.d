@@ -299,7 +299,6 @@ class OAuth2: BaseAuthRouter {
   }
 
   override {
-
     void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
       super.mandatoryAuth(req, res);
     }

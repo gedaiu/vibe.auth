@@ -8,6 +8,7 @@
 module vibeauth.token;
 
 import std.datetime;
+import vibe.data.json;
 
 /// A user token used to authorize the requests
 struct Token {
@@ -22,4 +23,7 @@ struct Token {
 
   /// the token type
   string type;
+
+  /// some metadata
+  @optional string[string] meta;
 }
