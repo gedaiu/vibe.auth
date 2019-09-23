@@ -64,7 +64,7 @@ struct Resource(string path) {
   }
 
   ///
-  static this() {
+  shared static this() {
     auto ctx = makeDigest!MD5();
 
     data = readText(path);
