@@ -20,26 +20,24 @@ struct MailTemplate {
 	string html;
 }
 
-struct SMTPConfig {
-	@optional {
-		string authType = "none";
-		string connectionType = "plain";
-		string tlsValidationMode = "none";
-		string tlsVersion = "any";
+interface ISMTPConfig {
+	string authType();
+	string connectionType();
+	string tlsValidationMode();
+	string tlsVersion();
 
-		string host;
-		ushort port;
+	string host();
+	ushort port();
 
-		string localname;
-		string password;
-		string username;
-	}
+	string localname();
+	string password();
+	string username();
 }
 
 struct EmailConfiguration {
 	string from = "noreply@service.com";
 
-	@optional SMTPConfig smtp;
+	@optional ISMTPConfig smtp;
 
 	MailTemplate activation =
 		MailTemplate("Confirmation instructions",
@@ -55,8 +53,6 @@ struct EmailConfiguration {
 		MailTemplate("Password changed",
 								"Hello, [user.name]!\n\nThe password has successfully been changed.\n\nIf you did not initiate this change, please contact your administrator immediately.",
 								"<h1>Hello, [user.name]!</h1><p>The password has successfully been changed.</p><p>If you did not initiate this change, please contact your administrator immediately.</p>");
-
-
 }
 
 interface IMailSender {
@@ -180,10 +176,10 @@ class MailQueue : IMailQueue {
 
 	protected {
 		Message[] messages;
-		const EmailConfiguration settings;
+		EmailConfiguration settings;
 	}
 
-	this(const EmailConfiguration settings) {
+	this(EmailConfiguration settings) {
 		this.settings = settings;
 	}
 

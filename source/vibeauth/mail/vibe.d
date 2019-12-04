@@ -23,7 +23,13 @@ class VibeMailQueue : MailQueue {
 	this(EmailConfiguration settings) {
 		super(settings);
 
+		assert(settings.smtp !is null, "The smtp settings are not set");
 		smtpSettings = new SMTPClientSettings(settings.smtp.host, settings.smtp.port);
+	}
+
+	private auto getSMTPSettings() {
+		smtpSettings.host = settings.smtp.host;
+		smtpSettings.port = settings.smtp.port;
 
 		smtpSettings.authType = settings.smtp.authType.to!SMTPAuthType;
 		smtpSettings.connectionType = settings.smtp.connectionType.to!SMTPConnectionType;
@@ -33,6 +39,8 @@ class VibeMailQueue : MailQueue {
 		smtpSettings.localname = settings.smtp.localname;
 		smtpSettings.password = settings.smtp.password;
 		smtpSettings.username = settings.smtp.username;
+
+		return smtpSettings;
 	}
 
 	override void addMessage(Message message) {
@@ -57,7 +65,7 @@ class VibeMailQueue : MailQueue {
 
 			email.bodyText = message.mailBody;
 
-			sendMail(smtpSettings, email);
+			sendMail(this.getSMTPSettings(), email);
 		}
 	}
 }

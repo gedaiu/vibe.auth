@@ -9,17 +9,20 @@ import std.conv;
 
 import vibeauth.challenges.base;
 
+interface IReCaptchaConfig {
+  string siteKey();
+  string secretKey();
+}
+
 /// Class that implements the google recaptcha challenge
 class ReCaptcha : IChallenge {
 
-  private immutable {
-    string siteKey;
-    string secretKey;
+  private {
+    IReCaptchaConfig config;
   }
 
-  this(string siteKey, string secretKey) {
-    this.siteKey = siteKey;
-    this.secretKey = secretKey;
+  this(IReCaptchaConfig config) {
+    this.config = config;
   }
 
   /// Generate a challenge. The request must be initiated from the challenge template
@@ -29,10 +32,10 @@ class ReCaptcha : IChallenge {
 
   /// Get a template for the current challenge
   string getTemplate(string challangeLocation) {
-    auto tpl = `<script src="https://www.google.com/recaptcha/api.js?render=` ~ siteKey ~ `"></script>
+    auto tpl = `<script src="https://www.google.com/recaptcha/api.js?render=` ~ config.siteKey ~ `"></script>
       <script>
       grecaptcha.ready(function() {
-          grecaptcha.execute('` ~ siteKey ~ `', {action: 'login'}).then(function(token) {
+          grecaptcha.execute('` ~ config.siteKey ~ `', {action: 'login'}).then(function(token) {
             document.querySelector("#recaptchaValue").value = token;
           });
       });
@@ -46,7 +49,7 @@ class ReCaptcha : IChallenge {
   Json getConfig() {
     auto result = Json.emptyObject;
 
-    result["siteKey"] = siteKey;
+    result["siteKey"] = config.siteKey;
 
     return result;
   }
@@ -55,7 +58,7 @@ class ReCaptcha : IChallenge {
   bool validate(string response) {
     Json result;
 
-    requestHTTP("https://www.google.com/recaptcha/api/siteverify?secret=" ~ secretKey ~ "&response=" ~ response,
+    requestHTTP("https://www.google.com/recaptcha/api/siteverify?secret=" ~ config.secretKey ~ "&response=" ~ response,
       (scope req) {
         req.method = HTTPMethod.POST;
         req.headers["Content-length"] = "0";
