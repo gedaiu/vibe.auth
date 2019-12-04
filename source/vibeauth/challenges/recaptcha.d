@@ -4,6 +4,7 @@ module vibeauth.challenges.recaptcha;
 import vibe.http.client;
 import vibe.stream.operations;
 import vibe.data.json;
+import vibe.core.log;
 
 import std.conv;
 
@@ -57,8 +58,10 @@ class ReCaptcha : IChallenge {
   /// Validate the challenge
   bool validate(string response) {
     Json result;
+    auto link = "https://www.google.com/recaptcha/api/siteverify?secret=" ~ config.secretKey ~ "&response=" ~ response;
+    logInfo(link);
 
-    requestHTTP("https://www.google.com/recaptcha/api/siteverify?secret=" ~ config.secretKey ~ "&response=" ~ response,
+    requestHTTP(link,
       (scope req) {
         req.method = HTTPMethod.POST;
         req.headers["Content-length"] = "0";
@@ -68,6 +71,7 @@ class ReCaptcha : IChallenge {
       }
     );
 
+    logInfo("recaptcha result: %s", result);
     if("success" !in result) {
       return false;
     }
