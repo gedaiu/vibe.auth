@@ -32,11 +32,11 @@ interface ISMTPConfig {
 	string localname();
 	string password();
 	string username();
+
+	string from();
 }
 
 struct EmailConfiguration {
-	string from = "noreply@service.com";
-
 	@optional ISMTPConfig smtp;
 
 	MailTemplate activation =
@@ -191,7 +191,7 @@ class MailQueue : IMailQueue {
 		Message message;
 
 		message.to ~= email;
-		message.from = settings.from;
+		message.from = settings.smtp.from;
 		message.subject = mailTemplate.subject;
 
 		message.textMessage = replaceVariables(mailTemplate.text, variables);
