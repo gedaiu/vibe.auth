@@ -57,9 +57,11 @@ class ReCaptcha : IChallenge {
 
   /// Validate the challenge
   bool validate(string response) {
+    logInfo("Validating the recaptcha response: %s", result);
+
     Json result;
     auto link = "https://www.google.com/recaptcha/api/siteverify?secret=" ~ config.secretKey ~ "&response=" ~ response;
-    logInfo(link);
+    logDebug("Sending request to %s", link);
 
     requestHTTP(link,
       (scope req) {
@@ -71,7 +73,7 @@ class ReCaptcha : IChallenge {
       }
     );
 
-    logInfo("recaptcha result: %s", result);
+    logInfo("Recaptcha server response: %s", result);
     if("success" !in result) {
       return false;
     }
