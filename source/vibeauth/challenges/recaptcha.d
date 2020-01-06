@@ -57,7 +57,7 @@ class ReCaptcha : IChallenge {
 
   /// Validate the challenge
   bool validate(string response) {
-    logInfo("Validating the recaptcha response: %s", result);
+    logInfo("Validating the recaptcha response: %s", response);
 
     try {
       Json result;
