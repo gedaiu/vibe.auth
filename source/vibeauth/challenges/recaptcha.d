@@ -69,11 +69,13 @@ class ReCaptcha : IChallenge {
         req.headers["Content-length"] = "0";
       },
       (scope res) {
+        logInfo("Recaptcha server response: %s %s", result.statusPhrase, result.statusCode);
+        logInfo("Recaptcha server response message: %s", result);
+
         result = res.bodyReader.readAllUTF8().parseJsonString;
       }
     );
 
-    logInfo("Recaptcha server response: %s", result);
     if("success" !in result) {
       return false;
     }
