@@ -3,6 +3,8 @@ module vibeauth.mail.vibe;
 import vibe.mail.smtp;
 import vibe.inet.message;
 import vibe.stream.tls;
+import vibe.data.json;
+import vibe.core.log;
 
 import vibeauth.mail.base;
 import vibeauth.users;
@@ -44,6 +46,7 @@ class VibeMailQueue : MailQueue {
 	}
 
 	override void addMessage(Message message) {
+		logDebug("Adding a new email to the MailQueue: %s", messages.serializeToJsonString);
 		send(message);
 	}
 
@@ -64,6 +67,8 @@ class VibeMailQueue : MailQueue {
 			}
 
 			email.bodyText = message.mailBody;
+
+			logDebug("Sending mail: %s", email.serializeToJsonString);
 
 			sendMail(this.getSMTPSettings(), email);
 		}

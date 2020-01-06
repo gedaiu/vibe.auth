@@ -12,6 +12,7 @@ import vibeauth.token;
 import vibe.mail.smtp;
 import vibe.stream.tls;
 import vibe.data.json;
+import vibe.core.log;
 
 struct MailTemplate {
 	string subject;
@@ -58,7 +59,6 @@ struct EmailConfiguration {
 interface IMailSender {
 	bool send(Message);
 }
-
 interface IMailQueue {
 	void addMessage(Message);
 	void addActivationMessage(string email, Token token, string[string] variables);
@@ -184,6 +184,7 @@ class MailQueue : IMailQueue {
 	}
 
 	void addMessage(Message message) {
+		logDebug("Adding a new email to the MailQueue: %s", messages.serializeToJsonString);
 		messages ~= message;
 	}
 
@@ -201,6 +202,8 @@ class MailQueue : IMailQueue {
 	}
 
 	void addResetPasswordMessage(string email, Token token, string[string] variables) {
+		logDebug("Adding a reset password message for `%s`", email);
+
 		variables["email"] = email;
 		variables["token"] = token.name;
 
@@ -208,6 +211,8 @@ class MailQueue : IMailQueue {
 	}
 
 	void addActivationMessage(string email, Token token, string[string] variables) {
+		logDebug("Adding an activation password message for `%s`", email);
+
 		variables["email"] = email;
 		variables["token"] = token.name;
 
@@ -215,6 +220,8 @@ class MailQueue : IMailQueue {
 	}
 
 	void addResetPasswordConfirmationMessage(string email, string[string] variables) {
+		logDebug("Adding a reset password message for `%s`", email);
+
 		variables["email"] = email;
 
 		addMessage(settings.resetPasswordConfirmation, email, variables);
