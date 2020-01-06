@@ -59,27 +59,33 @@ class ReCaptcha : IChallenge {
   bool validate(string response) {
     logInfo("Validating the recaptcha response: %s", result);
 
-    Json result;
-    auto link = "https://www.google.com/recaptcha/api/siteverify?secret=" ~ config.secretKey ~ "&response=" ~ response;
-    logDebug("Sending request to %s", link);
+    try {
+      Json result;
+      auto link = "https://www.google.com/recaptcha/api/siteverify?secret=" ~ config.secretKey ~ "&response=" ~ response;
+      logDebug("Sending request to %s", link);
 
-    requestHTTP(link,
-      (scope req) {
-        req.method = HTTPMethod.POST;
-        req.headers["Content-length"] = "0";
-      },
-      (scope res) {
-        logInfo("Recaptcha server response: %s %s", result.statusPhrase, result.statusCode);
-        logInfo("Recaptcha server response message: %s", result);
+      requestHTTP(link,
+        (scope req) {
+          req.method = HTTPMethod.POST;
+          req.headers["Content-length"] = "0";
+        },
+        (scope res) {
+          logInfo("Recaptcha server response: %s %s", result.statusPhrase, result.statusCode);
+          logInfo("Recaptcha server response message: %s", result);
 
-        result = res.bodyReader.readAllUTF8().parseJsonString;
+          result = res.bodyReader.readAllUTF8().parseJsonString;
+        }
+      );
+
+      if("success" !in result) {
+        return false;
       }
-    );
 
-    if("success" !in result) {
-      return false;
+      return result["success"].to!bool == true;
+    } catch(Exception e) {
+      logError("Error sending the recaptcha request: %s", e.message);
     }
 
-    return result["success"].to!bool == true;
+    return true;
   }
 }
