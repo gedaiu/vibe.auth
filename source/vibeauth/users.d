@@ -62,7 +62,7 @@ struct UserData {
   bool isActive;
 
   /// The timestamp of the users last activity
-  ulong lastActivity;
+  @optional ulong lastActivity;
 
   /// Scopes that the user has access to
   string[] scopes;
@@ -112,6 +112,7 @@ class User {
     /// Set the user id
     void id(ulong value) {
       userData._id = value.to!string;
+      userData.lastActivity = Clock.currTime.toUnixTime!long;
 
       if(onChange) {
         onChange(this);
@@ -126,6 +127,7 @@ class User {
     /// Check the user active status
     void isActive(bool value) {
       userData.isActive = value;
+      userData.lastActivity = Clock.currTime.toUnixTime!long;
 
       if(onChange) {
         onChange(this);
@@ -140,6 +142,7 @@ class User {
     /// Set the user email
     void email(string value) {
       userData.email = value;
+      userData.lastActivity = Clock.currTime.toUnixTime!long;
 
       if(onChange) {
         onChange(this);
@@ -154,6 +157,7 @@ class User {
     /// Set the user real name
     void name(string value) {
       userData.name = value;
+      userData.lastActivity = Clock.currTime.toUnixTime!long;
 
       if(onChange) {
         onChange(this);
@@ -168,6 +172,21 @@ class User {
     /// Set the user alias name
     void username(string value) {
       userData.username = value;
+      userData.lastActivity = Clock.currTime.toUnixTime!long;
+
+      if(onChange) {
+        onChange(this);
+      }
+    }
+
+    /// Get the last user activity timestamp
+    auto lastActivity() const {
+      return userData.lastActivity;
+    }
+
+    /// Set the last user activity timestam[]
+    void lastActivity(ulong value) {
+      userData.lastActivity = value;
 
       if(onChange) {
         onChange(this);
