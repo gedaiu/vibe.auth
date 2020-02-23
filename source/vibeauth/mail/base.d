@@ -256,10 +256,11 @@ version(unittest) {
 @("it should set the text and html activation message")
 unittest {
 	auto config = EmailConfiguration();
-	config.from = "someone@service.com";
+	//config.from = "someone@service.com";
 	config.activation.subject = "subject";
 	config.activation.text = "text";
 	config.activation.html = "html";
+	config.smtp = new TestSMTPConfig();
 
 	auto mailQueue = new MailQueueMock(config);
 
@@ -273,13 +274,31 @@ unittest {
 	mailQueue.lastMessage.htmlMessage.should.be.equal("html");
 }
 
+version(unittest) class TestSMTPConfig : ISMTPConfig {
+	string authType() { return ""; }
+	string connectionType() { return ""; }
+	string tlsValidationMode() { return ""; }
+	string tlsVersion() { return ""; }
+
+	string host() { return ""; }
+	ushort port() { return 100; }
+
+	string localname() { return ""; }
+	string password() { return ""; }
+	string username() { return ""; }
+
+	string from() { return ""; }
+}
+
+
 @("it should set the text and html reset password message")
 unittest {
 	auto config = EmailConfiguration();
-	config.from = "someone@service.com";
+	//config.from = "someone@service.com";
 	config.resetPassword.subject = "subject";
 	config.resetPassword.text = "text";
 	config.resetPassword.html = "html";
+	config.smtp = new TestSMTPConfig();
 
 	auto mailQueue = new MailQueueMock(config);
 

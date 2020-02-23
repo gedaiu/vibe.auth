@@ -238,12 +238,31 @@ version(unittest) {
 
   alias MailMessage = vibeauth.mail.base.Message;
 
+  class TestSMTPConfig : ISMTPConfig {
+    string authType() { return ""; }
+    string connectionType() { return ""; }
+    string tlsValidationMode() { return ""; }
+    string tlsVersion() { return ""; }
+
+    string host() { return ""; }
+    ushort port() { return 100; }
+
+    string localname() { return ""; }
+    string password() { return ""; }
+    string username() { return ""; }
+
+    string from() { return ""; }
+  }
+
   class TestMailQueue : MailQueue
   {
     MailMessage[] messages;
 
     this() {
-      super(EmailConfiguration());
+      auto config = EmailConfiguration();
+      config.smtp = new TestSMTPConfig;
+
+      super(config);
     }
 
     override

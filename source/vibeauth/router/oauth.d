@@ -405,7 +405,7 @@ class OAuth2: BaseAuthRouter {
     void showError(HTTPServerResponse res, const string error) {
       auto const style = configuration.style;
       res.statusCode = 400;
-      res.render!("error.dt", error, style);
+      //res.render!("error.dt", error, style);
     }
 
     void authenticate(HTTPServerRequest req, HTTPServerResponse res) {

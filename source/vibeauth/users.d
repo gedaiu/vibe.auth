@@ -61,6 +61,9 @@ struct UserData {
   /// Flag used to determine if the user can perform any actions
   bool isActive;
 
+  /// The timestamp of the users last activity
+  ulong lastActivity;
+
   /// Scopes that the user has access to
   string[] scopes;
 
@@ -175,6 +178,7 @@ class User {
   /// Revoke a token
   void revoke(string token) {
     userData.tokens = userData.tokens.filter!(a => a.name != token).array;
+    userData.lastActivity = Clock.currTime.toUnixTime!long;
 
     if(onChange) {
       onChange(this);
@@ -225,6 +229,7 @@ class User {
   void setPassword(string password) {
     userData.salt = randomUUID.to!string;
     userData.password = sha1UUID(userData.salt ~ "." ~ password).to!string;
+    userData.lastActivity = Clock.currTime.toUnixTime!long;
 
     if(onChange) {
       onChange(this);
@@ -235,6 +240,7 @@ class User {
   void setPassword(string password, string salt) {
     userData.salt = salt;
     userData.password = password;
+    userData.lastActivity = Clock.currTime.toUnixTime!long;
 
     if(onChange) {
       onChange(this);
@@ -244,6 +250,7 @@ class User {
   /// Add a scope to the user
   void addScope(string access) {
     userData.scopes ~= access;
+    userData.lastActivity = Clock.currTime.toUnixTime!long;
 
     if(onChange) {
       onChange(this);
@@ -254,6 +261,7 @@ class User {
   void removeScope(string access) {
     userData.scopes = userData.scopes
       .filter!(a => a != access).array;
+    userData.lastActivity = Clock.currTime.toUnixTime!long;
 
     if(onChange) {
       onChange(this);

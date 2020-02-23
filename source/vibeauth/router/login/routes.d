@@ -206,6 +206,22 @@ version(unittest) {
   Token refreshToken;
   TestMailQueue mailQueue;
 
+  class TestSMTPConfig : ISMTPConfig {
+    string authType() { return ""; }
+    string connectionType() { return ""; }
+    string tlsValidationMode() { return ""; }
+    string tlsVersion() { return ""; }
+
+    string host() { return ""; }
+    ushort port() { return 100; }
+
+    string localname() { return ""; }
+    string password() { return ""; }
+    string username() { return ""; }
+
+    string from() { return ""; }
+  }
+
   alias MailMessage = vibeauth.mail.base.Message;
 
   class TestMailQueue : MailQueue
@@ -213,7 +229,10 @@ version(unittest) {
     MailMessage[] messages;
 
     this() {
-      super(EmailConfiguration());
+      auto config = EmailConfiguration();
+      config.smtp = new TestSMTPConfig();
+
+      super(config);
     }
 
     override
@@ -349,6 +368,7 @@ unittest {
 unittest {
   string expectedMessage = "Your password has been changed successfully.";
   auto router = testRouter;
+
   collection.createToken(user.email, Clock.currTime - 10.seconds, [], "passwordReset");
   auto token = collection.createToken(user.email, Clock.currTime + 10.seconds, [], "passwordReset");
 

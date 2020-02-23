@@ -20,3 +20,4 @@ trial_root.d
 .trial
 example/loginAndRegistration/tmp/
 tmp/
+.trial
