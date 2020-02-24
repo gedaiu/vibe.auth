@@ -1,5 +1,5 @@
 /++
-  A module that handles the user management. It binds the routes, renders the templates and 
+  A module that handles the user management. It binds the routes, renders the templates and
   updates the collections.
 
   Copyright: © 2018 Szabo Bogdan
@@ -11,8 +11,8 @@ module vibeauth.router.management.routes;
 import vibe.http.router;
 import vibe.data.json;
 
-import vibeauth.users;  
-import vibeauth.collection;
+import vibeauth.data.user;
+import vibeauth.collections.usercollection;
 import vibeauth.configuration;
 import vibeauth.mail.base;
 import vibeauth.router.management.responses;

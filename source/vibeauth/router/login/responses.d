@@ -1,4 +1,4 @@
-module vibeauth.router.login.responses;
+deprecated("it will be removed") module vibeauth.router.login.responses;
 
 import std.stdio;
 import std.datetime;
@@ -9,7 +9,7 @@ import std.file;
 import vibe.http.router;
 import vibe.data.json;
 
-import vibeauth.users;
+
 import vibeauth.configuration;
 import vibeauth.mail.base;
 import vibeauth.router.login.routes;

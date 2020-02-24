@@ -5,7 +5,7 @@ import std.file;
 import vibeauth.challenges.mathcaptcha;
 import vibeauth.challenges.recaptcha;
 import vibeauth.client;
-import vibeauth.users;
+
 import vibeauth.configuration;
 import vibeauth.router.registration.routes;
 import vibeauth.router.login.routes;

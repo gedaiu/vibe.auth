@@ -8,9 +8,11 @@ public import fluentasserts.vibe.request;
 public import fluentasserts.vibe.json;
 public import fluent.asserts;
 
-public import vibeauth.token;
-public import vibeauth.users;
+public import vibeauth.data.token;
+public import vibeauth.data.user;
+public import vibeauth.data.usermodel;
 
+public import vibeauth.collections.usermemory;
 
 public import vibe.http.router;
 public import vibe.data.json;
@@ -18,7 +20,7 @@ public import vibe.data.json;
 import vibeauth.router.management.routes;
 import vibeauth.mail.base;
 
-UserMemmoryCollection collection;
+UserMemoryCollection collection;
 User user;
 TestMailQueue mailQueue;
 Token activationToken;
@@ -44,7 +46,7 @@ auto testRouter() {
   auto router = new URLRouter();
   mailQueue = new TestMailQueue;
 
-  collection = new UserMemmoryCollection(["doStuff", "admin"]);
+  collection = new UserMemoryCollection(["doStuff", "admin"]);
   user = new User("user@gmail.com", "password");
   user.name = "John Doe";
   user.username = "test";

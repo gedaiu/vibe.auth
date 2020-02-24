@@ -6,7 +6,7 @@
   License: Subject to the terms of the MIT license, as written in the included LICENSE.txt file.
   Authors: Szabo Bogdan
 +/
-module vibeauth.router.login.routes;
+deprecated("it will be removed") module vibeauth.router.login.routes;
 
 import vibe.http.router;
 import vibe.data.json;
@@ -17,7 +17,7 @@ import std.datetime, std.random, std.uri, std.file;
 
 import vibe.core.core;
 
-import vibeauth.users;
+
 import vibeauth.client;
 import vibeauth.collection;
 import vibeauth.configuration;
@@ -27,7 +27,7 @@ import vibeauth.router.login.responses;
 import vibeauth.router.request;
 import vibeauth.mail.base;
 
-class LoginRoutes {
+deprecated("it will be removed") class LoginRoutes {
 
   private {
     const ServiceConfiguration configuration;
@@ -197,9 +197,12 @@ version(unittest) {
   import fluentasserts.vibe.request;
   import fluentasserts.vibe.json;
   import fluent.asserts;
-  import vibeauth.token;
+  import vibeauth.data.token;
+  import vibeauth.data.user;
+  import vibeauth.collections.usercollection;
+  import vibeauth.collections.usermemory;
 
-  UserMemmoryCollection collection;
+  UserMemoryCollection collection;
   User user;
   Client client;
   ClientCollection clientCollection;
@@ -244,7 +247,7 @@ version(unittest) {
   auto testRouter() {
     auto router = new URLRouter();
 
-    collection = new UserMemmoryCollection(["doStuff"]);
+    collection = new UserMemoryCollection(["doStuff"]);
     user = new User("user@gmail.com", "password");
     user.name = "John Doe";
     user.username = "test";

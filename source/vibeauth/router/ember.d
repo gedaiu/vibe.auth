@@ -6,11 +6,13 @@ import vibe.http.server;
 import vibe.data.json;
 
 import vibeauth.router.baseAuthRouter;
-import vibeauth.users;
 import vibeauth.router.responses;
+import vibeauth.collections.usercollection;
+import vibeauth.data.user;
 
 import std.datetime;
 
+/// Authentication for ember simple auth library
 class EmberSimpleAuth : BaseAuthRouter {
 
   ///
@@ -91,9 +93,10 @@ version(unittest) {
   import fluentasserts.vibe.request;
   import fluentasserts.vibe.json;
   import fluent.asserts;
-  import vibeauth.token;
+  import vibeauth.data.token;
+  import vibeauth.collections.usermemory;
 
-  UserMemmoryCollection collection;
+  UserMemoryCollection collection;
   User user;
 
   EmberSimpleAuth auth;
@@ -103,7 +106,7 @@ version(unittest) {
   auto testRouter(bool requireLogin = true) {
     auto router = new URLRouter();
 
-    collection = new UserMemmoryCollection(["doStuff"]);
+    collection = new UserMemoryCollection(["doStuff"]);
     user = new User("user@gmail.com", "password");
     user.name = "John Doe";
     user.username = "test";

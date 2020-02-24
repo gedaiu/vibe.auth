@@ -5,7 +5,7 @@ import std.conv;
 
 import vibeauth.mvc.view;
 import vibeauth.configuration;
-import vibeauth.users;
+import vibeauth.collections.usercollection;
 
 import vibe.data.json;
 import vibe.http.router;
@@ -27,10 +27,10 @@ class UserManagementListView : View {
     string listPage = `<table class="table"><tbody>`;
 
     foreach(user; userCollection) {
-      listPage ~= `<tr>` ~ 
-      `<th>` ~ user.username ~ `</th>` ~ 
+      listPage ~= `<tr>` ~
+      `<th>` ~ user.username ~ `</th>` ~
       `<td>` ~ user.email ~ `</td>` ~
-       `<td><a href="` ~ configuration.paths.userManagement.profile.replace(":id", user.id) ~ `">Edit</a></td>`~ 
+       `<td><a href="` ~ configuration.paths.userManagement.profile.replace(":id", user.id) ~ `">Edit</a></td>`~
        `</tr>`;
     }
 

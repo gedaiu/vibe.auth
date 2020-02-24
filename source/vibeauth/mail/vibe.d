@@ -7,7 +7,7 @@ import vibe.data.json;
 import vibe.core.log;
 
 import vibeauth.mail.base;
-import vibeauth.users;
+
 import vibeauth.token;
 
 import std.process;

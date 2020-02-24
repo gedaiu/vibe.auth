@@ -11,13 +11,17 @@ import vibe.data.json;
 import vibe.inet.url;
 
 import vibeauth.router.registration.responses;
-import vibeauth.users;
+
 import vibeauth.configuration;
 import vibeauth.mail.base;
 import vibeauth.challenges.base;
 import vibeauth.router.accesscontrol;
 import vibeauth.router.request;
 import vibeauth.collection;
+import vibeauth.error;
+import vibeauth.data.user;
+import vibeauth.data.usermodel;
+import vibeauth.collections.usercollection;
 
 /// Handle the registration routes
 class RegistrationRoutes {
@@ -203,7 +207,7 @@ class RegistrationRoutes {
         return;
       }
 
-      UserData data;
+      UserModel data;
       data.name = requestData.name;
       data.username = requestData.username;
       data.email = requestData.email;
@@ -228,9 +232,10 @@ version(unittest) {
   import fluentasserts.vibe.request;
   import fluentasserts.vibe.json;
   import fluent.asserts;
-  import vibeauth.token;
+  import vibeauth.data.token;
+  import vibeauth.collections.usermemory;
 
-  UserMemmoryCollection collection;
+  UserMemoryCollection collection;
   User user;
   RegistrationRoutes registration;
   TestMailQueue mailQueue;
@@ -293,7 +298,7 @@ version(unittest) {
     auto router = new URLRouter();
     mailQueue = new TestMailQueue;
 
-    collection = new UserMemmoryCollection(["doStuff"]);
+    collection = new UserMemoryCollection(["doStuff"]);
     user = new User("user@gmail.com", "password");
     user.name = "John Doe";
     user.username = "test";

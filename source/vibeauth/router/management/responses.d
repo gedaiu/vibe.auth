@@ -8,13 +8,16 @@ import std.algorithm;
 import vibe.data.json;
 import vibe.http.router;
 
-import vibeauth.users;
 import vibeauth.configuration;
 import vibeauth.mvc.templatedata;
 import vibeauth.mvc.view;
 import vibeauth.mvc.controller;
 import vibeauth.router.request;
 import vibeauth.router.management.views;
+
+import vibeauth.data.user;
+import vibeauth.error;
+import vibeauth.collections.usercollection;
 
 
 bool validateRights(HTTPServerRequest req, HTTPServerResponse res, ServiceConfiguration configuration, UserCollection userCollection) {

@@ -1,6 +1,7 @@
 module vibeauth.router.request;
 
-import vibeauth.users;
+import vibeauth.collections.usercollection;
+import vibeauth.data.user;
 
 import vibe.http.router;
 import vibe.data.json;

@@ -10,7 +10,8 @@ import std.algorithm;
 import vibe.http.router;
 import vibe.data.json;
 
-import vibeauth.users;
+import vibeauth.collections.usercollection;
+import vibeauth.error;
 
 /// Generic controller
 interface IController {
@@ -43,7 +44,7 @@ abstract class PathController(string method, string configurationPath) : IContro
     if(req.method != method) {
       return false;
     }
-    
+
     if(path.canFind(":id")) {
       if(!isUserPage(path, req.path)) {
         return false;

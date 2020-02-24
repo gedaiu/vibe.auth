@@ -9,7 +9,7 @@ import std.file;
 import vibe.http.router;
 import vibe.data.json;
 
-import vibeauth.users;
+
 import vibeauth.configuration;
 import vibeauth.challenges.base;
 import vibeauth.mail.base;

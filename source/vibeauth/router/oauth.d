@@ -8,7 +8,8 @@ import vibe.core.log;
 import std.algorithm, std.base64, std.string, std.stdio, std.conv, std.array;
 import std.datetime;
 
-import vibeauth.users;
+import vibeauth.collections.usercollection;
+import vibeauth.data.user;
 import vibeauth.router.baseAuthRouter;
 import vibeauth.router.request;
 import vibeauth.client;
@@ -467,9 +468,10 @@ version(unittest) {
   import fluentasserts.vibe.request;
   import fluentasserts.vibe.json;
   import fluent.asserts;
-  import vibeauth.token;
+  import vibeauth.data.token;
+  import vibeauth.collections.usermemory;
 
-  UserMemmoryCollection collection;
+  UserMemoryCollection collection;
   User user;
   Client client;
   ClientCollection clientCollection;
@@ -480,7 +482,7 @@ version(unittest) {
   auto testRouter(bool requireLogin = true) {
     auto router = new URLRouter();
 
-    collection = new UserMemmoryCollection(["doStuff"]);
+    collection = new UserMemoryCollection(["doStuff"]);
     user = new User("user@gmail.com", "password");
     user.name = "John Doe";
     user.username = "test";

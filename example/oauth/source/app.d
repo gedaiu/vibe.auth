@@ -1,7 +1,7 @@
 import std.stdio;
 
 import vibeauth.client;
-import vibeauth.users;
+
 import vibeauth.router.oauth;
 import vibe.d;
 
