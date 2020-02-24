@@ -113,7 +113,7 @@ struct Paths {
 }
 
 ///
-struct Templates {
+deprecated("it will be removed") struct Templates {
   mixin ObjectLoader;
 
   ///
@@ -126,7 +126,7 @@ struct Templates {
   UserManagementTemplates userManagement;
 }
 
-struct ResourcePaths {
+deprecated("it will be removed") struct ResourcePaths {
   ///
   string bootstrapStyle = "/assets/bootstrap.min.css";
   ///
@@ -136,10 +136,10 @@ struct ResourcePaths {
 }
 
 /// Registration process url paths
-struct RegistrationPaths {
+deprecated("it will be removed") struct RegistrationPaths {
   mixin StringLoader;
 
-  /// 
+  ///
   string register = "/register";
   ///
   string addUser = "/register/user";
@@ -154,7 +154,7 @@ struct RegistrationPaths {
 }
 
 /// Html templaes used in the registration process
-struct RegistrationTemplates {
+deprecated("it will be removed") struct RegistrationTemplates {
   mixin FileLoader;
 
   ///
@@ -167,7 +167,7 @@ struct RegistrationTemplates {
   string confirmationTemplate = import("register/confirmationTemplate.html");
   ///
   string confirmation = import("register/confirmation.html");;
-  
+
   ///
   string successTemplate = import("register/successTemplate.html");
   ///
@@ -175,7 +175,7 @@ struct RegistrationTemplates {
 }
 
 /// Paths for the login process
-struct LoginPaths {
+deprecated("it will be removed") struct LoginPaths {
   mixin StringLoader;
 
   ///
@@ -198,7 +198,7 @@ struct LoginPaths {
 }
 
 /// Html templates for the login process
-struct LoginTemplates {
+deprecated("it will be removed") struct LoginTemplates {
   mixin FileLoader;
 
   ///
@@ -214,7 +214,7 @@ struct LoginTemplates {
   string resetPassword = import("login/resetPasswordForm.html");
 }
 
-struct UserManagementPaths {
+deprecated("it will be removed") struct UserManagementPaths {
   mixin StringLoader;
 
   ///
@@ -242,7 +242,7 @@ struct UserManagementPaths {
   string updateSecurity = "/admin/users/:id/security/update";
 }
 
-struct UserManagementTemplates {
+deprecated("it will be removed") struct UserManagementTemplates {
   mixin FileLoader;
 
   ///

@@ -17,9 +17,8 @@ import std.datetime, std.random, std.uri, std.file;
 
 import vibe.core.core;
 
-
 import vibeauth.client;
-import vibeauth.collection;
+import vibeauth.collections.usercollection;
 import vibeauth.configuration;
 import vibeauth.router.accesscontrol;
 import vibeauth.router.baseAuthRouter;
