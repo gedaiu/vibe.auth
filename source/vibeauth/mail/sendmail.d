@@ -2,7 +2,7 @@ module vibeauth.mail.sendmail;
 
 import vibeauth.mail.base;
 
-import vibeauth.token;
+import vibeauth.data.token;
 
 import std.process;
 import std.stdio;
