@@ -9,11 +9,11 @@ import std.algorithm, std.base64, std.string, std.stdio, std.conv, std.array;
 import std.datetime;
 
 import vibeauth.collections.usercollection;
+import vibeauth.data.client;
 import vibeauth.data.user;
 import vibeauth.router.baseAuthRouter;
 import vibeauth.router.request;
-import vibeauth.client;
-import vibeauth.collection;
+import vibeauth.collections.client;
 
 import vibeauth.router.responses;
 import vibeauth.router.accesscontrol;
@@ -398,7 +398,7 @@ class OAuth2: BaseAuthRouter {
 
       string appTitle = clientCollection[clientId].name;
 
-      res.render!("loginForm.dt", appTitle, redirectUri, state, style);
+      /// res.render!("loginForm.dt", appTitle, redirectUri, state, style);
     }
 
 
@@ -429,7 +429,7 @@ class OAuth2: BaseAuthRouter {
       auto token = collection[email].createToken(Clock.currTime + 3601.seconds);
       auto redirectUri = req.form["redirect_uri"] ~ "#access_token=" ~ token.name ~ "&state=" ~ req.form["state"];
 
-      res.render!("redirect.dt", redirectUri);
+      //res.render!("redirect.dt", redirectUri);
     }
 
     /// Create token for the requested user

@@ -12,7 +12,7 @@ import vibeauth.router.login.routes;
 import vibeauth.router.management.routes;
 import vibeauth.mail.sendmail;
 import vibeauth.mail.vibe;
-import vibeauth.token;
+import vibeauth.data.token;
 import vibeauth.router.request;
 import vibeauth.mail.base;
 import vibeauth.router.resources.routes;

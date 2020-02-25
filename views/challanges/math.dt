@@ -1,5 +1,0 @@
-label Math Captcha
-<br/>
-img(src="#{challangeLocation}")
-<br/>
-input.form-control(placeholder="Please enter the result", type="string", name="response")

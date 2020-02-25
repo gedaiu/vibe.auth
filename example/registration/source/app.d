@@ -7,7 +7,7 @@ import vibeauth.client;
 
 import vibeauth.router.registration.routes;
 import vibeauth.mail.sendmail;
-import vibeauth.token;
+import vibeauth.data.token;
 import vibeauth.configuration;
 import vibeauth.mail.base;
 
