@@ -12,6 +12,7 @@ import vibeauth.data.usermodel;
 import vibeauth.data.token;
 import vibeauth.data.user;
 import vibeauth.data.client;
+import vibeauth.collections.client;
 import vibeauth.error;
 
 import std.algorithm;
