@@ -1,10 +1,10 @@
-module vibeauth.router.basic;
+module vibeauth.authenticators.BasicAuth;
 
 import vibe.http.router;
 import vibe.data.json;
 
 import std.algorithm.searching, std.base64, std.string, std.stdio;
-import vibeauth.router.baseAuthRouter;
+import vibeauth.authenticators.BaseAuth;
 
 /// Basic auth credential pair
 struct BasicAuthCredentials {
@@ -15,10 +15,10 @@ struct BasicAuthCredentials {
   string password;
 }
 
-/// Basic auth handler. It's not safe to use it without https.
-class BasicAuth(string realm): BaseAuthRouter {
+/// Basic auth handler RFC 7617. It's not safe to use it without https.
+class BasicAuth(string realm) : BaseAuth {
 
-  ///
+  /// Instantiate the authenticator with an user collection
   this(UserCollection collection) {
     super(collection);
   }
@@ -27,6 +27,11 @@ class BasicAuth(string realm): BaseAuthRouter {
     /// Auth handler that will fail if a successfull auth was not performed.
     /// This handler is usefull for routes that want to hide information to the
     /// public.
+    void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      super.mandatoryAuth(req, res);
+    }
+
+    /// ditto
     AuthResult mandatoryAuth(HTTPServerRequest req) {
       auto pauth = "Authorization" in req.headers;
 
@@ -45,6 +50,11 @@ class BasicAuth(string realm): BaseAuthRouter {
     /// Auth handler that fails only if the auth fields are present and are not valid.
     /// This handler is usefull when a route should return different data when the user is
     /// logged in
+    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      super.permisiveAuth(req, res);
+    }
+
+    /// ditto
     AuthResult permisiveAuth(HTTPServerRequest req) {
       auto pauth = "Authorization" in req.headers;
 
@@ -60,7 +70,7 @@ class BasicAuth(string realm): BaseAuthRouter {
       return AuthResult.unauthorized;
     }
 
-    /// Respond with auth error
+    ///
     void respondUnauthorized(HTTPServerResponse res) {
       res.statusCode = HTTPStatus.unauthorized;
       res.contentType = "text/plain";
@@ -68,6 +78,7 @@ class BasicAuth(string realm): BaseAuthRouter {
       res.bodyWriter.write("Authorization required");
     }
 
+    ///
     void respondInvalidToken(HTTPServerResponse res) {
       respondUnauthorized(res);
     }

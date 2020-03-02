@@ -1,26 +1,28 @@
-module vibeauth.router.ember;
+module vibeauth.authenticators.EmberSimpleAuth;
 
 import vibe.inet.url;
 import vibe.http.router;
 import vibe.http.server;
 import vibe.data.json;
 
-import vibeauth.router.baseAuthRouter;
+import vibeauth.authenticators.BaseAuth;
 import vibeauth.router.responses;
 import vibeauth.collections.usercollection;
 import vibeauth.data.user;
 
 import std.datetime;
 
-/// Authentication for ember simple auth library
-class EmberSimpleAuth : BaseAuthRouter {
+/// Authentication using cookie storage for ember simple auth library.
+/// http://ember-simple-auth.com/
+class EmberSimpleAuth : BaseAuth {
 
-  ///
+  /// Instantiate the authenticator with an user collection
   this(UserCollection userCollection) {
     super(userCollection);
   }
 
-  AuthResult updateContext(HTTPServerRequest req, string bearer) {
+  ///
+  private AuthResult updateContext(HTTPServerRequest req, string bearer) {
     User user;
 
     try {
@@ -36,14 +38,14 @@ class EmberSimpleAuth : BaseAuthRouter {
   }
 
   override {
+    /// Auth handler that will fail if a successfull auth was not performed.
+    /// This handler is usefull for routes that want to hide information to the
+    /// public.
     void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
       super.mandatoryAuth(req, res);
     }
 
-    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
-      super.permisiveAuth(req, res);
-    }
-
+    /// ditto
     AuthResult mandatoryAuth(HTTPServerRequest req) {
       if(!req.hasValidEmberSession) {
         return AuthResult.unauthorized;
@@ -60,6 +62,14 @@ class EmberSimpleAuth : BaseAuthRouter {
       return updateContext(req, bearer);
     }
 
+    /// Auth handler that fails only if the auth fields are present and are not valid.
+    /// This handler is usefull when a route should return different data when the user is
+    /// logged in
+    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      super.permisiveAuth(req, res);
+    }
+
+    /// ditto
     AuthResult permisiveAuth(HTTPServerRequest req) {
       if("ember_simple_auth-session" !in req.cookies) {
         return AuthResult.success;
@@ -79,10 +89,12 @@ class EmberSimpleAuth : BaseAuthRouter {
       return updateContext(req, bearer);
     }
 
+    ///
     void respondUnauthorized(HTTPServerResponse res) {
       vibeauth.router.responses.respondUnauthorized(res);
     }
 
+    ///
     void respondInvalidToken(HTTPServerResponse res) {
       vibeauth.router.responses.respondUnauthorized(res, "Invalid token.");
     }
@@ -302,10 +314,12 @@ unittest {
     });
 }
 
+/// Checks if the request contains the `ember_simple_auth-session` cookie and the `User-Agent` header is set
 bool hasValidEmberSession(HTTPServerRequest req) {
   return "ember_simple_auth-session" in req.cookies && "User-Agent" in req.headers;
 }
 
+/// Extract the ember auth session data
 Json sessionData(HTTPServerRequest req) {
   Json data = Json.emptyObject;
 
