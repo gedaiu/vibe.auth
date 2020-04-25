@@ -102,8 +102,6 @@ class EmberSimpleAuth : BaseAuth {
 }
 
 version(unittest) {
-  import fluentasserts.vibe.request;
-  import fluentasserts.vibe.json;
   import fluent.asserts;
   import vibeauth.data.token;
   import vibeauth.collections.usermemory;
