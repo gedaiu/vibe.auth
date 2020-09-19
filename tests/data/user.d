@@ -44,6 +44,7 @@ unittest {
   assert("salt" in json, "It should contain the salt");
   assert("scopes" in json, "It should contain the scope");
   assert("tokens" in json, "It should contain the tokens");
+  assert("createdAt" in json, "It should contain the createdAt");
 }
 
 /// User data deserialization
@@ -56,6 +57,7 @@ unittest {
     "password": "password",
     "salt": "salt",
     "isActive": true,
+    "createdAt": "2000-01-01T00:00:00",
     "scopes": ["scopes"],
     "tokens": [ { "name": "token", "expire": "2100-01-01T00:00:00", "scopes": [], "type": "Bearer" }],
   }`.parseJsonString;
@@ -68,11 +70,25 @@ unittest {
   assert(user.name == "name", "It should deserialize the name");
   assert(user.username == "username", "It should deserialize the username");
   assert(user.email == "test@asd.asd", "It should deserialize the email");
-  assert(juser["password"] == "password", "It should deserialize the password");
-  assert(juser["salt"] == "salt", "It should deserialize the salt");
-  assert(juser["isActive"] == true, "It should deserialize the isActive field");
-  assert(juser["scopes"][0] == "scopes", "It should deserialize the scope");
-  assert(juser["tokens"][0]["name"] == "token", "It should deserialize the tokens");
+
+  juser.should.equal(`{
+    "email": "test@asd.asd",
+    "username": "username",
+    "lastActivity": 0,
+    "scopes": [ "scopes" ],
+    "isActive": true,
+    "createdAt": "2000-01-01T00:00:00",
+    "salt": "salt",
+    "name": "name",
+    "_id": "1",
+    "password": "password",
+    "tokens": [{
+      "scopes": [],
+      "type": "Bearer",
+      "meta": {},
+      "expire": "2100-01-01T00:00:00",
+      "name": "token"
+    }]}`.parseJsonString);
 }
 
 /// Change event

@@ -10,6 +10,7 @@ module vibeauth.data.usermodel;
 
 import vibeauth.data.token;
 import vibe.data.json : optional;
+import std.datetime;
 
 /// User data used to manage an user
 struct UserModel {
@@ -33,6 +34,9 @@ struct UserModel {
 
   /// Flag used to determine if the user can perform any actions
   bool isActive;
+
+  ///
+  @optional SysTime createdAt;
 
   /// The timestamp of the users last activity
   @optional ulong lastActivity;
