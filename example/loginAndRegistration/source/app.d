@@ -24,7 +24,7 @@ const {
   ServiceConfiguration serviceConfiguration;
 }
 
-UserMemmoryCollection collection;
+UserMemoryCollection collection;
 
 void handler(HTTPServerRequest req, HTTPServerResponse res) {
   const auto style = serviceConfiguration.style;
@@ -56,7 +56,7 @@ shared static this()
   auto settings = new HTTPServerSettings;
   settings.port = 8888;
 
-  collection = new UserMemmoryCollection(["doStuff"]);
+  collection = new UserMemoryCollection(["doStuff"]);
 
   /// Generate some users
   foreach(i; 1..1_000) {

@@ -20,7 +20,7 @@ shared static this()
 
 	auto router = new URLRouter();
 
-	auto collection = new UserMemmoryCollection(["doStuff"]);
+	auto collection = new UserMemoryCollection(["doStuff"]);
 
 	auto configurationJson = readText("configuration.json").parseJsonString;
 
