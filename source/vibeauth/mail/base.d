@@ -287,14 +287,13 @@ version(unittest) class TestSMTPConfig : ISMTPConfig {
 	string password() { return ""; }
 	string username() { return ""; }
 
-	string from() { return ""; }
+	string from() { return "someone@service.com"; }
 }
 
 
 @("it should set the text and html reset password message")
 unittest {
 	auto config = EmailConfiguration();
-	//config.from = "someone@service.com";
 	config.resetPassword.subject = "subject";
 	config.resetPassword.text = "text";
 	config.resetPassword.html = "html";
