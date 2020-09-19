@@ -17,6 +17,8 @@ import std.algorithm;
 import std.uuid;
 import std.array;
 
+import vibe.crypto.cryptorand;
+
 import vibe.data.json;
 
 /// Class used to manage one user
@@ -194,7 +196,11 @@ class User {
 
   /// Change the user password
   void setPassword(string password) {
-    userData.salt = randomUUID.to!string;
+    ubyte[16] secret;
+    secureRNG.read(secret[]);
+    auto uuid = UUID(secret);
+
+    userData.salt = uuid.to!string;
     userData.password = sha1UUID(userData.salt ~ "." ~ password).to!string;
     userData.lastActivity = Clock.currTime.toUnixTime!long;
 
@@ -237,7 +243,11 @@ class User {
 
   /// Create an user token
   Token createToken(SysTime expire, string[] scopes = [], string type = "Bearer", string[string] meta = null) {
-    auto token = Token(randomUUID.to!string, expire, scopes, type, meta);
+    ubyte[16] secret;
+    secureRNG.read(secret[]);
+    auto uuid = UUID(secret);
+
+    auto token = Token(uuid.to!string, expire, scopes, type, meta);
     userData.tokens ~= token;
 
     if(onChange) {
