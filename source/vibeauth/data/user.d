@@ -194,6 +194,19 @@ class User {
     }
   }
 
+  void removeExpiredTokens() {
+    auto now = Clock.currTime;
+    auto newTokenList = userData.tokens.filter!(a => a.expire > now).array;
+
+    if(newTokenList.length != userData.tokens.length) {
+      userData.tokens = newTokenList;
+
+      if(onChange) {
+        onChange(this);
+      }
+    }
+  }
+
   /// Change the user password
   void setPassword(string password) {
     ubyte[16] secret;
