@@ -65,7 +65,7 @@ final class PasswordGrantAccess : IGrantAccess {
 
 
     auto accessToken = collection.createToken(data.username, Clock.currTime + 3601.seconds, data.scopes, "Bearer");
-    auto refreshToken = collection.createToken(data.username, Clock.currTime + 30.weeks, data.scopes ~ [ "refresh" ], "Refresh");
+    auto refreshToken = collection.createToken(data.username, Clock.currTime + 4.weeks, data.scopes ~ [ "refresh" ], "Refresh");
 
     response["access_token"] = accessToken.name;
     response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
