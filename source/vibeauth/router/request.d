@@ -23,19 +23,19 @@ const struct RequestUserData {
       }
     }
 
-    foreach(string key, value; req.query) {
-      value = value.strip;
+    foreach(pair; req.query.byKeyValue) {
+      auto value = pair.value.strip;
 
       if(value.length > 0) {
-        data[key] = value;
+        data[pair.key] = value;
       }
     }
 
-    foreach(string key, value; req.form) {
-      value = value.strip;
+    foreach(pair; req.form.byKeyValue) {
+      auto value = pair.value.strip;
 
       if(value.length > 0) {
-        data[key] = value;
+        data[pair.key] = value;
       }
     }
 
