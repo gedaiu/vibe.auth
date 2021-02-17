@@ -99,14 +99,59 @@ class User {
       }
     }
 
-    /// Get the user real name
-    auto name() const {
-      return userData.name;
+    /// Get the user title
+    auto salutation() const {
+      return userData.salutation;
     }
 
-    /// Set the user real name
-    void name(string value) {
-      userData.name = value;
+    /// Set the user title
+    void salutation(string value) {
+      userData.salutation = value;
+      userData.lastActivity = Clock.currTime.toUnixTime!long;
+
+      if(onChange) {
+        onChange(this);
+      }
+    }
+
+    /// Get the user title
+    auto title() const {
+      return userData.title;
+    }
+
+    /// Set the user title
+    void title(string value) {
+      userData.title = value;
+      userData.lastActivity = Clock.currTime.toUnixTime!long;
+
+      if(onChange) {
+        onChange(this);
+      }
+    }
+
+    /// Get the user first name
+    auto firstName() const {
+      return userData.firstName;
+    }
+
+    /// Set the user first name
+    void firstName(string value) {
+      userData.firstName = value;
+      userData.lastActivity = Clock.currTime.toUnixTime!long;
+
+      if(onChange) {
+        onChange(this);
+      }
+    }
+
+    /// Get the user last name
+    auto lastName() const {
+      return userData.lastName;
+    }
+
+    /// Set the user last name
+    void lastName(string value) {
+      userData.lastName = value;
       userData.lastActivity = Clock.currTime.toUnixTime!long;
 
       if(onChange) {
@@ -281,7 +326,10 @@ class User {
     Json data = Json.emptyObject;
 
     data["id"] = id;
-    data["name"] = name;
+    data["salutation"] = salutation;
+    data["title"] = title;
+    data["firstName"] = firstName;
+    data["lastName"] = lastName;
     data["username"] = username;
     data["email"] = email;
     data["scopes"] = Json.emptyArray;

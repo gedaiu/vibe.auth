@@ -24,7 +24,10 @@ unittest {
   auto json = user.toPublicJson;
 
   assert("id" in json, "It should contain the id");
-  assert("name" in json, "It should contain the name");
+  assert("firstName" in json, "It should contain the first name");
+  assert("lastName" in json, "It should contain the last name");
+  assert("salutation" in json, "It should contain the salutation");
+  assert("title" in json, "It should contain the title");
   assert("username" in json, "It should contain the username");
   assert("email" in json, "It should contain the email");
   assert("password" !in json, "It should not contain the password");
@@ -51,7 +54,10 @@ unittest {
 unittest {
   auto json = `{
     "_id": "1",
-    "name": "name",
+    "firstName": "firstName",
+    "lastName": "lastName",
+    "title": "title",
+    "salutation": "salutation",
     "username": "username",
     "email": "test@asd.asd",
     "password": "password",
@@ -64,14 +70,16 @@ unittest {
 
 
   auto user = User.fromJson(json);
-  auto juser = user.toJson;
 
-  assert(user.id == "1", "It should deserialize the id");
-  assert(user.name == "name", "It should deserialize the name");
-  assert(user.username == "username", "It should deserialize the username");
-  assert(user.email == "test@asd.asd", "It should deserialize the email");
+  user.id.should.equal("1");
+  user.firstName.should.equal("firstName");
+  user.lastName.should.equal("lastName");
+  user.title.should.equal("title");
+  user.salutation.should.equal("salutation");
+  user.username.should.equal("username");
+  user.email.should.equal("test@asd.asd");
 
-  juser.should.equal(`{
+  user.toJson.should.equal(`{
     "email": "test@asd.asd",
     "username": "username",
     "lastActivity": 0,
@@ -79,7 +87,10 @@ unittest {
     "isActive": true,
     "createdAt": "2000-01-01T00:00:00",
     "salt": "salt",
-    "name": "name",
+    "firstName": "firstName",
+    "lastName": "lastName",
+    "title": "title",
+    "salutation": "salutation",
     "_id": "1",
     "password": "password",
     "tokens": [{

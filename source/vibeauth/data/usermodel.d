@@ -17,8 +17,19 @@ struct UserModel {
   /// The user id
   string _id;
 
-  ///
-  string name;
+  @optional {
+    /// The users salutation eg. mr/ms or unset
+    string salutation;
+
+    /// The users title eg. dr
+    string title;
+  }
+
+  /// The users first name
+  string firstName;
+
+  /// The users last name
+  string lastName;
 
   ///
   string username;

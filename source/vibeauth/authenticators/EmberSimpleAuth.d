@@ -118,7 +118,8 @@ version(unittest) {
 
     collection = new UserMemoryCollection(["doStuff"]);
     user = new User("user@gmail.com", "password");
-    user.name = "John Doe";
+    user.firstName = "John";
+    user.lastName = "Doe";
     user.username = "test";
     user.id = 1;
 

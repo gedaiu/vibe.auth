@@ -43,11 +43,12 @@ unittest {
 unittest {
   auto collection = new UserMemoryCollection([]);
   auto user = new User("user", "password");
+  user.firstName = "firstName";
 
   collection.add(user);
   auto token = user.createToken(Clock.currTime + 3600.seconds);
 
-  collection.byToken(token.name).name.should.equal(user.name).because("It should find user by token");
+  collection.byToken(token.name).firstName.should.equal(user.firstName).because("It should find user by token");
 
   ({
     collection.byToken("token");
