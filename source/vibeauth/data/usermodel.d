@@ -23,13 +23,16 @@ struct UserModel {
 
     /// The users title eg. dr
     string title;
+
+    /// The users first name
+    string firstName;
+
+    /// The users last name
+    string lastName;
+
+    /// the person's name
+    deprecated string name;
   }
-
-  /// The users first name
-  string firstName;
-
-  /// The users last name
-  string lastName;
 
   ///
   string username;

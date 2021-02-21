@@ -92,6 +92,7 @@ unittest {
     "title": "title",
     "salutation": "salutation",
     "_id": "1",
+    "lastActivity": 0,
     "password": "password",
     "tokens": [{
       "scopes": [],

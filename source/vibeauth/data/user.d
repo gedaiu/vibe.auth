@@ -318,7 +318,11 @@ class User {
   /// Convert the object to a json. It's not safe to share this value
   /// with the outside world. Use it to store the user to db.
   Json toJson() const {
-    return userData.serializeToJson;
+    auto result = userData.serializeToJson;
+
+    result.remove("name");
+
+    return result;
   }
 
   /// Convert the object to a json that can be shared with the outside world
@@ -332,6 +336,7 @@ class User {
     data["lastName"] = lastName;
     data["username"] = username;
     data["email"] = email;
+    data["lastActivity"] = lastActivity;
     data["scopes"] = Json.emptyArray;
 
     foreach(s; userData.scopes) {
@@ -345,6 +350,10 @@ class User {
   static User fromJson(Json data) {
     if(data["lastActivity"].type != Json.Type.Int) {
       data["lastActivity"] = 0;
+    }
+
+    if(data["name"].type == Json.Type.string && data["name"] != "") {
+      data["firstName"] = data["name"];
     }
 
     return new User(data.deserializeJson!UserModel);
