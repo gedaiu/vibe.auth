@@ -29,9 +29,6 @@ struct UserModel {
 
     /// The users last name
     string lastName;
-
-    /// the person's name
-    deprecated string name;
   }
 
   ///
@@ -60,4 +57,10 @@ struct UserModel {
 
   /// A list of active tokens
   Token[] tokens;
+
+  string name() {
+    return this.firstName ~ " " ~ this.lastName;
+  }
+
+  void name(string) {}
 }
