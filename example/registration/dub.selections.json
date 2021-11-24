@@ -12,7 +12,7 @@
 		"libevent": "2.0.2+2.0.16",
 		"memutils": "0.4.10",
 		"openssl": "1.1.6+1.0.1g",
-		"stdx-allocator": "2.77.0",
+		"stdx-allocator": "3.0.2",
 		"taggedalgebraic": "0.10.11",
 		"trial": "0.7.0-alpha.5",
 		"vibe-auth": {"path":"../../"},

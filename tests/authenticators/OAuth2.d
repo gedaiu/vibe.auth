@@ -92,7 +92,7 @@ unittest {
     .request.get("/email")
     .header("Authorization", "Bearer " ~ bearerToken.name)
     .expectStatusCode(200)
-    .end((Response response) => {
+    .end((Response response) => () {
       response.bodyString.should.equal("user@gmail.com");
     });
 }
@@ -126,7 +126,7 @@ unittest {
     .request.get("/email")
     .header("Authorization", "Bearer " ~ bearerToken.name)
     .expectStatusCode(200)
-    .end((Response response) => {
+    .end((Response response) => () {
       response.bodyString.should.equal("user@gmail.com");
     });
 }
@@ -148,7 +148,7 @@ unittest {
     .request.post("/auth/token")
     .send(["grant_type": "password", "username": "invalid", "password": "invalid"])
     .expectStatusCode(401)
-    .end((Response response) => {
+    .end((Response response) => () {
       response.bodyJson.should.equal(`{ "error": "Invalid password or username" }`.parseJsonString);
     });
 }
@@ -160,7 +160,7 @@ unittest {
     .post("/auth/token")
     .send(["grant_type": "password", "username": "user@gmail.com", "password": "password"])
     .expectStatusCode(200)
-    .end((Response response) => {
+    .end((Response response) => () {
       response.bodyJson.keys.should.contain(["access_token", "expires_in", "refresh_token", "token_type"]);
 
       user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
@@ -178,7 +178,7 @@ unittest {
     .post("/auth/token")
     .send(["grant_type": "password", "username": "test", "password": "password"])
     .expectStatusCode(200)
-    .end((Response response) => {
+    .end((Response response) => () {
       response.bodyJson.keys.should.contain(["access_token", "expires_in", "refresh_token", "token_type"]);
 
       user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
@@ -196,7 +196,7 @@ unittest {
     .post("/auth/token")
     .send(["grant_type": "password", "username": "user@gmail.com", "password": "password", "scope": "access1 access2"])
     .expectStatusCode(200)
-    .end((Response response) => {
+    .end((Response response) => () {
       user.isValidToken(response.bodyJson["refresh_token"].to!string, "refresh").should.equal(true);
       user.isValidToken(response.bodyJson["refresh_token"].to!string, "other").should.equal(false);
 
@@ -215,7 +215,7 @@ unittest {
     .post("/auth/token")
     .send(["grant_type": "refresh_token", "refresh_token": refreshToken.name ])
     .expectStatusCode(200)
-    .end((Response response) => {
+    .end((Response response) => () {
       response.bodyJson.keys.should.contain(["access_token", "expires_in", "token_type"]);
 
       user.isValidToken(response.bodyJson["access_token"].to!string).should.be.equal(true);
@@ -257,7 +257,7 @@ unittest {
     .request
     .post("/auth/revoke")
     .expectStatusCode(400)
-    .end((Response response) => {
+    .end((Response response) => () {
       response.bodyJson.should.equal("{
         \"error\": \"You must provide a `token` parameter.\"
       }".parseJsonString);

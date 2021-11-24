@@ -224,7 +224,7 @@ unittest {
     .header("User-Agent", "something")
     .header("Cookie", "ember_simple_auth-session=%7B%22authenticated%22%3A%7B%22access_token%22%3A%22" ~ bearerToken.name ~ "%22%7D%7D")
     .expectStatusCode(200)
-    .end((Response response) => {
+    .end((Response response) => () {
       response.bodyString.should.equal("user@gmail.com");
     });
 }
@@ -308,7 +308,7 @@ unittest {
     .header("User-Agent", "something")
     .header("Cookie", "ember_simple_auth-session=%7B%22authenticated%22%3A%7B%22access_token%22%3A%22" ~ bearerToken.name ~ "%22%7D%7D")
     .expectStatusCode(200)
-    .end((Response response) => {
+    .end((Response response) => () {
       response.bodyString.should.equal("user@gmail.com");
     });
 }
