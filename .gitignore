@@ -21,3 +21,4 @@ trial_root.d
 example/loginAndRegistration/tmp/
 tmp/
 .trial
+vibe-auth-test-unittest

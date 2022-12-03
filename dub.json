@@ -11,18 +11,25 @@
 	},
 	"configurations": [
 		{
-			"name": "trial",
-
-			"sourcePaths": ["source/", "tests"],
-			"importPaths": ["source/", "tests"],
-
+			"name": "unittest",
+			"targetType": "autodetect",
+			"excludedSourceFiles": [
+				"source/app.d"
+			],
+			"sourcePaths": [
+				"source",
+				"tests"
+			],
+			"importPaths": [
+				"source",
+				"tests"
+			],
 			"dependencies": {
-				"vibe-d": "*",
-        "fluent-asserts": "~>0.13.3",
-        "fluent-asserts-vibe": "~>0.1.3"
+				"fluent-asserts": "*",
+				"fluent-asserts-vibe": "*",
+				"trial": "0.8.0-beta.3"
 			},
 			"versions": [
-				"VibeUseOpenSSL11",
 				"JsonLineNumbers",
 				"VibeJsonFieldNames"
 			]
