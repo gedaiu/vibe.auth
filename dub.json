@@ -27,7 +27,7 @@
 			"dependencies": {
 				"fluent-asserts": "*",
 				"fluent-asserts-vibe": "*",
-				"trial": "0.8.0-beta.3"
+				"trial": "0.8.0-beta.4"
 			},
 			"versions": [
 				"JsonLineNumbers",
