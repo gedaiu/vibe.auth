@@ -10,7 +10,7 @@
 		"libdparse": "0.20.0",
 		"memutils": "1.0.4",
 		"mir-linux-kernel": "1.0.1",
-		"openssl": "3.2.2",
+		"openssl": "3.3.0",
 		"stdx-allocator": "2.77.5",
 		"taggedalgebraic": "0.11.22",
 		"trial": "0.8.0-beta.4",
