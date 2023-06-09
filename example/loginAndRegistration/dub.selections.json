@@ -6,7 +6,7 @@
 		"ddmp": "0.0.1-0.dev.3",
 		"diet-ng": "1.4.5",
 		"eventcore": "0.8.35",
-		"fluent-asserts": "0.13.3",
+		"fluent-asserts": "1.0.0",
 		"libasync": "0.8.3",
 		"libdparse": "0.8.7",
 		"libevent": "2.0.2+2.0.16",
