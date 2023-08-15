@@ -348,7 +348,7 @@ class User {
 
   /// Restore the user from a json value
   static User fromJson(Json data) {
-    if(data["lastActivity"].type != Json.Type.Int) {
+    if(data["lastActivity"].type != Json.Type.int_) {
       data["lastActivity"] = 0;
     }
 
