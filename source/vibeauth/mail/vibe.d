@@ -45,12 +45,12 @@ class VibeMailQueue : MailQueue {
 		return smtpSettings;
 	}
 
-	override void addMessage(Message message) {
+	override void addMessage(SmtpMessage message) {
 		logDebug("Adding a new email to the MailQueue: %s", messages.serializeToJsonString);
 		send(message);
 	}
 
-	private void send(Message message) {
+	private void send(SmtpMessage message) {
 
 		foreach(to; message.to) {
 			Mail email = new Mail;

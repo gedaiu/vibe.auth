@@ -57,16 +57,16 @@ struct EmailConfiguration {
 }
 
 interface IMailSender {
-	bool send(Message);
+	bool send(SmtpMessage);
 }
 interface IMailQueue {
-	void addMessage(Message);
+	void addMessage(SmtpMessage);
 	void addActivationMessage(string email, Token token, string[string] variables);
 	void addResetPasswordMessage(string email, Token token, string[string] variables);
 	void addResetPasswordConfirmationMessage(string email, string[string] variables);
 }
 
-struct Message {
+struct SmtpMessage {
 	string from;
 	string[] to;
 	string subject;
@@ -119,7 +119,7 @@ struct Message {
 
 /// it should add the multipart header if text and html message is present
 unittest {
-	auto message = Message();
+	auto message = SmtpMessage();
 	message.textMessage = "text";
 	message.htmlMessage = "html";
 
@@ -129,7 +129,7 @@ unittest {
 
 /// it should not add the multipart header if the html message is missing
 unittest {
-	auto message = Message();
+	auto message = SmtpMessage();
 	message.textMessage = "text";
 
 	message.headers.length.should.be.equal(0);
@@ -137,8 +137,8 @@ unittest {
 
 /// it should generate an unique boundary
 unittest {
-	auto message1 = Message();
-	auto message2 = Message();
+	auto message1 = SmtpMessage();
+	auto message2 = SmtpMessage();
 
 	message1.boundary.should.not.equal("");
 	message1.boundary.should.not.be.equal(message2.boundary);
@@ -148,7 +148,7 @@ unittest {
 
 /// body should contain only the text message when html is missing
 unittest {
-	auto message = Message();
+	auto message = SmtpMessage();
 	message.textMessage = "text";
 
 	message.mailBody.should.equal("text");
@@ -156,7 +156,7 @@ unittest {
 
 /// body should contain a mime body
 unittest {
-	auto message = Message();
+	auto message = SmtpMessage();
 	message.textMessage = "text";
 	message.htmlMessage = "html";
 
@@ -175,7 +175,7 @@ unittest {
 class MailQueue : IMailQueue {
 
 	protected {
-		Message[] messages;
+		SmtpMessage[] messages;
 		EmailConfiguration settings;
 	}
 
@@ -183,13 +183,13 @@ class MailQueue : IMailQueue {
 		this.settings = settings;
 	}
 
-	void addMessage(Message message) {
+	void addMessage(SmtpMessage message) {
 		logDebug("Adding a new email to the MailQueue: %s", messages.serializeToJsonString);
 		messages ~= message;
 	}
 
 	private void addMessage(MailTemplate mailTemplate, string email, string[string] variables) {
-		Message message;
+		SmtpMessage message;
 
 		message.to ~= email;
 		message.from = settings.smtp.from;
@@ -247,7 +247,7 @@ version(unittest) {
 			super(config);
 		}
 
-		auto lastMessage() {
+		auto SmtpMessage() {
 			return messages[0];
 		}
 	}

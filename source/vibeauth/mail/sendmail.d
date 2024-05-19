@@ -14,11 +14,11 @@ class SendMailQueue : MailQueue {
 		super(settings);
 	}
 
-	override void addMessage(Message message) {
+	override void addMessage(SmtpMessage message) {
 		send(message);
 	}
 
-	private void send(Message message) {
+	private void send(SmtpMessage message) {
 
 		foreach(to; message.to) {
 			// sendmail expects to read from stdin
