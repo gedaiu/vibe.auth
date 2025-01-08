@@ -318,12 +318,42 @@ bool hasValidEmberSession(HTTPServerRequest req) {
   return "ember_simple_auth-session" in req.cookies && "User-Agent" in req.headers;
 }
 
+bool isValidSession(string value) {
+  Json result;
+
+  try {
+    result = value.parseJsonString;
+  } catch(Exception) {
+    return false;
+  }
+
+  if(result.type != Json.Type.object) {
+    return false;
+  }
+
+  if("authenticated" !in result) {
+    return false;
+  }
+
+  if("access_token" in result["authenticated"]) {
+    return true;
+  }
+
+  return false;
+}
+
 /// Extract the ember auth session data
 Json sessionData(HTTPServerRequest req) {
   Json data = Json.emptyObject;
 
   try {
-    data = req.cookies["ember_simple_auth-session"].parseJsonString;
+    auto all = req.cookies.getAll("ember_simple_auth-session");
+
+    foreach(value; all) {
+      if(value.isValidSession) {
+        data = value.parseJsonString;
+      }
+    }
   } catch(Exception) {
     return Json();
   }
