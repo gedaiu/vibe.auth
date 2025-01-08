@@ -53,7 +53,15 @@ class EmberSimpleAuth : BaseAuth {
 
       Json data = req.sessionData;
 
-      if(data.type != Json.Type.object || "authenticated" !in data || "access_token" !in data["authenticated"]) {
+      if(data.type != Json.Type.object) {
+        return AuthResult.unauthorized;
+      }
+
+      if("authenticated" !in data) {
+        return AuthResult.unauthorized;
+      }
+
+      if( "access_token" !in data["authenticated"]) {
         return AuthResult.unauthorized;
       }
 
