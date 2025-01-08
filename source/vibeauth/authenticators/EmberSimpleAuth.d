@@ -347,7 +347,7 @@ bool isValidSession(string value) {
     return false;
   }
 
-  if(data["authenticated"].type != Json.Type.object) {
+  if(result["authenticated"].type != Json.Type.object) {
     return false;
   }
 
