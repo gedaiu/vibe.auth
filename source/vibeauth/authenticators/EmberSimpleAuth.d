@@ -61,7 +61,7 @@ class EmberSimpleAuth : BaseAuth {
         return AuthResult.unauthorized;
       }
 
-      if( "access_token" !in data["authenticated"]) {
+      if(data["authenticated"].type != Json.Type.object || "access_token" !in data["authenticated"]) {
         return AuthResult.unauthorized;
       }
 
@@ -86,10 +86,14 @@ class EmberSimpleAuth : BaseAuth {
       Json data = req.sessionData;
 
       if(data.type != Json.Type.object) {
-        return AuthResult.invalidToken;
+        return AuthResult.success;
       }
 
-      if("authenticated" in data && "access_token" !in data["authenticated"]) {
+      if("authenticated" !in data) {
+        return AuthResult.success;
+      }
+
+      if(data["authenticated"].type != Json.Type.object || "access_token" !in data["authenticated"]) {
         return AuthResult.success;
       }
 
@@ -340,6 +344,10 @@ bool isValidSession(string value) {
   }
 
   if("authenticated" !in result) {
+    return false;
+  }
+
+  if(data["authenticated"].type != Json.Type.object) {
     return false;
   }
 
