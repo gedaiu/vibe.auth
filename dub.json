@@ -9,6 +9,11 @@
 	"dependencies": {
 		"vibe-d": "~>0.9.0"
 	},
+  "subConfigurations": {
+    "describe-d": "library",
+    "open-api": "library",
+    "stemmer": "library"
+  },
 	"configurations": [
 		{
 			"name": "unittest",
