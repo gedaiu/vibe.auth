@@ -16,6 +16,10 @@
   },
 	"configurations": [
 		{
+			"name": "library",
+			"targetType": "library"
+		},
+		{
 			"name": "unittest",
 			"targetType": "autodetect",
 			"excludedSourceFiles": [
