@@ -35,7 +35,7 @@
 			],
 			"dependencies": {
 				"fluent-asserts": "*",
-				"fluent-asserts-vibe": "2.0.0-beta.4",
+				"fluent-asserts-vibe": "2.0.0-beta.6",
 				"trial": "1.0.0-beta.1"
 			},
 			"versions": [
