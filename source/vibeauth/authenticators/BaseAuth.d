@@ -47,14 +47,14 @@ abstract class BaseAuth {
   /// Auth handler that fails only if the auth fields are present and are not valid.
   /// This handler is usefull when a route should return different data when the user is
   /// logged in
-  void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+  void permissiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
     setAccessControl(res);
 
-    if(permisiveAuth(req) == AuthResult.unauthorized) {
+    if(permissiveAuth(req) == AuthResult.unauthorized) {
       respondUnauthorized(res);
     }
 
-    if(permisiveAuth(req) == AuthResult.invalidToken) {
+    if(permissiveAuth(req) == AuthResult.invalidToken) {
       respondInvalidToken(res);
     }
   }
@@ -68,7 +68,7 @@ abstract class BaseAuth {
     /// Auth handler that fails only if the auth fields are present and are not valid.
     /// This handler is usefull when a route should return different data when the user is
     /// logged in
-    AuthResult permisiveAuth(HTTPServerRequest req);
+    AuthResult permissiveAuth(HTTPServerRequest req);
 
     /// Set the response code and message to notify the client that it does not have
     /// rights to make the request

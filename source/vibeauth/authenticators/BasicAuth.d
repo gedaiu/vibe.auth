@@ -50,12 +50,12 @@ class BasicAuth(string realm) : BaseAuth {
     /// Auth handler that fails only if the auth fields are present and are not valid.
     /// This handler is usefull when a route should return different data when the user is
     /// logged in
-    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
-      super.permisiveAuth(req, res);
+    void permissiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      super.permissiveAuth(req, res);
     }
 
     /// ditto
-    AuthResult permisiveAuth(HTTPServerRequest req) {
+    AuthResult permissiveAuth(HTTPServerRequest req) {
       auto pauth = "Authorization" in req.headers;
 
       if(pauth && (*pauth).startsWith("Basic ")) {

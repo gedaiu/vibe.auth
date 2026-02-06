@@ -88,8 +88,8 @@ class OAuth2 : BaseAuth {
       super.mandatoryAuth(req, res);
     }
 
-    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
-      super.permisiveAuth(req, res);
+    void permissiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      super.permissiveAuth(req, res);
     }
 
     /// Auth handler that will fail if a successfull auth was not performed.
@@ -114,7 +114,7 @@ class OAuth2 : BaseAuth {
     /// Auth handler that fails only if the auth fields are present and are not valid.
     /// This handler is usefull when a route should return different data when the user is
     /// logged in
-    AuthResult permisiveAuth(HTTPServerRequest req) {
+    AuthResult permissiveAuth(HTTPServerRequest req) {
       if("Authorization" !in req.headers) {
         return AuthResult.success;
       }

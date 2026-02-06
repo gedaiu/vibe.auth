@@ -73,12 +73,12 @@ class EmberSimpleAuth : BaseAuth {
     /// Auth handler that fails only if the auth fields are present and are not valid.
     /// This handler is usefull when a route should return different data when the user is
     /// logged in
-    void permisiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
-      super.permisiveAuth(req, res);
+    void permissiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
+      super.permissiveAuth(req, res);
     }
 
     /// ditto
-    AuthResult permisiveAuth(HTTPServerRequest req) {
+    AuthResult permissiveAuth(HTTPServerRequest req) {
       if("ember_simple_auth-session" !in req.cookies) {
         return AuthResult.success;
       }
@@ -144,7 +144,7 @@ version(unittest) {
     if(requireLogin) {
       router.any("*", &auth.mandatoryAuth);
     } else {
-      router.any("*", &auth.permisiveAuth);
+      router.any("*", &auth.permissiveAuth);
     }
 
     void handleRequest(HTTPServerRequest req, HTTPServerResponse res) {
@@ -241,12 +241,12 @@ unittest {
     });
 }
 
-/// with permisive auth it should return 200 on missing cookie or useragent
+/// with permissive auth it should return 200 on missing cookie or useragent
 unittest {
   testRouter(false).request.get("/sites").expectStatusCode(200).end();
 }
 
-/// with permisive auth it should return 401 on invalid json
+/// with permissive auth it should return 401 on invalid json
 unittest {
   testRouter(false)
     .request.get("/sites")
@@ -256,7 +256,7 @@ unittest {
     .end;
 }
 
-/// with permisive auth it should return 401 on invalid credentials
+/// with permissive auth it should return 401 on invalid credentials
 unittest {
   testRouter(false)
     .request.get("/sites")
@@ -266,7 +266,7 @@ unittest {
     .end;
 }
 
-/// with permisive auth it should return 200 on missing user agent
+/// with permissive auth it should return 200 on missing user agent
 unittest {
   testRouter(false)
     .request.get("/sites")
@@ -275,7 +275,7 @@ unittest {
     .end;
 }
 
-/// with permisive auth it should return 200 on missing token
+/// with permissive auth it should return 200 on missing token
 unittest {
   testRouter(false)
     .request.get("/sites")
@@ -284,7 +284,7 @@ unittest {
     .end;
 }
 
-/// with permisive auth it should return 200 on missing ember_simple_auth-session cookie
+/// with permissive auth it should return 200 on missing ember_simple_auth-session cookie
 unittest {
   testRouter(false)
     .request.get("/sites")
@@ -293,7 +293,7 @@ unittest {
     .end;
 }
 
-/// with permisive auth it should return 200 on valid credentials
+/// with permissive auth it should return 200 on valid credentials
 unittest {
   testRouter(false)
     .request.get("/sites")
@@ -303,7 +303,7 @@ unittest {
     .end;
 }
 
-/// with permisive auth it should return 200 on missing authenticated keys
+/// with permissive auth it should return 200 on missing authenticated keys
 unittest {
   testRouter(false)
     .request.get("/sites")
@@ -313,7 +313,7 @@ unittest {
     .end;
 }
 
-/// with permisive auth it should set the email on valid credentials
+/// with permissive auth it should set the email on valid credentials
 unittest {
   testRouter(false)
     .request.get("/email")

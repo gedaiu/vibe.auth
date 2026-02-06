@@ -47,7 +47,7 @@ version(unittest) {
     if(requireLogin) {
       router.any("*", &auth.mandatoryAuth);
     } else {
-      router.any("*", &auth.permisiveAuth);
+      router.any("*", &auth.permissiveAuth);
     }
 
 
