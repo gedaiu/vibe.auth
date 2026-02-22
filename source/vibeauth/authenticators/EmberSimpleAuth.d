@@ -325,6 +325,28 @@ unittest {
     });
 }
 
+/// with mandatory auth it should return 401 (not 400) on empty cookie value
+unittest {
+  auto router = testRouter;
+
+  router
+    .request.get("/sites")
+    .header("User-Agent", "something")
+    .header("Cookie", "ember_simple_auth-session=")
+    .expectStatusCode(401)
+    .end;
+}
+
+/// with permissive auth it should return 200 on empty cookie value
+unittest {
+  testRouter(false)
+    .request.get("/sites")
+    .header("User-Agent", "something")
+    .header("Cookie", "ember_simple_auth-session=")
+    .expectStatusCode(200)
+    .end;
+}
+
 /// Checks if the request contains the `ember_simple_auth-session` cookie and the `User-Agent` header is set
 bool hasValidEmberSession(HTTPServerRequest req) {
   return "ember_simple_auth-session" in req.cookies && "User-Agent" in req.headers;
