@@ -1,7 +1,7 @@
 {
 	"name": "vibe-auth",
 	"description": "OAuth2 server for vibe.d",
-	"copyright": "Copyright © 2018-2020, Szabo Bogdan",
+	"copyright": "Copyright © 2018-2026, Szabo Bogdan",
 	"authors": [
 		"Szabo Bogdan"
 	],
@@ -34,9 +34,9 @@
 				"tests"
 			],
 			"dependencies": {
-				"fluent-asserts": "*",
-				"fluent-asserts-vibe": "2.0.0-beta.6",
-				"trial": "1.0.0-beta.1"
+				"fluent-asserts": "<3.0.0",
+				"fluent-asserts-vibe": "<3.0.0",
+				"trial": "<2.0.0"
 			},
 			"versions": [
 				"JsonLineNumbers",
