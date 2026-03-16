@@ -247,8 +247,8 @@ version(unittest) {
 			super(config);
 		}
 
-		auto SmtpMessage() {
-			return messages[0];
+		auto lastMessage() {
+			return messages[$ - 1];
 		}
 	}
 }

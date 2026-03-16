@@ -22,3 +22,4 @@ example/loginAndRegistration/tmp/
 tmp/
 .trial
 vibe-auth-test-unittest
+dub.selections.json

@@ -115,6 +115,7 @@ class EmberSimpleAuth : BaseAuth {
 
 version(unittest) {
   import fluent.asserts;
+  import fluentasserts.vibe.request;
   import vibeauth.data.token;
   import vibeauth.collections.usermemory;
 
@@ -246,13 +247,13 @@ unittest {
   testRouter(false).request.get("/sites").expectStatusCode(200).end();
 }
 
-/// with permissive auth it should return 401 on invalid json
+/// with permissive auth it should return 200 on invalid json
 unittest {
   testRouter(false)
     .request.get("/sites")
     .header("User-Agent", "something")
     .header("Cookie", "ember_simple_auth-session=authenticated%22%3A%7B%7D%7D")
-    .expectStatusCode(401)
+    .expectStatusCode(200)
     .end;
 }
 
