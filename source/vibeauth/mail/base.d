@@ -6,8 +6,8 @@ import std.array;
 import std.algorithm;
 import std.conv;
 
-import vibeauth.data.user;
-import vibeauth.data.token;
+import vibeauth.identity.user;
+import vibeauth.identity.token;
 
 import vibe.mail.smtp;
 import vibe.stream.tls;
