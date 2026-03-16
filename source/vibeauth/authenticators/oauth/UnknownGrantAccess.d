@@ -27,3 +27,21 @@ final class UnknownGrantAccess : IGrantAccess {
     return response;
   }
 }
+
+version(unittest) {
+  import fluent.asserts;
+}
+
+@("isValid always returns false")
+unittest {
+  auto grant = new UnknownGrantAccess();
+  grant.isValid.should.equal(false);
+}
+
+@("get returns invalid grant_type error")
+unittest {
+  auto grant = new UnknownGrantAccess();
+  auto response = grant.get;
+
+  response["error"].get!string.should.equal("Invalid `grant_type` value");
+}

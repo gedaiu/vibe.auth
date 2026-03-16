@@ -12,6 +12,7 @@ import std.typecons;
 import vibe.data.json;
 
 version(unittest) {
+  import fluent.asserts;
   import vibeauth.collections.usermemory;
   import vibeauth.data.user;
   import std.digest.sha;
@@ -118,7 +119,7 @@ unittest {
   data.code = "";
   grant.authData = data;
 
-  assert(!grant.isValid);
+  grant.isValid.should.equal(false);
 }
 
 @("isValid returns false when code does not exist in store")
@@ -130,7 +131,7 @@ unittest {
   data.code = "nonexistent-code";
   grant.authData = data;
 
-  assert(!grant.isValid);
+  grant.isValid.should.equal(false);
 }
 
 @("isValid returns false when redirect_uri does not match")
@@ -154,7 +155,7 @@ unittest {
   data.codeVerifier = verifier;
   grant.authData = data;
 
-  assert(!grant.isValid);
+  grant.isValid.should.equal(false);
 }
 
 @("isValid returns false when PKCE verifier does not match challenge")
@@ -177,7 +178,7 @@ unittest {
   data.codeVerifier = "wrong-verifier";
   grant.authData = data;
 
-  assert(!grant.isValid);
+  grant.isValid.should.equal(false);
 }
 
 @("isValid returns true with valid code, redirect_uri, and PKCE verifier")
@@ -201,7 +202,7 @@ unittest {
   data.codeVerifier = verifier;
   grant.authData = data;
 
-  assert(grant.isValid);
+  grant.isValid.should.equal(true);
 }
 
 @("get returns error JSON when validation fails")
@@ -214,7 +215,7 @@ unittest {
   grant.authData = data;
 
   auto response = grant.get;
-  assert(response["error"].get!string == "Invalid authorization code or PKCE verification failed");
+  response["error"].get!string.should.equal("Invalid authorization code or PKCE verification failed");
 }
 
 @("get returns access and refresh tokens on valid authorization code")
@@ -241,10 +242,10 @@ unittest {
 
   auto response = grant.get;
 
-  assert(response["access_token"].type == Json.Type.string);
-  assert(response["refresh_token"].type == Json.Type.string);
-  assert(response["token_type"].get!string == "Bearer");
-  assert(response["expires_in"].get!long > 0);
+  (response["access_token"].type == Json.Type.string).should.equal(true);
+  (response["refresh_token"].type == Json.Type.string).should.equal(true);
+  response["token_type"].get!string.should.equal("Bearer");
+  (response["expires_in"].get!long > 0).should.equal(true);
 }
 
 @("isValid consumes code so it cannot be reused")
@@ -267,12 +268,12 @@ unittest {
   data.codeVerifier = verifier;
   grant1.authData = data;
 
-  assert(grant1.isValid);
+  grant1.isValid.should.equal(true);
 
   auto grant2 = createTestGrant(store);
   grant2.authData = data;
 
-  assert(!grant2.isValid);
+  grant2.isValid.should.equal(false);
 }
 
 } // version(unittest)

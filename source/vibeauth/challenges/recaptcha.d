@@ -89,3 +89,30 @@ class ReCaptcha : IChallenge {
     return true;
   }
 }
+
+version(unittest) {
+  import fluent.asserts;
+  import std.algorithm : canFind;
+
+  class TestReCaptchaConfig : IReCaptchaConfig {
+    string siteKey() { return "test-site-key"; }
+    string secretKey() { return "test-secret"; }
+  }
+}
+
+@("getConfig returns JSON with siteKey")
+unittest {
+  auto captcha = new ReCaptcha(new TestReCaptchaConfig());
+  auto config = captcha.getConfig();
+
+  config["siteKey"].get!string.should.equal("test-site-key");
+}
+
+@("getTemplate contains siteKey in script")
+unittest {
+  auto captcha = new ReCaptcha(new TestReCaptchaConfig());
+  auto tpl = captcha.getTemplate("/challenge");
+
+  (tpl.length > 0).should.equal(true);
+  tpl.canFind("test-site-key").should.equal(true);
+}

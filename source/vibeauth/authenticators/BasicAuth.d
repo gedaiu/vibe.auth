@@ -5,6 +5,7 @@ import vibe.data.json;
 
 import std.algorithm.searching, std.base64, std.string, std.stdio;
 import vibeauth.authenticators.BaseAuth;
+import vibeauth.collections.usercollection;
 
 /// Basic auth credential pair
 struct BasicAuthCredentials {

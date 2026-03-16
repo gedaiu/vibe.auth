@@ -33,10 +33,12 @@ string generateAuthorizationCode() {
   return UUID(secret).to!string;
 }
 
+version(unittest) {
+  import fluent.asserts;
+}
+
 @("verifyPkce validates correct S256 challenge")
 unittest {
-  // code_verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-  // SHA256 of that, base64url-no-pad encoded
   auto verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
   auto hash = sha256Of(cast(const(ubyte)[]) verifier);
   string challenge = Base64URL.encode(hash[]).idup;
@@ -45,17 +47,17 @@ unittest {
     challenge = challenge[0 .. $ - 1];
   }
 
-  assert(verifyPkce(verifier, challenge, "S256"));
+  verifyPkce(verifier, challenge, "S256").should.equal(true);
 }
 
 @("verifyPkce rejects wrong verifier")
 unittest {
-  assert(!verifyPkce("wrong-verifier", "some-challenge", "S256"));
+  verifyPkce("wrong-verifier", "some-challenge", "S256").should.equal(false);
 }
 
 @("verifyPkce rejects unsupported method")
 unittest {
-  assert(!verifyPkce("verifier", "challenge", "plain"));
+  verifyPkce("verifier", "challenge", "plain").should.equal(false);
 }
 
 @("generateAuthorizationCode returns unique codes")
@@ -63,6 +65,6 @@ unittest {
   auto code1 = generateAuthorizationCode();
   auto code2 = generateAuthorizationCode();
 
-  assert(code1.length > 0);
-  assert(code1 != code2);
+  (code1.length > 0).should.equal(true);
+  code1.should.not.equal(code2);
 }

@@ -70,3 +70,91 @@ final class RefreshTokenGrantAccess : IGrantAccess {
     return response;
   }
 }
+
+version(unittest) {
+  import fluent.asserts;
+  import vibeauth.collections.usermemory;
+  import vibeauth.data.token;
+}
+
+@("isValid returns false when refresh token is empty")
+unittest {
+  auto grant = new RefreshTokenGrantAccess();
+
+  auto users = new UserMemoryCollection([]);
+  auto user = new User("user@gmail.com", "pass");
+  user.id = 1;
+  users.add(user);
+
+  AuthData data;
+  grant.userCollection = users;
+  grant.authData = data;
+
+  grant.isValid.should.equal(false);
+}
+
+@("isValid returns true with valid refresh token")
+unittest {
+  auto users = new UserMemoryCollection([]);
+  auto user = new User("user@gmail.com", "pass");
+  user.id = 1;
+  users.add(user);
+
+  auto token = users.createToken("user@gmail.com", Clock.currTime + 3600.seconds, ["read", "refresh"], "Refresh");
+
+  auto grant = new RefreshTokenGrantAccess();
+
+  AuthData data;
+  data.refreshToken = token.name;
+
+  grant.userCollection = users;
+  grant.authData = data;
+
+  grant.isValid.should.equal(true);
+}
+
+@("get returns error JSON when refresh token invalid")
+unittest {
+  auto grant = new RefreshTokenGrantAccess();
+
+  auto users = new UserMemoryCollection([]);
+  auto user = new User("user@gmail.com", "pass");
+  user.id = 1;
+  users.add(user);
+
+  AuthData data;
+  grant.userCollection = users;
+  grant.authData = data;
+
+  auto response = grant.get;
+  response["error"].get!string.should.equal("Invalid `refresh_token`");
+}
+
+@("get returns new access token without refresh scope")
+unittest {
+  auto users = new UserMemoryCollection([]);
+  auto user = new User("user@gmail.com", "pass");
+  user.id = 1;
+  users.add(user);
+
+  auto token = users.createToken("user@gmail.com", Clock.currTime + 3600.seconds, ["read", "write", "refresh"], "Refresh");
+
+  auto grant = new RefreshTokenGrantAccess();
+
+  AuthData data;
+  data.refreshToken = token.name;
+
+  grant.userCollection = users;
+  grant.authData = data;
+
+  auto response = grant.get;
+
+  (response["access_token"].type == Json.Type.string).should.equal(true);
+  response["token_type"].get!string.should.equal("Bearer");
+  (response["expires_in"].get!long > 0).should.equal(true);
+
+  auto accessTokenName = response["access_token"].get!string;
+  user.isValidToken(accessTokenName, "read").should.equal(true);
+  user.isValidToken(accessTokenName, "write").should.equal(true);
+  user.isValidToken(accessTokenName, "refresh").should.equal(false);
+}

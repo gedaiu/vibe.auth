@@ -310,3 +310,50 @@ unittest {
 	mailQueue.lastMessage.textMessage.should.be.equal("text");
 	mailQueue.lastMessage.htmlMessage.should.be.equal("html");
 }
+
+@("it should set the reset password confirmation message")
+unittest {
+	auto config = EmailConfiguration();
+	config.resetPasswordConfirmation.subject = "Password changed";
+	config.resetPasswordConfirmation.text = "Hello [user.name], password changed for [email]";
+	config.resetPasswordConfirmation.html = "<p>Hello [user.name]</p>";
+	config.smtp = new TestSMTPConfig();
+
+	auto mailQueue = new MailQueueMock(config);
+
+	string[string] variables;
+	variables["user.name"] = "John Doe";
+	mailQueue.addResetPasswordConfirmationMessage("user@gmail.com", variables);
+
+	mailQueue.lastMessage.to[0].should.be.equal("user@gmail.com");
+	mailQueue.lastMessage.subject.should.be.equal("Password changed");
+	mailQueue.lastMessage.textMessage.should.be.equal("Hello John Doe, password changed for user@gmail.com");
+	mailQueue.lastMessage.htmlMessage.should.be.equal("<p>Hello John Doe</p>");
+}
+
+@("replaceVariables substitutes all occurrences")
+unittest {
+	auto config = EmailConfiguration();
+	config.smtp = new TestSMTPConfig();
+	auto mailQueue = new MailQueueMock(config);
+
+	string[string] vars;
+	vars["name"] = "Alice";
+	vars["action"] = "login";
+
+	auto result = mailQueue.replaceVariables("Hello [name], your [action] was successful", vars);
+	result.should.be.equal("Hello Alice, your login was successful");
+}
+
+@("replaceVariables leaves unmatched placeholders intact")
+unittest {
+	auto config = EmailConfiguration();
+	config.smtp = new TestSMTPConfig();
+	auto mailQueue = new MailQueueMock(config);
+
+	string[string] vars;
+	vars["name"] = "Bob";
+
+	auto result = mailQueue.replaceVariables("[name] has [unknown] placeholder", vars);
+	result.should.be.equal("Bob has [unknown] placeholder");
+}

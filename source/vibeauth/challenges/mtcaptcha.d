@@ -79,3 +79,26 @@ class MtCaptcha : IChallenge {
     return true;
   }
 }
+
+version(unittest) {
+  import fluent.asserts;
+
+  class TestMtCaptchaConfig : IMtCaptchaConfig {
+    string siteKey() { return "mt-site-key"; }
+    string privateKey() { return "mt-private-key"; }
+  }
+}
+
+@("getConfig returns JSON with siteKey")
+unittest {
+  auto captcha = new MtCaptcha(new TestMtCaptchaConfig());
+  auto config = captcha.getConfig();
+
+  config["siteKey"].get!string.should.equal("mt-site-key");
+}
+
+@("getTemplate returns empty string")
+unittest {
+  auto captcha = new MtCaptcha(new TestMtCaptchaConfig());
+  captcha.getTemplate("/challenge").should.equal("");
+}

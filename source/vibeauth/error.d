@@ -35,3 +35,22 @@ class UserNotFoundException : ItemNotFoundException {
     super(msg, file, line, next);
   }
 }
+
+version(unittest) {
+  import fluent.asserts;
+}
+
+@("UserNotFoundException is an ItemNotFoundException")
+unittest {
+  try {
+    throw new UserNotFoundException("not found");
+  } catch (ItemNotFoundException e) {
+    e.msg.should.equal("not found");
+  }
+}
+
+@("exception message propagates correctly")
+unittest {
+  auto e = new UserAccesNotFoundException("bad access");
+  e.msg.should.equal("bad access");
+}

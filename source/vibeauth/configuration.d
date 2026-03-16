@@ -22,3 +22,15 @@ struct ServiceConfiguration {
   /// Login cookie expiration time
   ulong loginTimeoutSeconds = 86_400;
 }
+
+@("default name is Unknown App")
+unittest {
+  ServiceConfiguration config;
+  config.name.should.equal("Unknown App");
+}
+
+@("default loginTimeoutSeconds is 86400")
+unittest {
+  ServiceConfiguration config;
+  config.loginTimeoutSeconds.should.equal(86_400);
+}

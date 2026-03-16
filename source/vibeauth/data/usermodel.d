@@ -64,3 +64,35 @@ struct UserModel {
 
   void name(string) {}
 }
+
+version(unittest) {
+  import fluent.asserts;
+}
+
+@("name returns firstName concatenated with lastName")
+unittest {
+  UserModel m;
+  m.firstName = "John";
+  m.lastName = "Doe";
+
+  m.name.should.equal("John Doe");
+}
+
+@("name returns space when names are empty")
+unittest {
+  UserModel m;
+  m.name.should.equal(" ");
+}
+
+@("default field values are empty")
+unittest {
+  UserModel m;
+
+  m._id.should.equal("");
+  m.email.should.equal("");
+  m.password.should.equal("");
+  m.salt.should.equal("");
+  m.isActive.should.equal(false);
+  m.scopes.length.should.equal(0);
+  m.tokens.length.should.equal(0);
+}

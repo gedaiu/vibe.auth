@@ -25,3 +25,21 @@ class Client {
   /// Client url
   string website;
 }
+
+version(unittest) {
+  import fluent.asserts;
+}
+
+@("client fields are assignable")
+unittest {
+  auto c = new Client();
+  c.id = "app1";
+  c.name = "My App";
+  c.description = "A test app";
+  c.website = "https://example.com";
+
+  c.id.should.equal("app1");
+  c.name.should.equal("My App");
+  c.description.should.equal("A test app");
+  c.website.should.equal("https://example.com");
+}

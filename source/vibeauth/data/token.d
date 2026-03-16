@@ -27,3 +27,29 @@ struct Token {
   /// some metadata
   @optional string[string] meta;
 }
+
+version(unittest) {
+  import fluent.asserts;
+}
+
+@("token fields are assignable")
+unittest {
+  Token t;
+  t.name = "abc123";
+  t.expire = Clock.currTime + 3600.seconds;
+  t.scopes = ["read", "write"];
+  t.type = "Bearer";
+
+  t.name.should.equal("abc123");
+  t.scopes.length.should.equal(2);
+  t.type.should.equal("Bearer");
+}
+
+@("optional meta defaults to null")
+unittest {
+  Token t;
+  (t.meta is null).should.equal(true);
+
+  t.meta = ["key": "value"];
+  t.meta["key"].should.equal("value");
+}

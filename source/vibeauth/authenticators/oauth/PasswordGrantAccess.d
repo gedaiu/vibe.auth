@@ -75,3 +75,95 @@ final class PasswordGrantAccess : IGrantAccess {
     return response;
   }
 }
+
+version(unittest) {
+  import fluent.asserts;
+  import vibeauth.collections.usermemory;
+  import vibeauth.data.user;
+
+  private PasswordGrantAccess createPasswordGrant(string username, string password) {
+    auto grant = new PasswordGrantAccess();
+
+    auto users = new UserMemoryCollection([]);
+    auto user = new User("user@gmail.com", "password123");
+    user.username = "testuser";
+    user.id = 1;
+    users.add(user);
+
+    AuthData data;
+    data.username = username;
+    data.password = password;
+
+    grant.userCollection = users;
+    grant.authData = data;
+
+    return grant;
+  }
+}
+
+@("isValid returns false when username not in collection")
+unittest {
+  auto grant = createPasswordGrant("nobody@test.com", "password123");
+  grant.isValid.should.equal(false);
+}
+
+@("isValid returns false when password is wrong")
+unittest {
+  auto grant = createPasswordGrant("user@gmail.com", "wrongpassword");
+  grant.isValid.should.equal(false);
+}
+
+@("isValid returns true with valid email and password")
+unittest {
+  auto grant = createPasswordGrant("user@gmail.com", "password123");
+  grant.isValid.should.equal(true);
+}
+
+@("isValid returns true with valid username and password")
+unittest {
+  auto grant = createPasswordGrant("testuser", "password123");
+  grant.isValid.should.equal(true);
+}
+
+@("get returns error JSON when credentials invalid")
+unittest {
+  auto grant = createPasswordGrant("nobody@test.com", "wrong");
+  auto response = grant.get;
+
+  response["error"].get!string.should.equal("Invalid password or username");
+}
+
+@("get returns access and refresh tokens on valid credentials")
+unittest {
+  auto grant = createPasswordGrant("user@gmail.com", "password123");
+  auto response = grant.get;
+
+  (response["access_token"].type == Json.Type.string).should.equal(true);
+  (response["refresh_token"].type == Json.Type.string).should.equal(true);
+  response["token_type"].get!string.should.equal("Bearer");
+  (response["expires_in"].get!long > 0).should.equal(true);
+}
+
+@("get includes requested scopes in tokens")
+unittest {
+  auto grant = new PasswordGrantAccess();
+
+  auto users = new UserMemoryCollection([]);
+  auto user = new User("user@gmail.com", "password123");
+  user.id = 1;
+  users.add(user);
+
+  AuthData data;
+  data.username = "user@gmail.com";
+  data.password = "password123";
+  data.scopes = ["read", "write"];
+
+  grant.userCollection = users;
+  grant.authData = data;
+
+  auto response = grant.get;
+
+  (response["access_token"].type == Json.Type.string).should.equal(true);
+  user.isValidToken(response["access_token"].get!string, "read").should.equal(true);
+  user.isValidToken(response["access_token"].get!string, "write").should.equal(true);
+}
