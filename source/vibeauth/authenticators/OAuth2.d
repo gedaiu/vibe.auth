@@ -6,6 +6,9 @@ import vibe.http.server;
 import vibe.data.json;
 
 import vibeauth.authenticators.oauth.AuthData;
+import vibeauth.authenticators.oauth.AuthorizationCodeStore;
+import vibeauth.authenticators.oauth.AuthorizationServerProvider;
+import vibeauth.authenticators.oauth.pkce;
 import vibeauth.authenticators.BaseAuth;
 import vibeauth.router.responses;
 import vibeauth.router.accesscontrol;
@@ -16,6 +19,7 @@ import std.datetime;
 import std.stdio;
 import std.string;
 import std.conv;
+import std.format;
 
 
 /// OAuth2 configuration
@@ -29,6 +33,9 @@ struct OAuth2Configuration {
   /// Route for authentication
   string authenticatePath = "/auth/authenticate";
 
+  /// Route for completing authorization (generates auth code)
+  string authorizeCompletePath = "/auth/authorize/complete";
+
   /// Route for revoking tokens
   string revokePath = "/auth/revoke";
 
@@ -40,13 +47,18 @@ struct OAuth2Configuration {
 class OAuth2 : BaseAuth {
   protected {
     const OAuth2Configuration configuration;
+    AuthorizationCodeStore codeStore;
+    AuthorizationServerProvider authServerProvider;
   }
 
   ///
-  this(UserCollection userCollection, const OAuth2Configuration configuration = OAuth2Configuration()) {
+  this(UserCollection userCollection, const OAuth2Configuration configuration = OAuth2Configuration(),
+       AuthorizationServerProvider authServerProvider = null) {
     super(userCollection);
 
     this.configuration = configuration;
+    this.codeStore = new AuthorizationCodeStore();
+    this.authServerProvider = authServerProvider;
   }
 
 
@@ -63,8 +75,12 @@ class OAuth2 : BaseAuth {
         createToken(req, res);
       }
 
-      if (req.path == configuration.authorizePath) {
+      if(req.path == configuration.authorizePath) {
         authorize(req, res);
+      }
+
+      if(req.path == configuration.authorizeCompletePath) {
+        authorizeComplete(req, res);
       }
 
       if(req.path == configuration.authenticatePath) {
@@ -74,11 +90,11 @@ class OAuth2 : BaseAuth {
       if(req.path == configuration.revokePath) {
         revoke(req, res);
       }
-    } catch(Exception e) {
+    } catch (Exception e) {
       version(unittest) {} else debug stderr.writeln(e);
 
       if(!res.headerWritten) {
-        res.writeJsonBody([ "error": e.msg ], 500);
+        res.writeJsonBody(["error": e.msg], 500);
       }
     }
   }
@@ -153,7 +169,7 @@ class OAuth2 : BaseAuth {
       return AuthResult.unauthorized;
     }
 
-    /// Handle the authorization step
+    /// Handle the authorization step — redirect to auth domain login page
     void authorize(HTTPServerRequest req, HTTPServerResponse res) {
       if("redirect_uri" !in req.query) {
         showError(res, "Missing `redirect_uri` parameter");
@@ -170,29 +186,106 @@ class OAuth2 : BaseAuth {
         return;
       }
 
-      auto const redirectUri = req.query["redirect_uri"];
-      auto const clientId = req.query["client_id"];
-      auto const state = req.query["state"];
-      auto const style = configuration.style;
-
-      /*
-      if(clientId !in clientCollection) {
-        showError(res, "Invalid `client_id` parameter");
+      if(authServerProvider is null) {
+        showError(res, "Authorization server not configured");
         return;
       }
 
-      string appTitle = clientCollection[clientId].name;
+      auto authDomain = authServerProvider.getAuthDomain(req);
 
-      */
-      /// res.render!("loginForm.dt", appTitle, redirectUri, state, style);
+      auto redirectUrl = format!"%s/login?oauth=true&client_id=%s&redirect_uri=%s&state=%s"(
+        authDomain,
+        req.query["client_id"],
+        req.query["redirect_uri"],
+        req.query["state"]
+      );
+
+      if("code_challenge" in req.query) {
+        redirectUrl ~= format!"&code_challenge=%s"(req.query["code_challenge"]);
+      }
+
+      if("code_challenge_method" in req.query) {
+        redirectUrl ~= format!"&code_challenge_method=%s"(req.query["code_challenge_method"]);
+      }
+
+      if("scope" in req.query) {
+        redirectUrl ~= format!"&scope=%s"(req.query["scope"]);
+      }
+
+      res.redirect(redirectUrl);
+    }
+
+    /// Complete the authorization — validate credentials and return an auth code
+    void authorizeComplete(HTTPServerRequest req, HTTPServerResponse res) {
+      if(req.method != HTTPMethod.POST) {
+        return;
+      }
+
+      Json body_;
+
+      try {
+        body_ = req.json;
+      } catch (Exception e) {
+        res.writeJsonBody(["error": "Invalid JSON body"], 400);
+        return;
+      }
+
+      auto email = body_["email"].opt!string("");
+      auto password = body_["password"].opt!string("");
+      auto clientId = body_["client_id"].opt!string("");
+      auto redirectUri = body_["redirect_uri"].opt!string("");
+      auto codeChallenge = body_["code_challenge"].opt!string("");
+      auto codeChallengeMethod = body_["code_challenge_method"].opt!string("S256");
+      auto state = body_["state"].opt!string("");
+
+      if(email.length == 0 || password.length == 0) {
+        res.writeJsonBody(["error": "Missing email or password"], 400);
+        return;
+      }
+
+      if(redirectUri.length == 0) {
+        res.writeJsonBody(["error": "Missing redirect_uri"], 400);
+        return;
+      }
+
+      if(!collection.contains(email) || !collection[email].isValidPassword(password)) {
+        res.writeJsonBody(["error": "Invalid email or password"], 401);
+        return;
+      }
+
+      auto user = collection[email];
+      auto code = generateAuthorizationCode();
+
+      string[] scopes;
+      auto scopeVal = body_["scope"];
+      if(scopeVal.type == Json.Type.string) {
+        scopes = scopeVal.get!string.split(" ");
+      }
+
+      AuthorizationCodeData codeData;
+      codeData.code = code;
+      codeData.userId = user.id;
+      codeData.clientId = clientId;
+      codeData.redirectUri = redirectUri;
+      codeData.codeChallenge = codeChallenge;
+      codeData.codeChallengeMethod = codeChallengeMethod;
+      codeData.scopes = scopes;
+
+      codeStore.store(codeData);
+
+      auto response = Json.emptyObject;
+      response["code"] = code;
+      response["redirect_uri"] = redirectUri;
+      response["state"] = state;
+
+      res.writeJsonBody(response);
     }
 
 
     /// Show an HTML error
     void showError(HTTPServerResponse res, const string error) {
-      auto const style = configuration.style;
       res.statusCode = 400;
-      //res.render!("error.dt", error, style);
+      res.writeJsonBody(["error": error]);
     }
 
     void authenticate(HTTPServerRequest req, HTTPServerResponse res) {
@@ -220,7 +313,7 @@ class OAuth2 : BaseAuth {
 
     /// Create token for the requested user
     void createToken(HTTPServerRequest req, HTTPServerResponse res) {
-      auto grant = req.getAuthData;
+      auto grant = req.getAuthData(codeStore);
 
       grant.userCollection = collection;
       res.statusCode = grant.isValid ? 200 : 401;
@@ -235,7 +328,7 @@ class OAuth2 : BaseAuth {
 
       if("token" !in req.form) {
         res.statusCode = 400;
-        res.writeJsonBody([ "error": "You must provide a `token` parameter." ]);
+        res.writeJsonBody(["error": "You must provide a `token` parameter."]);
 
         return;
       }
