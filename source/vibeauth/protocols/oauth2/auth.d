@@ -4,6 +4,7 @@ import vibe.inet.url;
 import vibe.http.router;
 import vibe.http.server;
 import vibe.data.json;
+import vibe.core.log;
 
 import vibeauth.protocols.oauth2.authdata;
 import vibeauth.protocols.oauth2.clientprovider;
@@ -39,6 +40,12 @@ struct OAuth2Configuration {
 
   /// Route for revoking tokens
   string revokePath = "/auth/revoke";
+
+  /// Route for dynamic client registration (RFC 7591)
+  string registrationPath = "/auth/register";
+
+  /// Path of the login page — the authorize endpoint redirects here
+  string loginPath = "/sign-in";
 
   /// Custom style to be embeded into the html
   string style;
@@ -94,6 +101,10 @@ class OAuth2 : BaseAuth {
 
       if(req.path == configuration.revokePath) {
         revoke(req, res);
+      }
+
+      if(req.path == configuration.registrationPath) {
+        register(req, res);
       }
     } catch (Exception e) {
       version(unittest) {} else debug stderr.writeln(e);
@@ -164,10 +175,13 @@ class OAuth2 : BaseAuth {
           auto const user = collection.byToken(token);
           req.username = user.id;
           req.context["email"] = user.email;
+          req.context["user"] = user.toJson;
         } catch(Exception e) {
+          logDiagnostic("Bearer token validation failed for path %s: %s", req.path, e.msg);
           return AuthResult.invalidToken;
         }
 
+        logDiagnostic("Bearer token valid for user %s on path %s", req.username, req.path);
         return AuthResult.success;
       }
 
@@ -203,8 +217,9 @@ class OAuth2 : BaseAuth {
 
       auto authDomain = authServerProvider.getAuthDomain(req);
 
-      auto redirectUrl = format!"%s/login?oauth=true&client_id=%s&redirect_uri=%s&state=%s"(
+      auto redirectUrl = format!"%s%s?oauth=true&client_id=%s&redirect_uri=%s&state=%s"(
         authDomain,
+        configuration.loginPath,
         req.query["client_id"],
         req.query["redirect_uri"],
         req.query["state"]
@@ -350,8 +365,9 @@ class OAuth2 : BaseAuth {
       auto grant = req.getAuthData(codeStore);
 
       grant.userCollection = collection;
-      res.statusCode = grant.isValid ? 200 : 401;
-      res.writeJsonBody(grant.get);
+      auto result = grant.get;
+      res.statusCode = "error" !in result ? 200 : 401;
+      res.writeJsonBody(result);
     }
 
     /// Revoke a previously created token using a POST request
@@ -373,6 +389,64 @@ class OAuth2 : BaseAuth {
       res.setCookie("ember_simple_auth-session", null);
       res.statusCode = 200;
       res.writeBody("");
+    }
+
+    /// Dynamic Client Registration (RFC 7591) — POST /auth/register
+    void register(HTTPServerRequest req, HTTPServerResponse res) {
+      if(req.method != HTTPMethod.POST) {
+        return;
+      }
+
+      if(clientProvider is null) {
+        res.writeJsonBody(["error": "client_registration_not_supported"], 400);
+        return;
+      }
+
+      Json body_;
+
+      try {
+        body_ = req.json;
+      } catch (Exception e) {
+        res.writeJsonBody(["error": "Invalid JSON body"], 400);
+        return;
+      }
+
+      auto redirectUrisJson = body_["redirect_uris"];
+
+      if(redirectUrisJson.type != Json.Type.array || redirectUrisJson.length == 0) {
+        res.writeJsonBody(["error": "redirect_uris is required and must be a non-empty array"], 400);
+        return;
+      }
+
+      Client client;
+      client.id = generateAuthorizationCode();
+      client.name = body_["client_name"].opt!string("");
+
+      string[] redirectUris;
+      foreach(uri; redirectUrisJson) {
+        redirectUris ~= uri.get!string;
+      }
+      client.redirectUris = redirectUris;
+
+      auto registered = clientProvider.registerClient(client);
+
+      auto response = Json.emptyObject;
+      response["client_id"] = registered.id;
+      response["client_name"] = registered.name;
+
+      auto urisJson = Json.emptyArray;
+      foreach(uri; registered.redirectUris) {
+        urisJson ~= Json(uri);
+      }
+      response["redirect_uris"] = urisJson;
+
+      auto grantTypes = body_["grant_types"];
+      response["grant_types"] = grantTypes.type == Json.Type.array ? grantTypes : Json([Json("authorization_code")]);
+      response["token_endpoint_auth_method"] = body_["token_endpoint_auth_method"].opt!string("none");
+      response["response_types"] = Json([Json("code")]);
+
+      res.statusCode = 201;
+      res.writeJsonBody(response);
     }
   }
 }

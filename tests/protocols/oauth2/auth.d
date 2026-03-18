@@ -271,6 +271,8 @@ version(unittest) {
   import vibeauth.protocols.oauth2.serverprovider;
 
   class TestClientProvider : ClientProvider {
+    private Client[string] store;
+
     Client getClient(string clientId) {
       if (clientId == "known-client") {
         Client c;
@@ -279,7 +281,16 @@ version(unittest) {
         return c;
       }
 
+      if (clientId in store) {
+        return store[clientId];
+      }
+
       return Client.init;
+    }
+
+    Client registerClient(Client client) {
+      store[client.id] = client;
+      return client;
     }
   }
 
