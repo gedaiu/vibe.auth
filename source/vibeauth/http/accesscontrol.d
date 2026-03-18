@@ -16,5 +16,6 @@ void addHeaderValue(ref HTTPServerResponse res, string name, string[] values) {
 /// Add the CORS headers
 void setAccessControl(ref HTTPServerResponse res) {
   res.addHeaderValue("Access-Control-Allow-Origin", ["*"]);
-  res.addHeaderValue("Access-Control-Allow-Headers", ["Authorization"]);
+  res.addHeaderValue("Access-Control-Allow-Headers", ["Authorization", "Content-Type"]);
+  res.addHeaderValue("Access-Control-Allow-Methods", ["GET", "POST", "OPTIONS"]);
 }

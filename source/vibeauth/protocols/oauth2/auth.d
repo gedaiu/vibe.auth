@@ -71,6 +71,8 @@ class OAuth2 : BaseAuth {
     try {
       setAccessControl(res);
       if(req.method == HTTPMethod.OPTIONS) {
+        res.statusCode = 200;
+        res.writeBody("");
         return;
       }
 
@@ -251,22 +253,41 @@ class OAuth2 : BaseAuth {
         return;
       }
 
-      if(email.length == 0 || password.length == 0) {
-        res.writeJsonBody(["error": "Missing email or password"], 400);
-        return;
-      }
-
       if(redirectUri.length == 0) {
         res.writeJsonBody(["error": "Missing redirect_uri"], 400);
         return;
       }
 
-      if(!collection.contains(email) || !collection[email].isValidPassword(password)) {
-        res.writeJsonBody(["error": "Invalid email or password"], 401);
+      auto pauth = "Authorization" in req.headers;
+      bool hasBearer = pauth !is null && (*pauth).startsWith("Bearer ");
+
+      if(email.length == 0 && !hasBearer) {
+        res.writeJsonBody(["error": "Missing email or password"], 400);
         return;
       }
 
-      auto user = collection[email];
+      User user;
+
+      if(hasBearer) {
+        auto token = (*pauth)[7 .. $];
+        try {
+          user = collection.byToken(token);
+        } catch(Exception e) {
+          res.writeJsonBody(["error": "Invalid token"], 401);
+          return;
+        }
+      } else {
+        if(password.length == 0) {
+          res.writeJsonBody(["error": "Missing email or password"], 400);
+          return;
+        }
+        if(!collection.contains(email) || !collection[email].isValidPassword(password)) {
+          res.writeJsonBody(["error": "Invalid email or password"], 401);
+          return;
+        }
+        user = collection[email];
+      }
+
       auto code = generateAuthorizationCode();
 
       string[] scopes;
