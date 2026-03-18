@@ -11,8 +11,6 @@ module vibeauth.identity.collection;
 import vibeauth.identity.usermodel;
 import vibeauth.identity.token;
 import vibeauth.identity.user;
-import vibeauth.identity.client;
-import vibeauth.identity.clientcollection;
 import vibeauth.error;
 
 import std.algorithm;
@@ -153,21 +151,26 @@ class Collection(T) : ICollection!T {
 version(unittest) {
   import fluent.asserts;
 
-  private Client makeClient(string id, string name) {
-    auto c = new Client();
-    c.id = id;
-    c.name = name;
-    return c;
+  private class TestItem {
+    string id;
+    string name;
+  }
+
+  private TestItem makeTestItem(string id, string name) {
+    auto item = new TestItem();
+    item.id = id;
+    item.name = name;
+    return item;
   }
 }
 
 @("add stores item and increases length")
 unittest {
-  auto col = new Collection!Client();
+  auto col = new Collection!TestItem();
   col.length.should.equal(0);
   col.empty.should.equal(true);
 
-  col.add(makeClient("1", "App1"));
+  col.add(makeTestItem("1", "App1"));
 
   col.length.should.equal(1);
   col.empty.should.equal(false);
@@ -175,22 +178,22 @@ unittest {
 
 @("add throws on duplicate id")
 unittest {
-  auto col = new Collection!Client();
-  col.add(makeClient("1", "App1"));
+  auto col = new Collection!TestItem();
+  col.add(makeTestItem("1", "App1"));
 
   ({
-    col.add(makeClient("1", "Duplicate"));
+    col.add(makeTestItem("1", "Duplicate"));
   }).should.throwAnyException;
 }
 
 @("remove deletes item and triggers onRemove callback")
 unittest {
-  auto col = new Collection!Client();
-  col.add(makeClient("1", "App1"));
-  col.add(makeClient("2", "App2"));
+  auto col = new Collection!TestItem();
+  col.add(makeTestItem("1", "App1"));
+  col.add(makeTestItem("2", "App2"));
 
   string removedId;
-  col.onRemove = (Client c) { removedId = c.id; };
+  col.onRemove = (TestItem c) { removedId = c.id; };
 
   col.remove("1");
 
@@ -200,8 +203,8 @@ unittest {
 
 @("opIndex returns item by id")
 unittest {
-  auto col = new Collection!Client();
-  col.add(makeClient("x", "MyApp"));
+  auto col = new Collection!TestItem();
+  col.add(makeTestItem("x", "MyApp"));
 
   auto item = col["x"];
   item.name.should.equal("MyApp");
@@ -209,7 +212,7 @@ unittest {
 
 @("opIndex throws ItemNotFoundException for missing id")
 unittest {
-  auto col = new Collection!Client();
+  auto col = new Collection!TestItem();
 
   ({
     col["missing"];
@@ -218,25 +221,25 @@ unittest {
 
 @("in operator returns true for existing id")
 unittest {
-  auto col = new Collection!Client();
-  col.add(makeClient("a", "App"));
+  auto col = new Collection!TestItem();
+  col.add(makeTestItem("a", "App"));
 
   ("a" in col).should.equal(true);
 }
 
 @("in operator returns false for missing id")
 unittest {
-  auto col = new Collection!Client();
+  auto col = new Collection!TestItem();
 
   ("z" in col).should.equal(false);
 }
 
 @("opApply iterates all items")
 unittest {
-  auto col = new Collection!Client();
-  col.add(makeClient("1", "A"));
-  col.add(makeClient("2", "B"));
-  col.add(makeClient("3", "C"));
+  auto col = new Collection!TestItem();
+  col.add(makeTestItem("1", "A"));
+  col.add(makeTestItem("2", "B"));
+  col.add(makeTestItem("3", "C"));
 
   int count = 0;
   foreach (item; col) {
@@ -248,11 +251,11 @@ unittest {
 
 @("save returns independent copy")
 unittest {
-  auto col = new Collection!Client();
-  col.add(makeClient("1", "App"));
+  auto col = new Collection!TestItem();
+  col.add(makeTestItem("1", "App"));
 
   auto copy = col.save();
-  col.add(makeClient("2", "Another"));
+  col.add(makeTestItem("2", "Another"));
 
   col.length.should.equal(2);
   copy.length.should.equal(1);

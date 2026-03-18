@@ -7,8 +7,10 @@ import vibe.http.router;
 
 import vibeauth.protocols.oauth2.auth;
 import vibeauth.protocols.oauth2.authdata;
+import vibeauth.protocols.oauth2.clientprovider;
 import vibeauth.http.responses;
 import vibeauth.http.accesscontrol;
+import vibeauth.protocols.oauth2.clientprovider;
 import vibeauth.identity.usercollection;
 import vibeauth.identity.user;
 
@@ -261,5 +263,91 @@ unittest {
       response.bodyJson.should.equal("{
         \"error\": \"You must provide a `token` parameter.\"
       }".parseJsonString);
+    });
+}
+
+version(unittest) {
+  import std.typecons;
+  import vibeauth.protocols.oauth2.serverprovider;
+
+  class TestClientProvider : ClientProvider {
+    Client getClient(string clientId) {
+      if (clientId == "known-client") {
+        Client c;
+        c.id = "known-client";
+        c.name = "Test Client";
+        return c;
+      }
+
+      return Client.init;
+    }
+  }
+
+  auto testRouterWithClientProvider() {
+    auto router = new URLRouter();
+
+    collection = new UserMemoryCollection(["doStuff"]);
+    user = new User("user@gmail.com", "password");
+    user.firstName = "John";
+    user.lastName = "Doe";
+    user.username = "test";
+    user.id = 1;
+
+    collection.add(user);
+
+    bearerToken = collection.createToken("user@gmail.com", Clock.currTime + 3600.seconds, ["doStuff"], "Bearer");
+
+    auto serverProvider = new DefaultAuthorizationServerProvider("http://localhost");
+    auto provider = new TestClientProvider();
+    auth = new OAuth2(collection, OAuth2Configuration(), serverProvider, provider);
+
+    router.any("*", &auth.tokenHandlers);
+    router.any("*", &auth.permissiveAuth);
+
+    return router;
+  }
+}
+
+/// authorize returns 400 for unknown client_id when provider is set
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .get("/auth/authorize?client_id=unknown&redirect_uri=http://localhost&state=abc")
+    .expectStatusCode(400)
+    .end((Response response) => () {
+      response.bodyJson["error"].get!string.should.equal("Unknown client_id");
+    });
+}
+
+/// authorize redirects for known client_id when provider is set
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .get("/auth/authorize?client_id=known-client&redirect_uri=http://localhost/cb&state=abc")
+    .expectStatusCode(302)
+    .end();
+}
+
+/// authorizeComplete returns 400 for unknown client_id when provider is set
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/authorize/complete")
+    .send(`{
+      "email": "user@gmail.com",
+      "password": "password",
+      "client_id": "unknown",
+      "redirect_uri": "http://localhost/cb",
+      "state": "abc"
+    }`.parseJsonString)
+    .expectStatusCode(400)
+    .end((Response response) => () {
+      response.bodyJson["error"].get!string.should.equal("Unknown client_id");
     });
 }

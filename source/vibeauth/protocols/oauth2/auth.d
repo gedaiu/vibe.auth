@@ -6,6 +6,7 @@ import vibe.http.server;
 import vibe.data.json;
 
 import vibeauth.protocols.oauth2.authdata;
+import vibeauth.protocols.oauth2.clientprovider;
 import vibeauth.protocols.oauth2.codestore;
 import vibeauth.protocols.oauth2.serverprovider;
 import vibeauth.protocols.oauth2.pkce;
@@ -49,16 +50,18 @@ class OAuth2 : BaseAuth {
     const OAuth2Configuration configuration;
     AuthorizationCodeStore codeStore;
     AuthorizationServerProvider authServerProvider;
+    ClientProvider clientProvider;
   }
 
   ///
   this(UserCollection userCollection, const OAuth2Configuration configuration = OAuth2Configuration(),
-       AuthorizationServerProvider authServerProvider = null) {
+        AuthorizationServerProvider authServerProvider = null, ClientProvider clientProvider = null) {
     super(userCollection);
 
     this.configuration = configuration;
     this.codeStore = new AuthorizationCodeStore();
     this.authServerProvider = authServerProvider;
+    this.clientProvider = clientProvider;
   }
 
 
@@ -186,6 +189,11 @@ class OAuth2 : BaseAuth {
         return;
       }
 
+      if(clientProvider !is null && clientProvider.getClient(req.query["client_id"]).id == "") {
+        showError(res, "Unknown client_id");
+        return;
+      }
+
       if(authServerProvider is null) {
         showError(res, "Authorization server not configured");
         return;
@@ -237,6 +245,11 @@ class OAuth2 : BaseAuth {
       auto codeChallenge = body_["code_challenge"].opt!string("");
       auto codeChallengeMethod = body_["code_challenge_method"].opt!string("S256");
       auto state = body_["state"].opt!string("");
+
+      if(clientProvider !is null && clientProvider.getClient(clientId).id == "") {
+        res.writeJsonBody(["error": "Unknown client_id"], 400);
+        return;
+      }
 
       if(email.length == 0 || password.length == 0) {
         res.writeJsonBody(["error": "Missing email or password"], 400);
