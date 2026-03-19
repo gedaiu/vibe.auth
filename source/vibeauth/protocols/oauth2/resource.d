@@ -67,6 +67,8 @@ struct OAuth2ResourceConfig {
   Serves metadata at /.well-known/oauth-protected-resource
 */
 void handleProtectedResourceMetadata(OAuth2ResourceConfig config, HTTPServerRequest req, HTTPServerResponse res) {
+  import vibe.core.path : InetPath;
+
   OAuthProtectedResourceMetadata metadata;
 
   auto reqUrl = req.fullURL;
