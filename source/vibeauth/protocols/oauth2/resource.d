@@ -73,17 +73,13 @@ void handleProtectedResourceMetadata(OAuth2ResourceConfig config, HTTPServerRequ
 
   auto reqUrl = req.fullURL;
   reqUrl.path = InetPath();
+  string baseUrl = reqUrl.toString();
 
-  if (config.authServerUrl) {
-    metadata.resource = config.authServerUrl;
-  } else {
-    metadata.resource = reqUrl.toString();
-  }
-
-  metadata.authorization_endpoint = config.authServerUrl ~ "/auth/authorize";
-  metadata.token_endpoint = config.authServerUrl ~ "/auth/token";
-  metadata.revocation_endpoint = config.authServerUrl ~ "/auth/revoke";
-  metadata.registration_endpoint = config.authServerUrl ~ "/auth/register";
+  metadata.resource = baseUrl;
+  metadata.authorization_endpoint = baseUrl ~ "/auth/authorize";
+  metadata.token_endpoint = baseUrl ~ "/auth/token";
+  metadata.revocation_endpoint = baseUrl ~ "/auth/revoke";
+  metadata.registration_endpoint = baseUrl ~ "/auth/register";
 
   metadata.issuer = config.issuer;
   if(!metadata.issuer) {
