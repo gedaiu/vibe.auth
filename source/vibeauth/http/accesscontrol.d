@@ -17,5 +17,5 @@ void addHeaderValue(ref HTTPServerResponse res, string name, string[] values) {
 void setAccessControl(ref HTTPServerResponse res) {
   res.addHeaderValue("Access-Control-Allow-Origin", ["*"]);
   res.addHeaderValue("Access-Control-Allow-Headers", ["Authorization", "Content-Type"]);
-  res.addHeaderValue("Access-Control-Allow-Methods", ["GET", "POST", "OPTIONS"]);
+  res.addHeaderValue("Access-Control-Allow-Methods", ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
 }
