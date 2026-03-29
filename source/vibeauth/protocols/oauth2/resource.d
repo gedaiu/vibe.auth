@@ -17,6 +17,9 @@ import vibe.http.common : HTTPStatus;
 import vibe.data.json;
 import vibe.core.log;
 
+import vibe.inet.url;
+
+import std.conv : to;
 import std.string : format;
 import std.array : join;
 
@@ -61,19 +64,28 @@ struct OAuth2ResourceConfig {
   string[] scopes;
 }
 
+string normalizeBaseUrl(URL reqUrl) {
+  import vibe.core.path : InetPath;
+
+  reqUrl.path = InetPath();
+
+  if ((reqUrl.schema == "https" && reqUrl.port == 443) ||
+      (reqUrl.schema == "http" && reqUrl.port == 80)) {
+    reqUrl.port = 0;
+  }
+
+  return reqUrl.to!string;
+}
+
 /**
   HTTP handler for the OAuth 2.1 Protected Resource Metadata endpoint.
 
   Serves metadata at /.well-known/oauth-protected-resource
 */
 void handleProtectedResourceMetadata(OAuth2ResourceConfig config, HTTPServerRequest req, HTTPServerResponse res) {
-  import vibe.core.path : InetPath;
-
   OAuthProtectedResourceMetadata metadata;
 
-  auto reqUrl = req.fullURL;
-  reqUrl.path = InetPath();
-  string baseUrl = reqUrl.toString();
+  string baseUrl = normalizeBaseUrl(req.fullURL);
 
   metadata.resource = baseUrl;
   metadata.authorization_endpoint = baseUrl ~ "/auth/authorize";
@@ -130,6 +142,36 @@ void respondOAuth2Unauthorized(HTTPServerResponse res, OAuth2ResourceConfig conf
 
 version(unittest) {
   import fluent.asserts;
+}
+
+@("normalizeBaseUrl strips port 443 from HTTPS URLs")
+unittest {
+  auto url = URL("https://greenmap.org:443/some/path");
+  normalizeBaseUrl(url).should.equal("https://greenmap.org");
+}
+
+@("normalizeBaseUrl strips port 80 from HTTP URLs")
+unittest {
+  auto url = URL("http://example.com:80/some/path");
+  normalizeBaseUrl(url).should.equal("http://example.com");
+}
+
+@("normalizeBaseUrl preserves non-default ports")
+unittest {
+  auto url = URL("https://greenmap.org:8443/some/path");
+  normalizeBaseUrl(url).should.equal("https://greenmap.org:8443");
+}
+
+@("normalizeBaseUrl preserves port when HTTP uses non-80")
+unittest {
+  auto url = URL("http://example.com:8080/some/path");
+  normalizeBaseUrl(url).should.equal("http://example.com:8080");
+}
+
+@("normalizeBaseUrl strips path")
+unittest {
+  auto url = URL("https://greenmap.org/auth/authorize");
+  normalizeBaseUrl(url).should.equal("https://greenmap.org");
 }
 
 @("OAuthProtectedResourceMetadata serialization")
