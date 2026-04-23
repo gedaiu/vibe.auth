@@ -158,3 +158,27 @@ unittest {
   user.isValidToken(accessTokenName, "write").should.equal(true);
   user.isValidToken(accessTokenName, "refresh").should.equal(false);
 }
+
+@("refreshed access token keeps the team scope")
+unittest {
+  auto users = new UserMemoryCollection([]);
+  auto user = new User("user@gmail.com", "pass");
+  user.id = 1;
+  users.add(user);
+
+  auto token = users.createToken("user@gmail.com", Clock.currTime + 3600.seconds,
+    ["api", "team:team-42", "refresh"], "Refresh");
+
+  auto grant = new RefreshTokenGrantAccess();
+
+  AuthData data;
+  data.refreshToken = token.name;
+
+  grant.userCollection = users;
+  grant.authData = data;
+
+  auto response = grant.get;
+  auto accessTokenName = response["access_token"].get!string;
+
+  user.isValidToken(accessTokenName, "team:team-42").should.equal(true);
+}

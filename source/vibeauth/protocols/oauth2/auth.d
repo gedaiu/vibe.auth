@@ -51,6 +51,31 @@ struct OAuth2Configuration {
   string style;
 }
 
+/// Resolves the display name for a dynamically registered OAuth client.
+/// Falls back through RFC 7591 fields and vendor metadata so the stored name
+/// is never empty even when the client omits `client_name`.
+package string resolveClientName(Json body_) {
+  auto name = body_["client_name"].opt!string("").strip;
+  if (name.length > 0) {
+    return name;
+  }
+
+  auto metadataJson = body_["metadata"];
+  if (metadataJson.type == Json.Type.object) {
+    auto appName = metadataJson["app_name"].opt!string("").strip;
+    if (appName.length > 0) {
+      return appName;
+    }
+  }
+
+  auto softwareId = body_["software_id"].opt!string("").strip;
+  if (softwareId.length > 0) {
+    return softwareId;
+  }
+
+  return "Unnamed OAuth client";
+}
+
 /// OAuth2 autenticator
 class OAuth2 : BaseAuth {
   protected {
@@ -205,9 +230,22 @@ class OAuth2 : BaseAuth {
         return;
       }
 
-      if(clientProvider !is null && clientProvider.getClient(req.query["client_id"]).id == "") {
-        showError(res, "Unknown client_id");
-        return;
+      Client resolvedClient;
+      if(clientProvider !is null) {
+        resolvedClient = clientProvider.getClient(req.query["client_id"]);
+        if(resolvedClient.id == "") {
+          showError(res, "Unknown client_id");
+          return;
+        }
+      }
+
+      auto boundTeamId = "teamId" in resolvedClient.metadata;
+      if(boundTeamId !is null && (*boundTeamId).length > 0) {
+        auto requestedScope = "scope" in req.query ? req.query["scope"] : "";
+        if(!scopeMatchesTeam(requestedScope, *boundTeamId)) {
+          showError(res, "Missing or mismatched `team:` scope for team-bound client");
+          return;
+        }
       }
 
       if(authServerProvider is null) {
@@ -420,7 +458,7 @@ class OAuth2 : BaseAuth {
 
       Client client;
       client.id = generateAuthorizationCode();
-      client.name = body_["client_name"].opt!string("");
+      client.name = resolveClientName(body_);
 
       string[] redirectUris;
       foreach(uri; redirectUrisJson) {
@@ -458,4 +496,65 @@ class OAuth2 : BaseAuth {
       res.writeJsonBody(response);
     }
   }
+}
+
+/// Returns true when `scope` contains exactly one `team:<teamId>` matching the given team.
+bool scopeMatchesTeam(string scopeValue, string teamId) {
+  if(scopeValue.length == 0 || teamId.length == 0) {
+    return false;
+  }
+
+  size_t matches = 0;
+  foreach(token; scopeValue.split(" ")) {
+    if(!token.startsWith("team:")) {
+      continue;
+    }
+
+    if(token[5 .. $] != teamId) {
+      return false;
+    }
+
+    matches++;
+  }
+
+  return matches == 1;
+}
+
+version(unittest) {
+  import fluent.asserts;
+}
+
+/// scopeMatchesTeam returns true for exact single match
+unittest {
+  scopeMatchesTeam("team:abc", "abc").should.equal(true);
+}
+
+/// scopeMatchesTeam returns true with extra non-team scopes
+unittest {
+  scopeMatchesTeam("read team:abc write", "abc").should.equal(true);
+}
+
+/// scopeMatchesTeam returns false for empty scope
+unittest {
+  scopeMatchesTeam("", "abc").should.equal(false);
+}
+
+/// scopeMatchesTeam returns false when team id does not match
+unittest {
+  scopeMatchesTeam("team:other", "abc").should.equal(false);
+}
+
+/// scopeMatchesTeam returns false when there is no team scope
+unittest {
+  scopeMatchesTeam("read write", "abc").should.equal(false);
+}
+
+/// scopeMatchesTeam returns false when there are multiple team scopes
+unittest {
+  scopeMatchesTeam("team:abc team:abc", "abc").should.equal(false);
+}
+
+/// scopeMatchesTeam returns false when one of two team scopes mismatches
+unittest {
+  scopeMatchesTeam("team:abc team:other", "abc").should.equal(false);
 }

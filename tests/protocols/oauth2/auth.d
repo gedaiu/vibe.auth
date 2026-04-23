@@ -281,6 +281,14 @@ version(unittest) {
         return c;
       }
 
+      if (clientId == "team-bound-client") {
+        Client c;
+        c.id = "team-bound-client";
+        c.name = "Team Bound";
+        c.metadata["teamId"] = "team-42";
+        return c;
+      }
+
       if (clientId in store) {
         return store[clientId];
       }
@@ -369,6 +377,43 @@ unittest {
     });
 }
 
+/// authorize returns 400 when team-bound client has no team scope in the request
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .get("/auth/authorize?client_id=team-bound-client&redirect_uri=http://localhost/cb&state=abc")
+    .expectStatusCode(400)
+    .end((Response response) => () {
+      response.bodyJson["error"].get!string.should.contain("team");
+    });
+}
+
+/// authorize returns 400 when team-bound client scope does not match the client teamId
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .get("/auth/authorize?client_id=team-bound-client&redirect_uri=http://localhost/cb&state=abc&scope=team:other")
+    .expectStatusCode(400)
+    .end((Response response) => () {
+      response.bodyJson["error"].get!string.should.contain("team");
+    });
+}
+
+/// authorize redirects when team-bound client scope matches the client teamId
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .get("/auth/authorize?client_id=team-bound-client&redirect_uri=http://localhost/cb&state=abc&scope=team:team-42")
+    .expectStatusCode(302)
+    .end();
+}
+
 /// register endpoint forwards metadata to the client provider
 unittest {
   auto router = testRouterWithClientProvider();
@@ -388,5 +433,110 @@ unittest {
       auto stored = provider.getClient(clientId);
       stored.metadata["dataBindingId"].should.equal("db-abc");
       stored.metadata["anythingElse"].should.equal("value");
+    });
+}
+
+/// register endpoint stores client_name when present
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/register")
+    .send(`{
+      "client_name": "My App",
+      "redirect_uris": ["http://localhost/cb"]
+    }`.parseJsonString)
+    .expectStatusCode(201)
+    .end((Response response) => () {
+      auto clientId = response.bodyJson["client_id"].get!string;
+      response.bodyJson["client_name"].get!string.should.equal("My App");
+
+      auto stored = provider.getClient(clientId);
+      stored.name.should.equal("My App");
+    });
+}
+
+/// register endpoint falls back to metadata.app_name when client_name is missing
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/register")
+    .send(`{
+      "redirect_uris": ["http://localhost/cb"],
+      "metadata": { "app_name": "Via Metadata" }
+    }`.parseJsonString)
+    .expectStatusCode(201)
+    .end((Response response) => () {
+      auto clientId = response.bodyJson["client_id"].get!string;
+      response.bodyJson["client_name"].get!string.should.equal("Via Metadata");
+
+      auto stored = provider.getClient(clientId);
+      stored.name.should.equal("Via Metadata");
+    });
+}
+
+/// register endpoint falls back to software_id when client_name and metadata.app_name are missing
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/register")
+    .send(`{
+      "redirect_uris": ["http://localhost/cb"],
+      "software_id": "com.example.app"
+    }`.parseJsonString)
+    .expectStatusCode(201)
+    .end((Response response) => () {
+      auto clientId = response.bodyJson["client_id"].get!string;
+      response.bodyJson["client_name"].get!string.should.equal("com.example.app");
+
+      auto stored = provider.getClient(clientId);
+      stored.name.should.equal("com.example.app");
+    });
+}
+
+/// register endpoint uses a default name when no name-like field is provided
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/register")
+    .send(`{
+      "redirect_uris": ["http://localhost/cb"]
+    }`.parseJsonString)
+    .expectStatusCode(201)
+    .end((Response response) => () {
+      auto clientId = response.bodyJson["client_id"].get!string;
+      response.bodyJson["client_name"].get!string.should.equal("Unnamed OAuth client");
+
+      auto stored = provider.getClient(clientId);
+      stored.name.should.equal("Unnamed OAuth client");
+    });
+}
+
+/// register endpoint treats whitespace-only client_name as missing and falls through
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/register")
+    .send(`{
+      "client_name": "   ",
+      "redirect_uris": ["http://localhost/cb"],
+      "metadata": { "app_name": "Real Name" }
+    }`.parseJsonString)
+    .expectStatusCode(201)
+    .end((Response response) => () {
+      auto clientId = response.bodyJson["client_id"].get!string;
+      response.bodyJson["client_name"].get!string.should.equal("Real Name");
+
+      auto stored = provider.getClient(clientId);
+      stored.name.should.equal("Real Name");
     });
 }
