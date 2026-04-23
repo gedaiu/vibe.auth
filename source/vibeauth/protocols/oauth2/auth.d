@@ -18,10 +18,23 @@ import vibeauth.identity.usercollection;
 import vibeauth.identity.user;
 
 import std.datetime;
-import std.stdio;
 import std.string;
 import std.conv;
 import std.format;
+import std.algorithm : canFind;
+
+
+/// True when `redirectUri` exactly matches one of the client's registered
+/// redirect URIs. Exact comparison is required by RFC 6749 §3.1.2.3 — partial
+/// or prefix matching is unsafe and enables open-redirector attacks against
+/// the auth-code grant.
+package bool isRegisteredRedirectUri(string[] registered, string redirectUri) {
+  if (redirectUri.length == 0) {
+    return false;
+  }
+
+  return registered.canFind(redirectUri);
+}
 
 
 /// OAuth2 configuration
@@ -43,6 +56,9 @@ struct OAuth2Configuration {
 
   /// Route for dynamic client registration (RFC 7591)
   string registrationPath = "/auth/register";
+
+  /// Route prefix for public client metadata lookups: GET <prefix>/<clientId>
+  string clientLookupPrefix = "/auth/clients/";
 
   /// Path of the login page — the authorize endpoint redirects here
   string loginPath = "/sign-in";
@@ -77,21 +93,25 @@ package string resolveClientName(Json body_) {
 }
 
 /// Result of validating requested scopes for a given user at authorize-complete time.
-/// Error message is empty on success, or a human-readable explanation on failure.
+/// `effectiveScopes` replaces the incoming scopes for the issued auth code, so a
+/// validator can both authorize the request and rewrite the scope list (for
+/// example, to inject a `team:<id>` scope derived from a consumer-specific field
+/// in the request body).
 struct ScopeValidation {
   bool ok;
   string error;
+  string[] effectiveScopes;
 
-  static ScopeValidation accept() {
-    return ScopeValidation(true, "");
+  static ScopeValidation accept(string[] scopes) {
+    return ScopeValidation(true, "", scopes);
   }
 
   static ScopeValidation reject(string reason) {
-    return ScopeValidation(false, reason);
+    return ScopeValidation(false, reason, []);
   }
 }
 
-alias ScopeValidator = ScopeValidation delegate(User user, string[] scopes);
+alias ScopeValidator = ScopeValidation delegate(User user, string[] scopes, Json body_);
 
 /// OAuth2 autenticator
 class OAuth2 : BaseAuth {
@@ -120,43 +140,39 @@ class OAuth2 : BaseAuth {
   /// Handle the OAuth requests. Handles token creation, authorization
   /// authentication and revocation
   void tokenHandlers(HTTPServerRequest req, HTTPServerResponse res) {
-    try {
-      setAccessControl(res);
-      if(req.method == HTTPMethod.OPTIONS) {
-        res.statusCode = 200;
-        res.writeBody("");
-        return;
-      }
+    setAccessControl(res);
+    if(req.method == HTTPMethod.OPTIONS) {
+      res.statusCode = 200;
+      res.writeBody("");
+      return;
+    }
 
-      if(req.path == configuration.tokenPath) {
-        createToken(req, res);
-      }
+    if(req.path == configuration.tokenPath) {
+      createToken(req, res);
+    }
 
-      if(req.path == configuration.authorizePath) {
-        authorize(req, res);
-      }
+    if(req.path == configuration.authorizePath) {
+      authorize(req, res);
+    }
 
-      if(req.path == configuration.authorizeCompletePath) {
-        authorizeComplete(req, res);
-      }
+    if(req.path == configuration.authorizeCompletePath) {
+      authorizeComplete(req, res);
+    }
 
-      if(req.path == configuration.authenticatePath) {
-        authenticate(req, res);
-      }
+    if(req.path == configuration.authenticatePath) {
+      authenticate(req, res);
+    }
 
-      if(req.path == configuration.revokePath) {
-        revoke(req, res);
-      }
+    if(req.path == configuration.revokePath) {
+      revoke(req, res);
+    }
 
-      if(req.path == configuration.registrationPath) {
-        register(req, res);
-      }
-    } catch (Exception e) {
-      version(unittest) {} else debug stderr.writeln(e);
+    if(req.path == configuration.registrationPath) {
+      register(req, res);
+    }
 
-      if(!res.headerWritten) {
-        res.writeJsonBody(["error": e.msg], 500);
-      }
+    if(req.path.startsWith(configuration.clientLookupPrefix)) {
+      lookupClient(req, res);
     }
   }
 
@@ -250,9 +266,18 @@ class OAuth2 : BaseAuth {
         return;
       }
 
-      if(clientProvider !is null && clientProvider.getClient(req.query["client_id"]).id == "") {
-        showError(res, "Unknown client_id");
-        return;
+      Client authorizingClient;
+      if(clientProvider !is null) {
+        authorizingClient = clientProvider.getClient(req.query["client_id"]);
+        if(authorizingClient.id == "") {
+          showError(res, "Unknown client_id");
+          return;
+        }
+
+        if(!isRegisteredRedirectUri(authorizingClient.redirectUris, req.query["redirect_uri"])) {
+          showError(res, "Unregistered `redirect_uri` for this client");
+          return;
+        }
       }
 
       if(authServerProvider is null) {
@@ -269,6 +294,11 @@ class OAuth2 : BaseAuth {
         req.query["redirect_uri"],
         req.query["state"]
       );
+
+      if(authorizingClient.name.length > 0) {
+        import vibe.textfilter.urlencode : urlEncode;
+        redirectUrl ~= format!"&client_name=%s"(urlEncode(authorizingClient.name));
+      }
 
       if("code_challenge" in req.query) {
         redirectUrl ~= format!"&code_challenge=%s"(req.query["code_challenge"]);
@@ -308,13 +338,22 @@ class OAuth2 : BaseAuth {
       auto codeChallengeMethod = body_["code_challenge_method"].opt!string("S256");
       auto state = body_["state"].opt!string("");
 
-      if(clientProvider !is null && clientProvider.getClient(clientId).id == "") {
-        res.writeJsonBody(["error": "Unknown client_id"], 400);
-        return;
+      Client completingClient;
+      if(clientProvider !is null) {
+        completingClient = clientProvider.getClient(clientId);
+        if(completingClient.id == "") {
+          res.writeJsonBody(["error": "Unknown client_id"], 400);
+          return;
+        }
       }
 
       if(redirectUri.length == 0) {
         res.writeJsonBody(["error": "Missing redirect_uri"], 400);
+        return;
+      }
+
+      if(clientProvider !is null && !isRegisteredRedirectUri(completingClient.redirectUris, redirectUri)) {
+        res.writeJsonBody(["error": "Unregistered redirect_uri for this client"], 400);
         return;
       }
 
@@ -357,11 +396,13 @@ class OAuth2 : BaseAuth {
       }
 
       if(scopeValidator !is null) {
-        auto validation = scopeValidator(user, scopes);
+        auto validation = scopeValidator(user, scopes, body_);
         if(!validation.ok) {
           res.writeJsonBody(["error": validation.error], 403);
           return;
         }
+
+        scopes = validation.effectiveScopes;
       }
 
       AuthorizationCodeData codeData;
@@ -421,6 +462,34 @@ class OAuth2 : BaseAuth {
       auto result = grant.get;
       res.statusCode = "error" !in result ? 200 : 401;
       res.writeJsonBody(result);
+    }
+
+    /// Return a public read-only view of a registered OAuth client so the
+    /// consent screen can display its metadata (name, redirect URIs, etc.)
+    /// without trusting what the caller embeds in the authorize URL.
+    void lookupClient(HTTPServerRequest req, HTTPServerResponse res) {
+      if(req.method != HTTPMethod.GET) {
+        return;
+      }
+
+      if(clientProvider is null) {
+        res.writeJsonBody(["error": "Client lookup is not configured."], 404);
+        return;
+      }
+
+      auto clientId = req.path[configuration.clientLookupPrefix.length .. $];
+      if(clientId.length == 0 || clientId.canFind('/')) {
+        res.writeJsonBody(["error": "Invalid client id."], 400);
+        return;
+      }
+
+      auto client = clientProvider.getClient(clientId);
+      if(client.id.length == 0) {
+        res.writeJsonBody(["error": "Client not found."], 404);
+        return;
+      }
+
+      res.writeJsonBody(clientProvider.publicView(client), 200);
     }
 
     /// Revoke a previously created token using a POST request

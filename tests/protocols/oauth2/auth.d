@@ -278,6 +278,7 @@ version(unittest) {
         Client c;
         c.id = "known-client";
         c.name = "Test Client";
+        c.redirectUris = ["http://localhost/cb"];
         return c;
       }
 
@@ -295,6 +296,10 @@ version(unittest) {
 
       store[client.id] = client;
       return client;
+    }
+
+    Json publicView(Client client) {
+      return defaultClientPublicView(client);
     }
   }
 
@@ -349,6 +354,60 @@ unittest {
     .end();
 }
 
+/// authorize returns 400 when redirect_uri is not in the client's registered list
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .get("/auth/authorize?client_id=known-client&redirect_uri=http://evil.example.com/cb&state=abc")
+    .expectStatusCode(400)
+    .end((Response response) => () {
+      response.bodyString.should.contain("Unregistered `redirect_uri`");
+    });
+}
+
+/// authorize forwards the registered client_name as a query param on the login redirect
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .get("/auth/authorize?client_id=known-client&redirect_uri=http://localhost/cb&state=abc")
+    .expectStatusCode(302)
+    .end((Response response) => () {
+      response.headers["Location"].should.contain("client_name=Test%20Client");
+    });
+}
+
+/// authorize url-encodes the client_name so site URLs survive the round trip
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/register")
+    .send(`{
+      "client_name": "GISCollective WP Plugin @ http://192.168.1.190:8888",
+      "redirect_uris": ["http://192.168.1.190:8888/wp-admin/admin.php?page=giscollective-settings"]
+    }`.parseJsonString)
+    .expectStatusCode(201)
+    .end((Response response) => () {
+      auto clientId = response.bodyJson["client_id"].get!string;
+
+      router
+        .request
+        .get("/auth/authorize?client_id=" ~ clientId
+          ~ "&redirect_uri=http://192.168.1.190:8888/wp-admin/admin.php?page=giscollective-settings&state=abc")
+        .expectStatusCode(302)
+        .end((Response authorizeResponse) => () {
+          authorizeResponse.headers["Location"].should.contain(
+            "client_name=GISCollective%20WP%20Plugin%20%40%20http%3A%2F%2F192.168.1.190%3A8888"
+          );
+        });
+    });
+}
+
 /// authorizeComplete returns 400 for unknown client_id when provider is set
 unittest {
   auto router = testRouterWithClientProvider();
@@ -369,6 +428,26 @@ unittest {
     });
 }
 
+
+/// authorizeComplete returns 400 when redirect_uri is not in the client's registered list
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/authorize/complete")
+    .send(`{
+      "email": "user@gmail.com",
+      "password": "password",
+      "client_id": "known-client",
+      "redirect_uri": "http://evil.example.com/cb",
+      "state": "abc"
+    }`.parseJsonString)
+    .expectStatusCode(400)
+    .end((Response response) => () {
+      response.bodyJson["error"].get!string.should.equal("Unregistered redirect_uri for this client");
+    });
+}
 
 /// register endpoint forwards metadata to the client provider
 unittest {
@@ -495,4 +574,29 @@ unittest {
       auto stored = provider.getClient(clientId);
       stored.name.should.equal("Real Name");
     });
+}
+
+/// GET /auth/clients/<clientId> exposes the Client struct as JSON
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .get("/auth/clients/known-client")
+    .expectStatusCode(200)
+    .end((Response response) => () {
+      response.bodyJson["id"].get!string.should.equal("known-client");
+      response.bodyJson["name"].get!string.should.equal("Test Client");
+    });
+}
+
+/// GET /auth/clients/<clientId> returns 404 for an unknown client
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .get("/auth/clients/does-not-exist")
+    .expectStatusCode(404)
+    .end();
 }
