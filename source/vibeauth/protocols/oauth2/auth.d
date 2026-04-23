@@ -428,6 +428,15 @@ class OAuth2 : BaseAuth {
       }
       client.redirectUris = redirectUris;
 
+      auto metadataJson = body_["metadata"];
+      if (metadataJson.type == Json.Type.object) {
+        foreach (string key, value; metadataJson) {
+          if (value.type == Json.Type.string) {
+            client.metadata[key] = value.get!string;
+          }
+        }
+      }
+
       auto registered = clientProvider.registerClient(client);
 
       auto response = Json.emptyObject;

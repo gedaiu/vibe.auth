@@ -289,10 +289,16 @@ version(unittest) {
     }
 
     Client registerClient(Client client) {
+      if (client.id.length == 0) {
+        client.id = "registered-" ~ client.name;
+      }
+
       store[client.id] = client;
       return client;
     }
   }
+
+  TestClientProvider provider;
 
   auto testRouterWithClientProvider() {
     auto router = new URLRouter();
@@ -309,7 +315,7 @@ version(unittest) {
     bearerToken = collection.createToken("user@gmail.com", Clock.currTime + 3600.seconds, ["doStuff"], "Bearer");
 
     auto serverProvider = new DefaultAuthorizationServerProvider("http://localhost");
-    auto provider = new TestClientProvider();
+    provider = new TestClientProvider();
     auth = new OAuth2(collection, OAuth2Configuration(), serverProvider, provider);
 
     router.any("*", &auth.tokenHandlers);
@@ -360,5 +366,27 @@ unittest {
     .expectStatusCode(400)
     .end((Response response) => () {
       response.bodyJson["error"].get!string.should.equal("Unknown client_id");
+    });
+}
+
+/// register endpoint forwards metadata to the client provider
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/register")
+    .send(`{
+      "client_name": "Test App",
+      "redirect_uris": ["http://localhost/cb"],
+      "metadata": { "dataBindingId": "db-abc", "anythingElse": "value" }
+    }`.parseJsonString)
+    .expectStatusCode(201)
+    .end((Response response) => () {
+      auto clientId = response.bodyJson["client_id"].get!string;
+
+      auto stored = provider.getClient(clientId);
+      stored.metadata["dataBindingId"].should.equal("db-abc");
+      stored.metadata["anythingElse"].should.equal("value");
     });
 }

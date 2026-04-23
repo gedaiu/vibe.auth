@@ -6,6 +6,7 @@ struct Client {
   string description;
   string website;
   string[] redirectUris;
+  string[string] metadata;
 }
 
 interface ClientProvider {
