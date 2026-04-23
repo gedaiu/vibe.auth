@@ -281,14 +281,6 @@ version(unittest) {
         return c;
       }
 
-      if (clientId == "team-bound-client") {
-        Client c;
-        c.id = "team-bound-client";
-        c.name = "Team Bound";
-        c.metadata["teamId"] = "team-42";
-        return c;
-      }
-
       if (clientId in store) {
         return store[clientId];
       }
@@ -377,42 +369,6 @@ unittest {
     });
 }
 
-/// authorize returns 400 when team-bound client has no team scope in the request
-unittest {
-  auto router = testRouterWithClientProvider();
-
-  router
-    .request
-    .get("/auth/authorize?client_id=team-bound-client&redirect_uri=http://localhost/cb&state=abc")
-    .expectStatusCode(400)
-    .end((Response response) => () {
-      response.bodyJson["error"].get!string.should.contain("team");
-    });
-}
-
-/// authorize returns 400 when team-bound client scope does not match the client teamId
-unittest {
-  auto router = testRouterWithClientProvider();
-
-  router
-    .request
-    .get("/auth/authorize?client_id=team-bound-client&redirect_uri=http://localhost/cb&state=abc&scope=team:other")
-    .expectStatusCode(400)
-    .end((Response response) => () {
-      response.bodyJson["error"].get!string.should.contain("team");
-    });
-}
-
-/// authorize redirects when team-bound client scope matches the client teamId
-unittest {
-  auto router = testRouterWithClientProvider();
-
-  router
-    .request
-    .get("/auth/authorize?client_id=team-bound-client&redirect_uri=http://localhost/cb&state=abc&scope=team:team-42")
-    .expectStatusCode(302)
-    .end();
-}
 
 /// register endpoint forwards metadata to the client provider
 unittest {

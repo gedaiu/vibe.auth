@@ -76,6 +76,23 @@ package string resolveClientName(Json body_) {
   return "Unnamed OAuth client";
 }
 
+/// Result of validating requested scopes for a given user at authorize-complete time.
+/// Error message is empty on success, or a human-readable explanation on failure.
+struct ScopeValidation {
+  bool ok;
+  string error;
+
+  static ScopeValidation accept() {
+    return ScopeValidation(true, "");
+  }
+
+  static ScopeValidation reject(string reason) {
+    return ScopeValidation(false, reason);
+  }
+}
+
+alias ScopeValidator = ScopeValidation delegate(User user, string[] scopes);
+
 /// OAuth2 autenticator
 class OAuth2 : BaseAuth {
   protected {
@@ -83,17 +100,20 @@ class OAuth2 : BaseAuth {
     AuthorizationCodeStore codeStore;
     AuthorizationServerProvider authServerProvider;
     ClientProvider clientProvider;
+    ScopeValidator scopeValidator;
   }
 
   ///
   this(UserCollection userCollection, const OAuth2Configuration configuration = OAuth2Configuration(),
-        AuthorizationServerProvider authServerProvider = null, ClientProvider clientProvider = null) {
+        AuthorizationServerProvider authServerProvider = null, ClientProvider clientProvider = null,
+        ScopeValidator scopeValidator = null) {
     super(userCollection);
 
     this.configuration = configuration;
     this.codeStore = new AuthorizationCodeStore();
     this.authServerProvider = authServerProvider;
     this.clientProvider = clientProvider;
+    this.scopeValidator = scopeValidator;
   }
 
 
@@ -230,22 +250,9 @@ class OAuth2 : BaseAuth {
         return;
       }
 
-      Client resolvedClient;
-      if(clientProvider !is null) {
-        resolvedClient = clientProvider.getClient(req.query["client_id"]);
-        if(resolvedClient.id == "") {
-          showError(res, "Unknown client_id");
-          return;
-        }
-      }
-
-      auto boundTeamId = "teamId" in resolvedClient.metadata;
-      if(boundTeamId !is null && (*boundTeamId).length > 0) {
-        auto requestedScope = "scope" in req.query ? req.query["scope"] : "";
-        if(!scopeMatchesTeam(requestedScope, *boundTeamId)) {
-          showError(res, "Missing or mismatched `team:` scope for team-bound client");
-          return;
-        }
+      if(clientProvider !is null && clientProvider.getClient(req.query["client_id"]).id == "") {
+        showError(res, "Unknown client_id");
+        return;
       }
 
       if(authServerProvider is null) {
@@ -347,6 +354,14 @@ class OAuth2 : BaseAuth {
       auto scopeVal = body_["scope"];
       if(scopeVal.type == Json.Type.string) {
         scopes = scopeVal.get!string.split(" ");
+      }
+
+      if(scopeValidator !is null) {
+        auto validation = scopeValidator(user, scopes);
+        if(!validation.ok) {
+          res.writeJsonBody(["error": validation.error], 403);
+          return;
+        }
       }
 
       AuthorizationCodeData codeData;
@@ -498,63 +513,3 @@ class OAuth2 : BaseAuth {
   }
 }
 
-/// Returns true when `scope` contains exactly one `team:<teamId>` matching the given team.
-bool scopeMatchesTeam(string scopeValue, string teamId) {
-  if(scopeValue.length == 0 || teamId.length == 0) {
-    return false;
-  }
-
-  size_t matches = 0;
-  foreach(token; scopeValue.split(" ")) {
-    if(!token.startsWith("team:")) {
-      continue;
-    }
-
-    if(token[5 .. $] != teamId) {
-      return false;
-    }
-
-    matches++;
-  }
-
-  return matches == 1;
-}
-
-version(unittest) {
-  import fluent.asserts;
-}
-
-/// scopeMatchesTeam returns true for exact single match
-unittest {
-  scopeMatchesTeam("team:abc", "abc").should.equal(true);
-}
-
-/// scopeMatchesTeam returns true with extra non-team scopes
-unittest {
-  scopeMatchesTeam("read team:abc write", "abc").should.equal(true);
-}
-
-/// scopeMatchesTeam returns false for empty scope
-unittest {
-  scopeMatchesTeam("", "abc").should.equal(false);
-}
-
-/// scopeMatchesTeam returns false when team id does not match
-unittest {
-  scopeMatchesTeam("team:other", "abc").should.equal(false);
-}
-
-/// scopeMatchesTeam returns false when there is no team scope
-unittest {
-  scopeMatchesTeam("read write", "abc").should.equal(false);
-}
-
-/// scopeMatchesTeam returns false when there are multiple team scopes
-unittest {
-  scopeMatchesTeam("team:abc team:abc", "abc").should.equal(false);
-}
-
-/// scopeMatchesTeam returns false when one of two team scopes mismatches
-unittest {
-  scopeMatchesTeam("team:abc team:other", "abc").should.equal(false);
-}
