@@ -338,6 +338,23 @@ class OAuth2 : BaseAuth {
       auto codeChallengeMethod = body_["code_challenge_method"].opt!string("S256");
       auto state = body_["state"].opt!string("");
 
+      int expiresIn = defaultAccessTokenLifetime;
+      auto expiresInJson = body_["expiresIn"];
+      if(expiresInJson.type != Json.Type.undefined && expiresInJson.type != Json.Type.null_) {
+        if(expiresInJson.type != Json.Type.int_) {
+          res.writeJsonBody(["error": "invalid_request", "error_description": "expiresIn must be an integer"], 400);
+          return;
+        }
+
+        auto requested = expiresInJson.get!long;
+        if(requested < int.min || requested > int.max || !isAllowedAccessTokenLifetime(cast(int) requested)) {
+          res.writeJsonBody(["error": "invalid_request", "error_description": "expiresIn is not an allowed value"], 400);
+          return;
+        }
+
+        expiresIn = cast(int) requested;
+      }
+
       Client completingClient;
       if(clientProvider !is null) {
         completingClient = clientProvider.getClient(clientId);
@@ -413,6 +430,7 @@ class OAuth2 : BaseAuth {
       codeData.codeChallenge = codeChallenge;
       codeData.codeChallengeMethod = codeChallengeMethod;
       codeData.scopes = scopes;
+      codeData.expiresIn = expiresIn;
 
       codeStore.store(codeData);
 
@@ -421,7 +439,7 @@ class OAuth2 : BaseAuth {
       response["redirect_uri"] = redirectUri;
       response["state"] = state;
 
-      res.writeJsonBody(response);
+      res.writeJsonBody(response, 200);
     }
 
 

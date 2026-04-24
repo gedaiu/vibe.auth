@@ -1,7 +1,22 @@
 module vibeauth.protocols.oauth2.codestore;
 
+import std.algorithm : canFind;
 import std.datetime;
 import std.typecons;
+
+/// Allowed access-token lifetimes (seconds) the end user may select at
+/// authorize-complete time: 1 hour, 1 day, 30 days, 1 year. Hard-coded
+/// server-side so a client cannot request an arbitrary lifetime.
+immutable int[] allowedAccessTokenLifetimes = [3600, 86400, 2592000, 31536000];
+
+/// Lifetime applied when the client omits `expiresIn` (older frontends and
+/// scripted clients). Matches the legacy access-token expiry — keep it in
+/// sync with the per-grant defaults if those ever move.
+enum int defaultAccessTokenLifetime = 3601;
+
+bool isAllowedAccessTokenLifetime(int seconds) {
+  return allowedAccessTokenLifetimes.canFind(seconds);
+}
 
 struct AuthorizationCodeData {
   string code;
@@ -12,6 +27,12 @@ struct AuthorizationCodeData {
   string codeChallengeMethod;
   string[] scopes;
   SysTime createdAt;
+
+  /// Lifetime in seconds for the access token issued from this code.
+  /// Chosen by the end user at authorize-complete time and persisted so the
+  /// token endpoint cannot be tricked into honoring a different value supplied
+  /// at exchange time.
+  int expiresIn;
 }
 
 class AuthorizationCodeStore {

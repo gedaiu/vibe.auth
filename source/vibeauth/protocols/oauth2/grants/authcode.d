@@ -73,8 +73,13 @@ final class AuthorizationCodeGrantAccess : IGrantAccess {
     auto user = collection.byId(userId);
     auto email = user.email;
 
-    auto accessToken = collection.createToken(email, Clock.currTime + 3601.seconds, codeData.get.scopes, "Bearer");
-    auto refreshToken = collection.createToken(email, Clock.currTime + 4.weeks, codeData.get.scopes ~ ["refresh"], "Refresh");
+    auto accessLifetime = codeData.get.expiresIn > 0
+      ? codeData.get.expiresIn.seconds
+      : defaultAccessTokenLifetime.seconds;
+    auto refreshLifetime = accessLifetime + 4.weeks;
+
+    auto accessToken = collection.createToken(email, Clock.currTime + accessLifetime, codeData.get.scopes, "Bearer");
+    auto refreshToken = collection.createToken(email, Clock.currTime + refreshLifetime, codeData.get.scopes ~ ["refresh"], "Refresh");
 
     response["access_token"] = accessToken.name;
     response["expires_in"] = (accessToken.expire - Clock.currTime).total!"seconds";
@@ -246,6 +251,61 @@ unittest {
   (response["refresh_token"].type == Json.Type.string).should.equal(true);
   response["token_type"].get!string.should.equal("Bearer");
   (response["expires_in"].get!long > 0).should.equal(true);
+}
+
+@("get honors stored expiresIn for the access token")
+unittest {
+  auto store = new AuthorizationCodeStore();
+  auto verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+
+  AuthorizationCodeData codeData;
+  codeData.code = "test-code";
+  codeData.userId = "1";
+  codeData.redirectUri = "https://app.example.com/callback";
+  codeData.codeChallenge = makeChallenge(verifier);
+  codeData.codeChallengeMethod = "S256";
+  codeData.expiresIn = 2592000;
+  store.store(codeData);
+
+  auto grant = createTestGrant(store);
+
+  AuthData data;
+  data.code = "test-code";
+  data.redirectUri = "https://app.example.com/callback";
+  data.codeVerifier = verifier;
+  grant.authData = data;
+
+  auto response = grant.get;
+  auto expiresIn = response["expires_in"].get!long;
+
+  (expiresIn > 2592000 - 5 && expiresIn <= 2592000).should.equal(true);
+}
+
+@("get falls back to default lifetime when stored expiresIn is zero")
+unittest {
+  auto store = new AuthorizationCodeStore();
+  auto verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+
+  AuthorizationCodeData codeData;
+  codeData.code = "test-code";
+  codeData.userId = "1";
+  codeData.redirectUri = "https://app.example.com/callback";
+  codeData.codeChallenge = makeChallenge(verifier);
+  codeData.codeChallengeMethod = "S256";
+  store.store(codeData);
+
+  auto grant = createTestGrant(store);
+
+  AuthData data;
+  data.code = "test-code";
+  data.redirectUri = "https://app.example.com/callback";
+  data.codeVerifier = verifier;
+  grant.authData = data;
+
+  auto response = grant.get;
+  auto expiresIn = response["expires_in"].get!long;
+
+  (expiresIn > defaultAccessTokenLifetime - 5 && expiresIn <= defaultAccessTokenLifetime).should.equal(true);
 }
 
 @("isValid consumes code so it cannot be reused")

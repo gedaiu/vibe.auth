@@ -600,3 +600,164 @@ unittest {
     .expectStatusCode(404)
     .end();
 }
+
+/// authorizeComplete accepts an allowed expiresIn and the token endpoint honors it
+unittest {
+  import vibeauth.protocols.oauth2.codestore;
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/authorize/complete")
+    .send(`{
+      "email": "user@gmail.com",
+      "password": "password",
+      "client_id": "known-client",
+      "redirect_uri": "http://localhost/cb",
+      "state": "abc",
+      "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+      "code_challenge_method": "S256",
+      "expiresIn": 2592000
+    }`.parseJsonString)
+    .expectStatusCode(200)
+    .end((Response completeResponse) => () {
+      auto code = completeResponse.bodyJson["code"].get!string;
+
+      router
+        .request
+        .post("/auth/token")
+        .send([
+          "grant_type": "authorization_code",
+          "code": code,
+          "code_verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+          "redirect_uri": "http://localhost/cb"
+        ])
+        .expectStatusCode(200)
+        .end((Response response) => () {
+          auto expiresIn = response.bodyJson["expires_in"].get!long;
+          (expiresIn > 2592000 - 5 && expiresIn <= 2592000).should.equal(true);
+        });
+    });
+}
+
+/// authorizeComplete falls back to the legacy default when expiresIn is omitted
+unittest {
+  import vibeauth.protocols.oauth2.codestore;
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/authorize/complete")
+    .send(`{
+      "email": "user@gmail.com",
+      "password": "password",
+      "client_id": "known-client",
+      "redirect_uri": "http://localhost/cb",
+      "state": "abc",
+      "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+      "code_challenge_method": "S256"
+    }`.parseJsonString)
+    .expectStatusCode(200)
+    .end((Response completeResponse) => () {
+      auto code = completeResponse.bodyJson["code"].get!string;
+
+      router
+        .request
+        .post("/auth/token")
+        .send([
+          "grant_type": "authorization_code",
+          "code": code,
+          "code_verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+          "redirect_uri": "http://localhost/cb"
+        ])
+        .expectStatusCode(200)
+        .end((Response response) => () {
+          auto expiresIn = response.bodyJson["expires_in"].get!long;
+          (expiresIn > defaultAccessTokenLifetime - 5 && expiresIn <= defaultAccessTokenLifetime).should.equal(true);
+        });
+    });
+}
+
+/// authorizeComplete rejects an expiresIn value outside the allowlist
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/authorize/complete")
+    .send(`{
+      "email": "user@gmail.com",
+      "password": "password",
+      "client_id": "known-client",
+      "redirect_uri": "http://localhost/cb",
+      "state": "abc",
+      "expiresIn": 99
+    }`.parseJsonString)
+    .expectStatusCode(400)
+    .end((Response response) => () {
+      response.bodyJson["error"].get!string.should.equal("invalid_request");
+    });
+}
+
+/// authorizeComplete rejects a negative expiresIn
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/authorize/complete")
+    .send(`{
+      "email": "user@gmail.com",
+      "password": "password",
+      "client_id": "known-client",
+      "redirect_uri": "http://localhost/cb",
+      "state": "abc",
+      "expiresIn": -1
+    }`.parseJsonString)
+    .expectStatusCode(400)
+    .end((Response response) => () {
+      response.bodyJson["error"].get!string.should.equal("invalid_request");
+    });
+}
+
+/// authorizeComplete rejects a non-integer expiresIn
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/authorize/complete")
+    .send(`{
+      "email": "user@gmail.com",
+      "password": "password",
+      "client_id": "known-client",
+      "redirect_uri": "http://localhost/cb",
+      "state": "abc",
+      "expiresIn": "forever"
+    }`.parseJsonString)
+    .expectStatusCode(400)
+    .end((Response response) => () {
+      response.bodyJson["error"].get!string.should.equal("invalid_request");
+    });
+}
+
+/// authorizeComplete rejects an expiresIn of 999999999 (the malicious-client scenario)
+unittest {
+  auto router = testRouterWithClientProvider();
+
+  router
+    .request
+    .post("/auth/authorize/complete")
+    .send(`{
+      "email": "user@gmail.com",
+      "password": "password",
+      "client_id": "known-client",
+      "redirect_uri": "http://localhost/cb",
+      "state": "abc",
+      "expiresIn": 999999999
+    }`.parseJsonString)
+    .expectStatusCode(400)
+    .end((Response response) => () {
+      response.bodyJson["error"].get!string.should.equal("invalid_request");
+    });
+}
