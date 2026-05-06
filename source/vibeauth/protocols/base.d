@@ -24,6 +24,14 @@ abstract class BaseAuth {
 
   protected UserCollection collection;
 
+  /// Optional predicate deciding which incoming `Origin` is allowed to make
+  /// credentialed CORS requests. When the predicate accepts an origin, the
+  /// server echoes it back instead of `*` and adds
+  /// `Access-Control-Allow-Credentials: true` so browsers will send/store
+  /// cookies. Other origins keep the wildcard behavior. Leave `null` to
+  /// disable credentialed CORS entirely.
+  OriginPredicate isCredentialedOrigin;
+
   /// Instantiate the authenticator with an user collection
   this(UserCollection collection) {
     this.collection = collection;
@@ -33,7 +41,7 @@ abstract class BaseAuth {
   /// This handler is usefull for routes that want to hide information to the
   /// public.
   void mandatoryAuth(HTTPServerRequest req, HTTPServerResponse res) {
-    setAccessControl(res);
+    setAccessControl(req, res, isCredentialedOrigin);
 
     if(mandatoryAuth(req) == AuthResult.unauthorized) {
       respondUnauthorized(res);
@@ -48,7 +56,7 @@ abstract class BaseAuth {
   /// This handler is usefull when a route should return different data when the user is
   /// logged in
   void permissiveAuth(HTTPServerRequest req, HTTPServerResponse res) {
-    setAccessControl(res);
+    setAccessControl(req, res, isCredentialedOrigin);
 
     if(permissiveAuth(req) == AuthResult.unauthorized) {
       respondUnauthorized(res);

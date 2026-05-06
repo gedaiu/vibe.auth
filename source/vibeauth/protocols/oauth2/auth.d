@@ -113,6 +113,14 @@ struct ScopeValidation {
 
 alias ScopeValidator = ScopeValidation delegate(User user, string[] scopes, Json body_);
 
+/// Optional hook fired after a successful token issuance (initial grant or refresh).
+/// Lets consumers attach side effects to the response — for example setting a
+/// session cookie — without forking the OAuth2 handler. Called before the JSON
+/// body is written, so the hook may freely add headers and cookies to `res`.
+/// `result` is the JSON object that will be returned to the client (contains
+/// `access_token`, `refresh_token`, `expires_in`, etc.).
+alias TokenIssuedHook = void delegate(HTTPServerRequest req, HTTPServerResponse res, Json result);
+
 /// OAuth2 autenticator
 class OAuth2 : BaseAuth {
   protected {
@@ -122,6 +130,12 @@ class OAuth2 : BaseAuth {
     ClientProvider clientProvider;
     ScopeValidator scopeValidator;
   }
+
+  /// Optional opt-in hook invoked after each successful token issuance, including
+  /// refresh-token grants. Set to attach session cookies or other side effects
+  /// to the token response. Leave `null` to keep the default behavior of
+  /// returning only the JSON body.
+  TokenIssuedHook tokenIssued;
 
   ///
   this(UserCollection userCollection, const OAuth2Configuration configuration = OAuth2Configuration(),
@@ -140,7 +154,7 @@ class OAuth2 : BaseAuth {
   /// Handle the OAuth requests. Handles token creation, authorization
   /// authentication and revocation
   void tokenHandlers(HTTPServerRequest req, HTTPServerResponse res) {
-    setAccessControl(res);
+    setAccessControl(req, res, isCredentialedOrigin);
     if(req.method == HTTPMethod.OPTIONS) {
       res.statusCode = 200;
       res.writeBody("");
@@ -478,7 +492,13 @@ class OAuth2 : BaseAuth {
 
       grant.userCollection = collection;
       auto result = grant.get;
-      res.statusCode = "error" !in result ? 200 : 401;
+      bool success = "error" !in result;
+      res.statusCode = success ? 200 : 401;
+
+      if(success && tokenIssued !is null) {
+        tokenIssued(req, res, result);
+      }
+
       res.writeJsonBody(result);
     }
 
