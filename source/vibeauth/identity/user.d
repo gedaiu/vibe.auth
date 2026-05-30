@@ -359,3 +359,87 @@ class User {
     return new User(data.deserializeJson!UserModel);
   }
 }
+
+/// Adding and removing scopes
+unittest {
+  auto user = new User("user", "password");
+  assert(user.getScopes == [], "a new user has no scopes");
+
+  user.addScope("doStuff");
+  user.addScope("doOtherStuff");
+  assert(user.getScopes.canFind("doStuff") && user.getScopes.canFind("doOtherStuff"),
+    "added scopes are returned");
+
+  user.removeScope("doStuff");
+  assert(user.getScopes == ["doOtherStuff"], "a removed scope is gone");
+}
+
+/// Checking access with can
+unittest {
+  auto user = new User("user", "password");
+  user.addScope("doStuff");
+
+  assert(user.can!"doStuff", "can returns true for an assigned scope");
+  assert(!user.can!"missing", "can returns false for a missing scope");
+}
+
+/// Token scopes are returned by token name
+unittest {
+  auto user = new User("user", "password");
+  auto token = user.createToken(Clock.currTime + 3600.seconds, ["readData"]);
+
+  assert(user.getScopes(token.name) == ["readData"], "the token scopes are returned");
+}
+
+/// Validating a token by name and by required scope
+unittest {
+  auto user = new User("user", "password");
+  auto token = user.createToken(Clock.currTime + 3600.seconds, ["readData"]);
+
+  assert(user.isValidToken(token.name), "a fresh token is valid");
+  assert(!user.isValidToken("missing"), "an unknown token is invalid");
+
+  assert(user.isValidToken(token.name, "readData"), "the token is valid for its scope");
+  assert(!user.isValidToken(token.name, "writeData"), "the token is invalid for a missing scope");
+}
+
+/// Expired tokens are not valid
+unittest {
+  auto user = new User("user", "password");
+  auto token = user.createToken(Clock.currTime - 1.seconds);
+
+  assert(!user.isValidToken(token.name), "an expired token is invalid");
+}
+
+/// Filtering tokens by type
+unittest {
+  auto user = new User("user", "password");
+  user.createToken(Clock.currTime + 3600.seconds, [], "Bearer");
+  user.createToken(Clock.currTime + 3600.seconds, [], "Refresh");
+
+  assert(user.getTokensByType("Bearer").array.length == 1, "one Bearer token is found");
+  assert(user.getTokensByType("Refresh").array.length == 1, "one Refresh token is found");
+  assert(user.getTokensByType("Missing").array.length == 0, "no token of an unused type is found");
+}
+
+/// Revoking a token by name
+unittest {
+  auto user = new User("user", "password");
+  auto token = user.createToken(Clock.currTime + 3600.seconds);
+
+  user.revoke(token.name);
+
+  assert(!user.isValidToken(token.name), "a revoked token is invalid");
+}
+
+/// Removing expired tokens keeps the valid ones
+unittest {
+  auto user = new User("user", "password");
+  auto valid = user.createToken(Clock.currTime + 3600.seconds);
+  user.createToken(Clock.currTime - 1.seconds);
+
+  user.removeExpiredTokens();
+
+  assert(user.isValidToken(valid.name), "the valid token survives");
+  assert(user.getTokensByType("Bearer").array.length == 1, "only the valid token remains");
+}
